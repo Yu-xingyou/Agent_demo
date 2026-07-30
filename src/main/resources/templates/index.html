@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('首页')}"></head>
+<body>
+<nav th:replace="~{fragments :: navbar('index')}"></nav>
+
+<div class="container py-4">
+    <!-- 欢迎区域 -->
+    <div class="text-center mb-4">
+        <h2 class="fw-bold">欢迎使用生活习惯助手</h2>
+        <p class="text-muted">记录每日习惯，AI 助你分析改善</p>
+    </div>
+
+    <!-- 快捷统计卡片 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card stat-card text-center p-3">
+                <div class="text-primary fs-1"><i class="bi bi-moon-stars"></i></div>
+                <div class="text-muted small">今日睡眠</div>
+                <div class="fw-bold fs-5" th:text="${todayRecord?.sleepDuration != null} ? ${todayRecord.sleepDuration} + 'h' : '未打卡'">未打卡</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center p-3">
+                <div class="text-success fs-1"><i class="bi bi-droplet-half"></i></div>
+                <div class="text-muted small">今日饮水</div>
+                <div class="fw-bold fs-5" th:text="${todayRecord?.waterIntake != null} ? ${todayRecord.waterIntake} + 'ml' : '未打卡'">未打卡</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center p-3">
+                <div class="text-warning fs-1"><i class="bi bi-bicycle"></i></div>
+                <div class="text-muted small">今日运动</div>
+                <div class="fw-bold fs-5" th:text="${todayRecord?.exerciseDuration != null} ? ${todayRecord.exerciseDuration} + 'min' : '未打卡'">未打卡</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stat-card text-center p-3">
+                <div class="text-info fs-1"><i class="bi bi-emoji-smile"></i></div>
+                <div class="text-muted small">今日心情</div>
+                <div class="fw-bold fs-5" th:text="${todayRecord?.mood != null} ? ${todayRecord.mood} + '/5' : '未打卡'">未打卡</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 今日打卡入口 -->
+    <div class="row g-3">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h5><i class="bi bi-check2-circle text-primary"></i> 每日打卡</h5>
+                <p class="text-muted">记录今天的作息、饮食、运动数据</p>
+                <a href="/checkin" class="btn btn-primary">
+                    <i class="bi bi-pencil-square"></i> 去打卡
+                </a>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h5><i class="bi bi-robot text-primary"></i> AI 智能建议</h5>
+                <p class="text-muted">与 AI 对话，获取个性化习惯改善建议</p>
+                <a href="/ai-chat" class="btn btn-success">
+                    <i class="bi bi-chat-dots"></i> 开始对话
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- 最近7天记录概览 -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-clock-history"></i> 最近7天记录</h5>
+            <div th:if="${recentRecords.isEmpty()}" class="text-center text-muted py-3">
+                暂无记录，去 <a href="/checkin">打卡</a> 吧！
+            </div>
+            <table th:unless="${recentRecords.isEmpty()}" class="table table-sm table-hover">
+                <thead>
+                    <tr><th>日期</th><th>睡眠</th><th>运动</th><th>饮水</th><th>心情</th></tr>
+                </thead>
+                <tbody>
+                    <tr th:each="r : ${recentRecords}">
+                        <td th:text="${r.recordDate}"></td>
+                        <td th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '-'"></td>
+                        <td th:text="${r.exerciseDuration != null} ? ${r.exerciseDuration} + 'min' : '-'"></td>
+                        <td th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '-'"></td>
+                        <td th:text="${r.mood != null} ? ${r.mood} + '/5' : '-'"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+</body>
+</html>

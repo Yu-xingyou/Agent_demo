@@ -2,7 +2,7 @@
 
 ## Summary
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计覆盖全部 9 个功能模块、47 个接口端点的完整 REST API 接口文档。包含统一 Result 封装规范、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计覆盖全部 9 个功能模块、48 个接口端点的完整 REST API 接口文档。包含统一 Result 封装规范、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。
 
 ## Current State Analysis
 
@@ -39,13 +39,13 @@
 - 错误码体系：200/400/404/409/429/503/500（共 19 个业务码）
 - 全局异常处理映射
 
-### 2. 九大模块接口（共 47 个端点）
+### 2. 九大模块接口（共 48 个端点）
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
 | 习惯记录 CRUD | HabitController | 7 | POST/GET/DELETE `/api/habits` |
 | 习惯目标管理 | GoalController | 6 | CRUD `/api/goals` |
-| AI 对话 | ChatController | 2 | SSE 流式 + 停止生成（仅流式，无普通对话） |
+| AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
 | 会话管理 | SessionController | 7 | 会话 CRUD + 消息历史 |
 | 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 |
 | AI 分析结果 | AiAnalysisController | 6 | 列表/详情/触发/删除/每日评价 |
@@ -53,7 +53,8 @@
 | 页面路由 | PageController | 5 | 首页/打卡/历史/趋势/AI建议 |
 | 打卡提醒 | ReminderController | 5 | CRUD + 启用/禁用切换 |
 
-### 3. SSE 特殊响应格式
+### 3. SSE 特殊响应格式（仅 `GET /api/chat/stream` 流式端点使用）
+- 非流式端点 `POST /api/chat` 返回标准 `Result<ChatResponseVO>` JSON 响应
 - 5 种事件类型：`meta` / `chunk` / `tool_call` / `done` / `error`
 - 前端 EventSource 对接规范
 - 事件序列图
@@ -65,7 +66,8 @@
 
 ## Assumptions & Decisions
 - SSE 用 GET（EventSource 原生仅支持 GET）
-- 仅采用 SSE 流式对话（用户要求，流式输出观感更好，移除普通对话端点）
+- 采用非流式 + SSE 流式双模式对话（对标 OpenAI/Anthropic/DashScope 企业标准，stream 参数切换两种模式）
+- 非流式 `POST /api/chat` 用于后端任务调用和测试调试，流式 `GET /api/chat/stream` 用于前端交互
 - 默认 userId=1（单用户演示场景）
 - 会话管理独立 Controller（关注点分离）
 - 提醒模块独立 Controller（对应 PRD 可选功能「打卡提醒」）
@@ -76,4 +78,4 @@
 3. 每个模块接口与开发计划阶段对应
 4. SSE 事件格式定义完整可实施
 5. VO 数据模型覆盖所有响应场景
-6. 47 个端点均有完整 JSON 请求/响应示例
+6. 48 个端点均有完整 JSON 请求/响应示例

@@ -200,11 +200,11 @@ habit-agent/
 │   │   ├── VectorStoreConfig.java          # 向量库、EmbeddingModel 配置
 │   │   └── AgentConfig.java                # 多智能体路由配置
 │   │
-│   ├── controller/                         # 控制层（9 个 Controller，47 端点）
+│   ├── controller/                         # 控制层（9 个 Controller，48 端点）
 │   │   ├── PageController.java             # 页面路由（Thymeleaf，5 端点）
 │   │   ├── HabitController.java            # 习惯记录 CRUD（REST，7 端点）
 │   │   ├── GoalController.java             # 习惯目标管理（REST，6 端点）
-│   │   ├── ChatController.java             # AI 对话（SSE 流式 + 停止，2 端点）
+│   │   ├── ChatController.java             # AI 对话（非流式 + SSE 流式 + 停止，3 端点）
 │   │   ├── SessionController.java          # 会话管理（REST，7 端点）
 │   │   ├── AnalysisController.java         # 趋势分析数据（REST，4 端点）
 │   │   ├── AiAnalysisController.java       # AI 分析结果 + 每日评价（REST，6 端点）
@@ -271,6 +271,7 @@ habit-agent/
 │       └── vo/                             # 视图对象层（22 个 VO 类）
 │           ├── HabitRecordVO.java
 │           ├── HabitGoalVO.java
+│           ├── ChatRequestVO.java
 │           ├── ChatResponseVO.java
 │           ├── ChatSessionVO.java
 │           ├── ChatMessageVO.java
@@ -509,7 +510,7 @@ CREATE TABLE IF NOT EXISTS `reminder` (
 | 2 | OpenAI/百炼 API 对接 | `application.yml` + OpenAI 兼容模式 | spring-ai-starter-model-openai + DashScope |
 | 3 | Tool Calling | `agent/tools/` | `@Tool` 注解定义业务工具 |
 | 4 | Prompt Engineering | `resources/prompts/` | System/Analysis/Suggestion 提示词模板 |
-| 5 | 流式对话 | `ChatController` | `stream()` SSE 流式输出，仅流式不保留普通对话 |
+| 5 | 流式对话 | `ChatController` | `stream()` SSE 流式输出 + `POST /api/chat` 非流式对话（企业标准双模式） |
 | 6 | System 角色设定 | `ChatClientConfig` | `defaultSystem()` 设定助手人格 |
 | 7 | Advisors 自定义增强 | `agent/advisors/` | 自定义 Logging/Safety/Context Advisor |
 | 8 | Tool Calling 与业务整合 | `agent/tools/` | 工具调用 JPA/Mongo Repository 查询真实数据 |
@@ -676,10 +677,27 @@ public class RagService {
               └── CHAT          → ChatAgent (记忆+日常对话)
 ```
 
-### 4.7 流式输出与停止生成（技术点 11）
+### 4.7 对话接口设计：非流式 + 流式双模式（技术点 5/11）
 
-Thymeleaf 渲染页面骨架，AI 对话区域用独立 SSE 端点 + 前端 EventSource：
+对标企业标准（OpenAI `stream=true/false`、Anthropic `stream` 参数、DashScope `stream` + `incremental_output`），ChatController 同时提供两种对话模式：
 
+**非流式对话 `POST /api/chat`**（用于后端任务调用、测试调试）：
+```java
+@PostMapping
+public Result<ChatResponseVO> chat(@RequestBody ChatRequestVO request) {
+    String conversationId = request.getConversationId() != null
+        ? request.getConversationId()
+        : chatService.getOrCreateSession(AgentConstants.DEFAULT_USER_ID);
+    String content = chatClient.prompt()
+        .user(request.getMessage())
+        .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
+        .call()
+        .content();
+    return Result.success(chatService.buildResponse(conversationId, content));
+}
+```
+
+**SSE 流式对话 `GET /api/chat/stream`**（用于前端交互，逐字打字机效果）：
 ```java
 @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
 public SseEmitter streamChat(@RequestParam String message,
@@ -759,7 +777,7 @@ public SseEmitter streamChat(@RequestParam String message,
 
 **目标**：ChatClient 配置就绪，通义千问连通，System Prompt 生效
 
-> 根据用户要求，移除普通对话端点 `POST /api/chat`，仅保留 SSE 流式对话。本阶段不产出对外端点（0 端点），仅完成 ChatClient Bean 配置和模型连通验证。
+> 本阶段不产出对外端点（0 端点）。ChatController 的非流式 `POST /api/chat` 和 SSE 流式 `GET /api/chat/stream` 端点在阶段五实现。本阶段仅完成 ChatClient Bean 配置和模型连通验证。
 
 - 配置 DashScope API Key，验证模型连通
 - 编写 System Prompt 模板（`system-prompt.st`）
@@ -772,7 +790,7 @@ public SseEmitter streamChat(@RequestParam String message,
 
 **目标**：多轮对话有记忆，SSE 流式打字效果，会话管理完整可用
 
-> 对应 API 文档：ChatController（2 端点：SSE 流式 + 停止）+ SessionController（7 端点：会话 CRUD + 消息历史），共 9 端点。
+> 对应 API 文档：ChatController（3 端点：非流式对话 + SSE 流式 + 停止）+ SessionController（7 端点：会话 CRUD + 消息历史），共 10 端点。
 
 - 创建 MongoDB Document（ChatMessageDoc/ChatSessionDoc/AiAnalysisDoc）
 - 创建 MongoDB Repository
@@ -780,6 +798,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - 配置 `MessageWindowChatMemory`（滑动窗口 20 条）
 - 配置 `MessageChatMemoryAdvisor` 加入 Advisor 链
 - 实现会话管理：`SessionController`（会话列表/创建/查询/删除/消息历史/关闭）+ `SessionService`
+- 实现非流式对话：`ChatController` 的 `POST /api/chat`（企业标准，用于后端任务调用和测试调试）
 - 实现 SSE 流式输出：`ChatController` 的 `GET /api/chat/stream`
 - 实现停止生成：`POST /api/chat/stop`
 - 实现前端 `chat-stream.js`（EventSource + 停止按钮）
@@ -932,6 +951,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - [ ] System Prompt 生效（AI 以"生活习惯助手"角色回应）
 
 **阶段五验证（记忆+流式+会话）**：
+- [ ] `POST /api/chat` 非流式对话能返回完整 JSON 响应
 - [ ] 多轮对话记住上文
 - [ ] 流式输出逐字显示
 - [ ] 停止按钮能中断生成
@@ -993,19 +1013,19 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ## 九、接口与开发阶段映射表
 
-> 与《API接口文档设计计划.md》保持一致，共 9 个模块、47 个端点。
+> 与《API接口文档设计计划.md》保持一致，共 9 个模块、48 个端点。
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
 | 阶段二 | 习惯记录 + 习惯目标 | HabitController + GoalController | 7 + 6 = 13 | 13 |
 | 阶段三 | 页面路由 | PageController | 5 | 18 |
 | 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 18 |
-| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 2 + 7 = 9 | 27 |
-| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 27 |
-| 阶段七 | RAG 知识库 | RagController | 5 | 32 |
-| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 32 |
-| 阶段九 | 趋势分析 | AnalysisController | 4 | 36 |
-| 阶段十 | AI 分析结果 + 打卡提醒 + MCP | AiAnalysisController + ReminderController | 6 + 5 = 11 | 47 |
+| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 28 |
+| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 28 |
+| 阶段七 | RAG 知识库 | RagController | 5 | 33 |
+| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 33 |
+| 阶段九 | 趋势分析 | AnalysisController | 4 | 37 |
+| 阶段十 | AI 分析结果 + 打卡提醒 + MCP | AiAnalysisController + ReminderController | 6 + 5 = 11 | 48 |
 
 **端点分布说明**：
 
@@ -1014,10 +1034,10 @@ public SseEmitter streamChat(@RequestParam String message,
 | HabitController | `/api/habits` | 7 | 阶段二 |
 | GoalController | `/api/goals` | 6 | 阶段二 |
 | PageController | `/` `/checkin` `/history` `/trend` `/ai-chat` | 5 | 阶段三 |
-| ChatController | `/api/chat/stream` `/api/chat/stop` | 2 | 阶段五 |
+| ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 |
 | SessionController | `/api/sessions` | 7 | 阶段五 |
 | RagController | `/api/rag` | 5 | 阶段七 |
 | AnalysisController | `/api/analysis` | 4 | 阶段九 |
 | AiAnalysisController | `/api/ai-analysis` | 6 | 阶段十 |
 | ReminderController | `/api/reminders` | 5 | 阶段十 |
-| **合计** | | **47** | |
+| **合计** | | **48** | |

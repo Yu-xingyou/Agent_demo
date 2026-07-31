@@ -2,7 +2,7 @@
 
 ## 任务概述
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 9 个功能模块、47 个接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。文档替换现有骨架文件 `API接口设计方案.md`。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 9 个功能模块、48 个接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。文档替换现有骨架文件 `API接口设计方案.md`。
 
 ## PRD 覆盖评审（本次优化）
 
@@ -23,7 +23,7 @@
 | **每日评价（输出数据）** | **缺失→已补充** | AiAnalysisController 新增 POST `/api/ai-analysis/daily` |
 | **打卡提醒（可选功能）** | **缺失→已补充** | 新增 ReminderController `/api/reminders`（5 端点） |
 
-同时根据用户要求，**移除普通对话端点 POST `/api/chat`，只保留 SSE 流式对话**，因为流式对话观感更好。
+同时根据企业标准规范（OpenAI Chat Completions API、Anthropic Messages API、阿里云 DashScope API 均通过 `stream` 参数同时支持流式与非流式两种模式），**ChatController 同时提供非流式对话 `POST /api/chat` 和 SSE 流式对话 `GET /api/chat/stream`**。非流式端点用于后端定时任务调用（如每日评价生成）、服务间调用（如周报/月报自动生成）和测试调试场景；流式端点用于前端用户交互，提供逐字打字机效果。
 
 ## 核心要求（用户反馈优化点）
 
@@ -86,7 +86,7 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 ## 1. 文档概述（项目背景、技术栈、通用约定）
 ## 2. 通用规范（Result<T> JSON 格式、错误码体系、日期时间格式）
 ## 3. SSE 流式输出规范（5种事件类型 JSON 格式、时序图、前端对接代码）
-## 4. 接口总览表（47 端点速查矩阵）
+## 4. 接口总览表（48 端点速查矩阵）
 ## 5. 各模块接口详细设计（9 个模块，每接口含完整 JSON 请求/响应示例）
 ## 6. VO 数据模型清单（22 个 VO 类，每个含字段表格 + JSON 示例）
 ## 7. 错误码完整对照表（19 个错误码）
@@ -335,11 +335,59 @@ GET 列表响应示例：
 }
 ```
 
-### 5.3 AI 对话模块（ChatController `/api/chat`）— 2 端点
+### 5.3 AI 对话模块（ChatController `/api/chat`）— 3 端点
 
-> 根据用户要求，移除普通对话端点 POST `/api/chat`，**仅保留 SSE 流式对话**，流式输出观感更好。
+> 对标企业标准规范：OpenAI Chat Completions API 通过 `stream=true/false` 参数同时支持流式与非流式；Anthropic Messages API 同样通过 `stream` 布尔参数切换；阿里云 DashScope 通过 `stream` + `incremental_output` 参数组合支持。本项目遵循同一端点前缀 `/api/chat`，以不同 HTTP 方法和路径区分两种模式。
 
-**端点 1：GET `/api/chat/stream` — SSE 流式对话**
+**端点 1：POST `/api/chat` — 非流式对话（企业标准）**
+
+> 对标 OpenAI `POST /v1/chat/completions`（stream=false）和 DashScope（stream=false）。
+> 适用场景：后端定时任务调用（如每日评价生成）、服务间调用（如周报/月报自动生成）、测试调试。
+
+请求参数（JSON Body）：
+
+| 字段 | 类型 | 必填 | 说明 |
+|---|---|---|---|
+| message | String | 是 | 用户消息 |
+| conversationId | String | 否 | 会话 ID，不传则自动获取/创建 |
+
+请求示例：
+```json
+{
+  "message": "分析我最近的睡眠",
+  "conversationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+}
+```
+
+成功响应示例（200）：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": {
+    "conversationId": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "role": "ASSISTANT",
+    "content": "根据您最近一周的睡眠记录，平均睡眠时长为7.25小时，达标率85.7%。建议每天提前30分钟入睡，保持规律作息。",
+    "metadata": {
+      "tokensUsed": 356,
+      "model": "qwen-plus",
+      "duration": 3200
+    },
+    "createTime": "2026-07-30T10:30:00"
+  }
+}
+```
+
+错误响应示例（503）：
+```json
+{
+  "code": 50301,
+  "message": "AI 服务暂时不可用",
+  "data": null
+}
+```
+
+**端点 2：GET `/api/chat/stream` — SSE 流式对话**
 
 请求参数（Query）：
 
@@ -378,7 +426,7 @@ event: error
 data: {"errorCode":"AI_TIMEOUT","message":"AI 响应超时","conversationId":"a1b2c3d4-e5f6-7890-abcd-ef1234567890"}
 ```
 
-**端点 2：POST `/api/chat/stop` — 停止生成**
+**端点 3：POST `/api/chat/stop` — 停止生成**
 
 请求参数（Query）：
 
@@ -1081,18 +1129,18 @@ JSON 示例：
 | 阶段二 | HabitController + GoalController | 13 |
 | 阶段三 | PageController | 5 |
 | 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 |
-| 阶段五 | ChatController SSE+停止 + SessionController | 9 |
+| 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 10 |
 | 阶段七 | RagController | 5 |
 | 阶段九 | AnalysisController | 4 |
 | 阶段十 | AiAnalysisController + ReminderController | 11 |
-| **合计** | | **47** |
+| **合计** | | **48** |
 
 ## 关键设计决策
 
 | 决策点 | 选择 | 理由 |
 |---|---|---|
 | SSE 用 GET 还是 POST | GET | EventSource 原生仅支持 GET |
-| 对话方式 | 仅 SSE 流式 | 用户要求，流式输出观感更好 |
+| 对话方式 | 非流式 + SSE 流式 | 企业标准规范（OpenAI/Anthropic/DashScope 均同时支持两种模式）；非流式用于后端任务调用和测试，流式用于前端交互 |
 | 默认 userId | 1 | 单用户演示场景 |
 | 会话管理是否独立 Controller | 是 | 关注点分离 |
 | SSE 是否经过 Result 封装 | 否 | 直接发送 SSE 事件 |
@@ -1103,7 +1151,7 @@ JSON 示例：
 
 1. 编写文档头部与通用规范（第 1-2 章）：Base URL、Result<T> 的 JSON 格式定义、错误码框架、日期时间格式
 2. 编写 SSE 规范章节（第 3 章）：5 种事件类型的完整 JSON data 格式、时序图、前端 EventSource 对接代码示例、停止机制
-3. 编写接口总览表（第 4 章）：47 端点速查矩阵
+3. 编写接口总览表（第 4 章）：48 端点速查矩阵
 4. 逐模块编写接口详情（第 5 章）：每个接口包含：
    - 请求方法 + 路径
    - 请求参数表格（字段名/类型/必填/说明）
@@ -1124,7 +1172,7 @@ JSON 示例：
 5. 22 个 VO 类都有字段表格 + JSON 示例
 6. 19 个错误码都有 JSON 响应示例
 7. 文档覆盖 PRD 所有必做功能（打卡/历史/AI分析/建议）
-8. 47 个端点的 JSON 示例可直接复制到 Postman 测试
+8. 48 个端点的 JSON 示例可直接复制到 Postman 测试
 
 ## 假设与约束
 

@@ -74,12 +74,6 @@
             <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
         </dependency>
 
-        <!-- MCP 客户端 (技术点15: 多模态 MCP) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-mcp-client</artifactId>
-        </dependency>
-
         <!-- 工具类库 -->
         <dependency>
             <groupId>org.projectlombok</groupId>

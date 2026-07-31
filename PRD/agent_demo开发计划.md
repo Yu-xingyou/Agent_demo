@@ -1,6 +1,6 @@
 # 生活习惯助手 Agent — 开发计划（MongoDB + MySQL 版）
 
-> 面向黑马天机学堂 AI 智能体课程学习者的全栈 Spring AI 实践项目，覆盖课程 15 项技术点。
+> 面向黑马天机学堂 AI 智能体课程学习者的全栈 Spring AI 实践项目，覆盖课程 14 项技术点。
 > 数据存储架构：MySQL（关系型业务数据）+ MongoDB（文档型 AI 数据 + 向量存储）。
 
 ---
@@ -13,7 +13,7 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 
 | 组件 | 推荐版本 | 说明 |
 |---|---|---|
-| Spring AI | **2.0.0 GA** | 2026-06-12 发布；Tool Calling 一等公民、Advisor Chain 重构、MCP 原生集成 |
+| Spring AI | **2.0.0 GA** | 2026-06-12 发布；Tool Calling 一等公民、Advisor Chain 重构、增强 RAG 与记忆管理 |
 | Spring Boot | **4.1.x** | Spring AI 2.0 对应；Spring Framework 7.0、Jackson 3 |
 | JDK | **21** (LTS) | Spring Boot 4 最低 17，21 为当前 LTS 推荐 |
 | 通义千问接入方式 | **OpenAI 兼容模式** | DashScope 提供 OpenAI 兼容端点，用 Spring AI 2.0 原生 OpenAI starter 接入 |
@@ -47,7 +47,6 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 | **文档库** | MongoDB | 7.0+ | 对话记忆 ChatMemory + AI 分析结果 + 会话管理（文档型数据天然适配） |
 | **MongoDB 访问** | Spring Data MongoDB | 随 Boot | MongoRepository + MongoTemplate；与 JPA 并存 |
 | **向量库** | MongoDB Atlas Vector Search | spring-ai-starter-vector-store-mongodb-atlas | Spring AI 原生支持；RAG 知识库向量存储与检索 |
-| **MCP 客户端** | spring-ai-starter-mcp-client | 随 Spring AI 2.0 | 原生 MCP 集成；@McpTool 注解支持 |
 | **前端模板** | Thymeleaf | 随 Boot | PRD 指定服务端渲染 |
 | **前端 UI** | Bootstrap | 5.3 | 响应式布局，开箱即用组件 |
 | **图表** | ECharts | 5.5 | 趋势分析页数据可视化（折线图/柱状图/雷达图） |
@@ -124,12 +123,6 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
     <dependency>
         <groupId>org.springframework.ai</groupId>
         <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
-    </dependency>
-
-    <!-- MCP 客户端 (技术点15: 多模态 MCP) -->
-    <dependency>
-        <groupId>org.springframework.ai</groupId>
-        <artifactId>spring-ai-starter-mcp-client</artifactId>
     </dependency>
 </dependencies>
 ```
@@ -502,7 +495,7 @@ CREATE TABLE IF NOT EXISTS `reminder` (
 
 ## 四、AI Agent 架构设计
 
-### 4.1 课程 15 项技术点映射表
+### 4.1 课程 14 项技术点映射表
 
 | # | 课程技术点 | 项目落地位置 | 实现方式 |
 |---|---|---|---|
@@ -520,7 +513,6 @@ CREATE TABLE IF NOT EXISTS `reminder` (
 | 12 | 对话记忆管理 | `agent/memory/MongoChatMemoryRepository` | MongoDB 实现 ChatMemoryRepository |
 | 13 | 路由工作流+多智能体 | `agent/router/` | ChatClient + 手动路由 |
 | 14 | 百炼平台智能体 | 文档说明 | 百炼平台配置说明（可选演示） |
-| 15 | 多模态 MCP | `config/` MCP 客户端 | spring-ai-starter-mcp-client 集成 |
 
 ### 4.2 ChatClient 配置
 
@@ -860,7 +852,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：图表正确渲染历史数据趋势
 - **Git commit + push**
 
-### 阶段十：AI 分析结果、打卡提醒与收尾（技术点 14/15）
+### 阶段十：AI 分析结果、打卡提醒与收尾（技术点 14）
 
 **目标**：技术点全覆盖 + 边界完善 + 交付
 
@@ -880,7 +872,6 @@ public SseEmitter streamChat(@RequestParam String message,
   - `POST /api/reminders/toggle/{id}`：启用/禁用切换
   - `DELETE /api/reminders/{id}`：删除提醒
 - 创建 `Reminder` JPA Entity + `ReminderRepository` + reminder 表 DDL
-- 配置 MCP Client 连接示例 MCP Server（技术点 15）
 - 全局异常处理完善（19 个错误码统一映射）
 - Token 限制处理、安全处理
 - 编写项目启动说明、功能演示说明
@@ -985,7 +976,6 @@ public SseEmitter streamChat(@RequestParam String message,
 - [ ] `GET /api/reminders` 返回提醒列表
 - [ ] `POST /api/reminders` 能创建提醒
 - [ ] `POST /api/reminders/toggle/{id}` 能切换启用状态
-- [ ] MCP Client 能连接 MCP Server
 - [ ] AI 调用超时返回友好降级提示
 - [ ] 全流程演示通过
 
@@ -1025,7 +1015,7 @@ public SseEmitter streamChat(@RequestParam String message,
 | 阶段七 | RAG 知识库 | RagController | 5 | 33 |
 | 阶段八 | 多智能体路由（无新增端点） | — | 0 | 33 |
 | 阶段九 | 趋势分析 | AnalysisController | 4 | 37 |
-| 阶段十 | AI 分析结果 + 打卡提醒 + MCP | AiAnalysisController + ReminderController | 6 + 5 = 11 | 48 |
+| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 48 |
 
 **端点分布说明**：
 

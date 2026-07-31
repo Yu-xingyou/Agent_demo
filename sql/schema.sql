@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS `user` (
     `id`          BIGINT       PRIMARY KEY AUTO_INCREMENT,
     `username`    VARCHAR(50)  NOT NULL COMMENT '登录用户名',
     `nickname`    VARCHAR(50)  NULL     COMMENT '昵称',
-    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间'
+    `create_time` DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '注册时间',
+    UNIQUE KEY `uk_username` (`username`) COMMENT '用户名唯一'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='用户表';
 
@@ -69,8 +70,9 @@ CREATE TABLE IF NOT EXISTS `habit_goal` (
     `period`        VARCHAR(20)  NOT NULL DEFAULT 'DAILY' COMMENT '周期: DAILY/WEEKLY/MONTHLY',
     `is_active`     TINYINT      NOT NULL DEFAULT 1      COMMENT '是否启用: 0=否 1=是',
     `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-    INDEX `idx_user_active` (`user_id`, `is_active`) COMMENT '查询用户启用的目标',
-    INDEX `idx_user_type`   (`user_id`, `goal_type`)  COMMENT '按类型查询目标'
+    `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY `uk_user_type`   (`user_id`, `goal_type`)  COMMENT '同用户同类型目标唯一',
+    INDEX `idx_user_active` (`user_id`, `is_active`) COMMENT '查询用户启用的目标'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='习惯目标表(达成率统计基准)';
 
@@ -90,6 +92,7 @@ CREATE TABLE IF NOT EXISTS `reminder` (
     `is_active`      TINYINT      NOT NULL DEFAULT 1      COMMENT '是否启用: 0=否 1=是',
     `create_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY `uk_user_title` (`user_id`, `title`) COMMENT '同用户同标题提醒唯一',
     INDEX `idx_user_active` (`user_id`, `is_active`) COMMENT '查询用户启用的提醒'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='打卡提醒表(自定义提醒时间)';
@@ -124,7 +127,7 @@ INSERT INTO `habit_record` (`user_id`, `record_date`, `sleep_time`, `wake_time`,
     (1, CURDATE() - INTERVAL 6 DAY, '23:30:00', '07:00:00', 7.50, 4, '早餐燕麦，午餐鸡胸肉沙拉，晚餐轻食', 4, '跑步', 45, 1800, 4, '今天感觉精神不错'),
     (1, CURDATE() - INTERVAL 5 DAY, '00:15:00', '07:30:00', 7.25, 3, '午餐外卖，晚餐火锅',                   2, '散步', 20, 1200, 3, ''),
     (1, CURDATE() - INTERVAL 4 DAY, '23:00:00', '06:30:00', 7.50, 5, '三餐规律，多蔬菜少油盐',               5, '游泳', 60, 2000, 5, '精力充沛'),
-    (1, CURDATE() - INTERVAL 3 DAY, '01:00:00', '08:00:00', 7.00, 2, '午餐快餐，晚餐烧烤',                   1, NULL,  0,  800, 2, '熬夜了'),
+    (1, CURDATE() - INTERVAL 3 DAY, '01:00:00', '08:00:00', 7.00, 2, '午餐快餐，晚餐烧烤',                   1, NULL,  NULL, 800, 2, '熬夜了'),
     (1, CURDATE() - INTERVAL 2 DAY, '22:45:00', '06:15:00', 7.50, 4, '早餐全麦面包，午餐鱼肉，晚餐蔬菜汤',   4, '瑜伽', 30, 1600, 4, '恢复中'),
     (1, CURDATE() - INTERVAL 1 DAY, '23:15:00', '06:45:00', 7.50, 4, '正常饮食，少油少糖',                   4, '力量训练', 40, 1900, 4, '状态良好'),
     (1, CURDATE(),                   '23:30:00', '07:00:00', 7.50, 4, '早餐燕麦，午餐鸡胸肉沙拉，晚餐轻食',   4, '跑步', 45, 1800, 4, '今天感觉精神不错')

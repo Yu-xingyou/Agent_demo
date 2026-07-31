@@ -305,7 +305,8 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
     "unit": "hours",
     "period": "DAILY",
     "isActive": true,
-    "createTime": "2026-07-30T10:30:00"
+    "createTime": "2026-07-30T10:30:00",
+    "updateTime": "2026-07-30T10:30:00"
   }
 }
 ```
@@ -327,10 +328,10 @@ GET 列表响应示例：
   "code": 200,
   "message": "success",
   "data": [
-    {"id":1,"userId":1,"goalType":"SLEEP","targetValue":8.0,"unit":"hours","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00"},
-    {"id":2,"userId":1,"goalType":"EXERCISE","targetValue":30.0,"unit":"minutes","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00"},
-    {"id":3,"userId":1,"goalType":"WATER","targetValue":2000.0,"unit":"ml","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00"},
-    {"id":4,"userId":1,"goalType":"DIET","targetValue":4.0,"unit":"score","period":"DAILY","isActive":false,"createTime":"2026-07-30T10:30:00"}
+    {"id":1,"userId":1,"goalType":"SLEEP","targetValue":8.0,"unit":"hours","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":2,"userId":1,"goalType":"EXERCISE","targetValue":30.0,"unit":"minutes","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":3,"userId":1,"goalType":"WATER","targetValue":2000.0,"unit":"ml","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":4,"userId":1,"goalType":"DIET","targetValue":4.0,"unit":"score","period":"DAILY","isActive":false,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"}
   ]
 }
 ```

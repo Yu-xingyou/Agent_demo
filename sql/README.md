@@ -42,7 +42,7 @@ SOURCE d:/javacode/agent_demo/sql/schema.sql;
 |---|---|---|
 | `user` | 用户表 | id, username, nickname, create_time |
 | `habit_record` | 习惯记录表（每日打卡核心数据） | user_id, record_date, sleep_time, wake_time, sleep_duration, sleep_quality, diet_desc, diet_score, exercise_type, exercise_duration, water_intake, mood, remark |
-| `habit_goal` | 习惯目标表（达成率统计基准） | user_id, goal_type, target_value, unit, period, is_active |
+| `habit_goal` | 习惯目标表（达成率统计基准） | user_id, goal_type, target_value, unit, period, is_active, create_time, update_time |
 | `reminder` | 打卡提醒表 | user_id, title, reminder_time, reminder_type, weekdays, is_active |
 
 ### 种子数据
@@ -72,7 +72,7 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 |---|---|---|---|
 | `chatMessage` | 对话消息 | 无 | ChatMessageDoc |
 | `chatSession` | 会话管理 | 7 天自动过期 | ChatSessionDoc |
-| `aiAnalysis` | AI 分析结果 + 每日评价 | 1 天自动过期 | AiAnalysisDoc |
+| `aiAnalysis` | AI 分析结果 + 每日评价 | DAILY 1天缓存；WEEKLY/MONTHLY/CUSTOM 永不过期 | AiAnalysisDoc |
 | `chatMemory` | Spring AI ChatMemoryRepository 存储 | 无 | 由 MongoChatMemoryRepository 管理 |
 | `habit_knowledge` | RAG 知识库向量存储 | 无 | Spring AI VectorStore 管理 |
 
@@ -87,7 +87,7 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 | chatSession | ttl_expire_at | TTL 索引 | 7 天自动过期 |
 | aiAnalysis | idx_user_type_time | 复合索引 | 按用户和类型查询 |
 | aiAnalysis | idx_user_record_date | 复合索引 | 每日评价按日期查询 |
-| aiAnalysis | ttl_expire_at | TTL 索引 | 1 天缓存自动过期 |
+| aiAnalysis | ttl_expire_at | TTL 索引 (sparse) | DAILY 1天缓存过期，WEEKLY/MONTHLY/CUSTOM 永不过期 |
 | chatMemory | idx_conv_time | 复合索引 | 按会话查询/删除消息 |
 | habit_knowledge | idx_metadata | 复合索引 | 按文档类型和来源过滤 |
 | habit_knowledge | habit_vector_index | 向量索引 | RAG 语义检索（Atlas 配置） |

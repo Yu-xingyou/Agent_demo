@@ -61,7 +61,10 @@ db.chatSession.createIndex(
 // ============================================================================
 // 集合 3: aiAnalysis — AI 分析结果集合
 // 存储周报/月报/自定义分析 + 每日评价（DAILY 类型含 score 字段）
-// TTL 索引实现缓存自动过期（1 天），避免重复调用 AI
+// TTL 差异化过期策略（通过 expireAt 字段控制）：
+//   DAILY 类型：expireAt = createTime + 1天（1天缓存，避免重复调用 AI）
+//   WEEKLY/MONTHLY/CUSTOM 类型：expireAt = null（永不过期，保留历史报告）
+// TTL 索引使用 sparse:true，跳过 expireAt 为 null 的文档
 // 对应 Java 实体: AiAnalysisDoc (@Document(collection = "aiAnalysis"))
 //
 // analysisType: WEEKLY / MONTHLY / CUSTOM / DAILY
@@ -83,10 +86,10 @@ db.aiAnalysis.createIndex(
     { name: "idx_user_record_date", background: true, sparse: true }
 );
 
-// TTL 索引 — 缓存 1 天自动过期
+// TTL 索引 — 差异化过期：DAILY 1天缓存，WEEKLY/MONTHLY/CUSTOM 永不过期（sparse:true 跳过 null）
 db.aiAnalysis.createIndex(
     { "expireAt": 1 },
-    { name: "ttl_expire_at", expireAfterSeconds: 0, background: true }
+    { name: "ttl_expire_at", expireAfterSeconds: 0, background: true, sparse: true }
 );
 
 // ============================================================================
@@ -176,6 +179,7 @@ db.chatMemory.insertMany([
 ]);
 
 // ---- 示例 AI 分析结果（周报）----
+// WEEKLY 类型：expireAt = null（永不过期，保留历史报告）
 db.aiAnalysis.insertOne({
     userId: NumberLong(1),
     analysisType: "WEEKLY",
@@ -191,10 +195,11 @@ db.aiAnalysis.insertOne({
         model: "qwen-plus"
     },
     createTime: new Date(),
-    expireAt: new Date(Date.now() + 24 * 3600000)
+    expireAt: null
 });
 
 // ---- 示例每日评价 ----
+// DAILY 类型：expireAt = createTime + 1天（1天缓存，避免重复调用 AI）
 db.aiAnalysis.insertOne({
     userId: NumberLong(1),
     analysisType: "DAILY",

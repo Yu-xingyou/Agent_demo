@@ -9,100 +9,103 @@
         <div class="col-md-8">
             <div class="card">
                 <div class="card-body p-4">
-                    <h4 class="mb-3"><i class="bi bi-check2-circle text-primary"></i> 每日习惯打卡</h4>
-                    <p class="text-muted" th:if="${todayRecord != null}">今日已打卡，修改后点击更新</p>
-                    <p class="text-muted" th:unless="${todayRecord != null}">填写今天的习惯数据</p>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="mb-0"><i class="bi bi-check2-circle" style="color:var(--teal-700);"></i> 每日习惯打卡</h4>
+                        <span class="badge rounded-pill" th:classappend="${todayRecord != null} ? 'bg-success' : 'bg-warning text-dark'"
+                              th:text="${todayRecord != null} ? '已打卡' : '未打卡'">未打卡</span>
+                    </div>
 
                     <form id="checkinForm">
                         <input type="hidden" id="recordDate" th:value="${todayRecord?.recordDate}" />
 
                         <!-- 睡眠 -->
-                        <h6 class="text-primary border-bottom pb-2"><i class="bi bi-moon-stars"></i> 睡眠</h6>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-4">
-                                <label class="form-label small">入睡时间</label>
-                                <input type="time" class="form-control" id="sleepTime"
-                                       th:value="${todayRecord?.sleepTime}" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">起床时间</label>
-                                <input type="time" class="form-control" id="wakeTime"
-                                       th:value="${todayRecord?.wakeTime}" />
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">睡眠质量 (1-5)</label>
-                                <select class="form-select" id="sleepQuality">
-                                    <option value="">请选择</option>
-                                    <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}" th:text="${i} + '星'"
-                                            th:selected="${todayRecord?.sleepQuality == i}">i</option>
-                                </select>
+                        <div class="border-start border-3 ps-3 mb-3" style="border-color:#4f46e5;">
+                            <h6 class="mb-2"><i class="bi bi-moon-stars"></i> 睡眠</h6>
+                            <div class="row g-2">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">入睡时间</label>
+                                    <input type="time" class="form-control" id="sleepTime" th:value="${todayRecord?.sleepTime}" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">起床时间</label>
+                                    <input type="time" class="form-control" id="wakeTime" th:value="${todayRecord?.wakeTime}" />
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">睡眠质量</label>
+                                    <select class="form-select" id="sleepQuality">
+                                        <option value="">请选择</option>
+                                        <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}" th:text="${i} + ' 星'"
+                                                th:selected="${todayRecord?.sleepQuality == i}">i</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 饮食 -->
-                        <h6 class="text-success border-bottom pb-2"><i class="bi bi-cup-hot"></i> 饮食</h6>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-8">
-                                <label class="form-label small">饮食情况</label>
-                                <textarea class="form-control" id="dietDesc" rows="2"
-                                          th:text="${todayRecord?.dietDesc}" placeholder="今天吃了什么..."></textarea>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label small">饮食健康评分 (1-5)</label>
-                                <select class="form-select" id="dietScore">
-                                    <option value="">请选择</option>
-                                    <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}" th:text="${i} + '分'"
-                                            th:selected="${todayRecord?.dietScore == i}">i</option>
-                                </select>
+                        <div class="border-start border-3 ps-3 mb-3" style="border-color:#22c55e;">
+                            <h6 class="mb-2"><i class="bi bi-cup-hot"></i> 饮食</h6>
+                            <div class="row g-2">
+                                <div class="col-md-8">
+                                    <label class="form-label small text-muted">饮食情况</label>
+                                    <textarea class="form-control" id="dietDesc" rows="2" th:text="${todayRecord?.dietDesc}" placeholder="今天吃了什么..."></textarea>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">健康评分</label>
+                                    <select class="form-select" id="dietScore">
+                                        <option value="">请选择</option>
+                                        <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}" th:text="${i} + ' 分'"
+                                                th:selected="${todayRecord?.dietScore == i}">i</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 运动 -->
-                        <h6 class="text-warning border-bottom pb-2"><i class="bi bi-bicycle"></i> 运动</h6>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label small">运动类型</label>
-                                <input type="text" class="form-control" id="exerciseType" list="exerciseTypes"
-                                       th:value="${todayRecord?.exerciseType}" placeholder="如：跑步、游泳" />
-                                <datalist id="exerciseTypes">
-                                    <option value="跑步"><option value="游泳"><option value="瑜伽">
-                                    <option value="力量训练"><option value="骑行"><option value="散步">
-                                </datalist>
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">运动时长 (分钟)</label>
-                                <input type="number" class="form-control" id="exerciseDuration" min="0"
-                                       th:value="${todayRecord?.exerciseDuration}" placeholder="0" />
+                        <div class="border-start border-3 ps-3 mb-3" style="border-color:#f59e0b;">
+                            <h6 class="mb-2"><i class="bi bi-bicycle"></i> 运动</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">运动类型</label>
+                                    <input type="text" class="form-control" id="exerciseType" list="exerciseTypes" th:value="${todayRecord?.exerciseType}" placeholder="如：跑步、游泳" />
+                                    <datalist id="exerciseTypes">
+                                        <option value="跑步"><option value="游泳"><option value="瑜伽">
+                                        <option value="力量训练"><option value="骑行"><option value="散步">
+                                    </datalist>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">运动时长 (分钟)</label>
+                                    <input type="number" class="form-control" id="exerciseDuration" min="0" th:value="${todayRecord?.exerciseDuration}" placeholder="0" />
+                                </div>
                             </div>
                         </div>
 
                         <!-- 饮水与心情 -->
-                        <h6 class="text-info border-bottom pb-2"><i class="bi bi-droplet"></i> 饮水与心情</h6>
-                        <div class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <label class="form-label small">饮水量 (ml)</label>
-                                <input type="number" class="form-control" id="waterIntake" min="0" step="100"
-                                       th:value="${todayRecord?.waterIntake}" placeholder="0" />
-                            </div>
-                            <div class="col-md-6">
-                                <label class="form-label small">心情 (1-5)</label>
-                                <select class="form-select" id="mood">
-                                    <option value="">请选择</option>
-                                    <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}"
-                                            th:text="${i == 1} ? '😢' : (${i == 2} ? '😕' : (${i == 3} ? '😐' : (${i == 4} ? '🙂' : '😄')))"
-                                            th:selected="${todayRecord?.mood == i}">i</option>
-                                </select>
+                        <div class="border-start border-3 ps-3 mb-3" style="border-color:#06b6d4;">
+                            <h6 class="mb-2"><i class="bi bi-droplet"></i> 饮水与心情</h6>
+                            <div class="row g-2">
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">饮水量 (ml)</label>
+                                    <input type="number" class="form-control" id="waterIntake" min="0" step="100" th:value="${todayRecord?.waterIntake}" placeholder="0" />
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label small text-muted">心情</label>
+                                    <select class="form-select" id="mood">
+                                        <option value="">请选择</option>
+                                        <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}"
+                                                th:text="${i == 1} ? '😢 很差' : (${i == 2} ? '😕 一般' : (${i == 3} ? '😐 还行' : (${i == 4} ? '🙂 不错' : '😄 很好')))"
+                                                th:selected="${todayRecord?.mood == i}">i</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
                         <!-- 备注 -->
                         <div class="mb-3">
-                            <label class="form-label small">备注</label>
-                            <textarea class="form-control" id="remark" rows="2"
-                                      th:text="${todayRecord?.remark}" placeholder="其他想记录的..."></textarea>
+                            <label class="form-label small text-muted">备注</label>
+                            <textarea class="form-control" id="remark" rows="2" th:text="${todayRecord?.remark}" placeholder="其他想记录的..."></textarea>
                         </div>
 
-                        <button type="submit" class="btn btn-primary w-100" id="submitBtn">
+                        <button type="submit" class="btn btn-teal w-100 py-2" id="submitBtn">
                             <i class="bi bi-check-lg"></i>
                             <span th:text="${todayRecord != null} ? '更新记录' : '提交打卡'">提交打卡</span>
                         </button>
@@ -119,6 +122,7 @@ document.getElementById('checkinForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const btn = document.getElementById('submitBtn');
     btn.disabled = true;
+    const originalText = btn.innerHTML;
     btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 提交中...';
 
     const data = {
@@ -153,7 +157,7 @@ document.getElementById('checkinForm').addEventListener('submit', async (e) => {
         alert('网络错误: ' + err.message);
     } finally {
         btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-check-lg"></i> 提交打卡';
+        btn.innerHTML = originalText;
     }
 });
 </script>

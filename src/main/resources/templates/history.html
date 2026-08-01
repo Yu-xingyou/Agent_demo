@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('历史记录')}"></head>
+<body>
+<nav th:replace="~{fragments :: navbar('history')}"></nav>
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold mb-0"><i class="bi bi-clock-history" style="color:var(--teal-700);"></i> 历史记录</h4>
+        <span class="text-muted small" th:text="'共 ' + ${records.size()} + ' 条记录'">共 0 条</span>
+    </div>
+
+    <!-- 图表区域 -->
+    <div class="row g-3 mb-4">
+        <!-- 睡眠趋势折线图 -->
+        <div class="col-lg-7">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-graph-up text-indigo"></i> 睡眠时长趋势</h6>
+                <canvas id="sleepChart" height="120"></canvas>
+            </div>
+        </div>
+        <!-- 饮水量柱状图 -->
+        <div class="col-lg-5">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-bar-chart text-cyan"></i> 每日饮水量</h6>
+                <canvas id="waterChart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- 记录表格 -->
+    <div class="card">
+        <div class="card-body">
+            <div th:if="${records.isEmpty()}" class="text-center text-muted py-4">
+                <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                暂无历史记录
+            </div>
+            <div th:unless="${records.isEmpty()}" class="table-responsive">
+                <table class="table table-sm table-hover align-middle mb-0">
+                    <thead>
+                        <tr class="text-muted small">
+                            <th>日期</th>
+                            <th>睡眠</th>
+                            <th>睡眠质量</th>
+                            <th>运动</th>
+                            <th>饮水</th>
+                            <th>饮食评分</th>
+                            <th>心情</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="r : ${records}">
+                            <td class="fw-medium" th:text="${r.recordDate}">--</td>
+                            <td th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '—'">—</td>
+                            <td>
+                                <span th:if="${r.sleepQuality != null}" class="text-warning">
+                                    <span th:each="i : ${#numbers.sequence(1, r.sleepQuality)}">★</span>
+                                    <span th:if="${r.sleepQuality < 5}" class="text-muted" th:each="i : ${#numbers.sequence(1, 5 - r.sleepQuality)}">☆</span>
+                                </span>
+                                <span th:unless="${r.sleepQuality != null}">—</span>
+                            </td>
+                            <td th:text="${r.exerciseType != null} ? ${r.exerciseType} + ' ' + (r.exerciseDuration != null ? r.exerciseDuration + 'min' : '') : '—'">—</td>
+                            <td th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '—'">—</td>
+                            <td th:text="${r.dietScore != null} ? ${r.dietScore} + '/5' : '—'">—</td>
+                            <td>
+                                <span th:if="${r.mood != null}" class="mood-badge"
+                                      th:style="${'background:' + (r.mood == 1 ? '#ef4444' : r.mood == 2 ? '#f97316' : r.mood == 3 ? '#eab308' : r.mood == 4 ? '#22c55e' : '#0d9488')}"
+                                      th:text="${r.mood}">5</span>
+                                <span th:unless="${r.mood != null}">—</span>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script th:inline="javascript">
+const records = /*[[${records}]]*/ [];
+// 按日期升序排列用于图表
+const sorted = [...records].reverse();
+const labels = sorted.map(r => r.recordDate ? r.recordDate.substring(5) : '');
+const sleepData = sorted.map(r => r.sleepDuration || 0);
+const waterData = sorted.map(r => r.waterIntake || 0);
+
+// 睡眠趋势折线图
+const sleepCtx = document.getElementById('sleepChart');
+if (sleepCtx && records.length > 0) {
+    new Chart(sleepCtx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '睡眠时长 (h)',
+                data: sleepData,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79,70,229,0.08)',
+                fill: true, tension: 0.3, pointRadius: 3, pointBackgroundColor: '#4f46e5'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, max: 12 } }
+        }
+    });
+}
+
+// 饮水量柱状图
+const waterCtx = document.getElementById('waterChart');
+if (waterCtx && records.length > 0) {
+    new Chart(waterCtx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '饮水量 (ml)',
+                data: waterData,
+                backgroundColor: 'rgba(6,182,212,0.6)',
+                borderColor: '#06b6d4', borderWidth: 1, borderRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } }
+        }
+    });
+}
+</script>
+</body>
+</html>

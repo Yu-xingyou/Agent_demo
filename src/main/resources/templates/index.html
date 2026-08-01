@@ -5,91 +5,180 @@
 <nav th:replace="~{fragments :: navbar('index')}"></nav>
 
 <div class="container py-4">
-    <!-- 欢迎区域 -->
-    <div class="text-center mb-4">
-        <h2 class="fw-bold">欢迎使用生活习惯助手</h2>
-        <p class="text-muted">记录每日习惯，AI 助你分析改善</p>
+
+    <!-- 轮播 -->
+    <div id="heroCarousel" class="carousel slide carousel-fade mb-4" data-bs-ride="carousel" data-bs-interval="5000">
+        <div class="carousel-inner card" style="border-radius: 16px; overflow: hidden;">
+            <div class="carousel-item active" style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1);">
+                <div class="carousel-caption">
+                    <h3 class="fw-bold mb-1" th:text="${todayRecord != null} ? '今日已打卡，继续保持！' : '今天还没打卡哦'">今日打卡</h3>
+                    <p class="text-muted mb-0" th:text="${todayRecord != null} ? '睡眠 ' + ${todayRecord.sleepDuration} + 'h · 饮水 ' + ${todayRecord.waterIntake} + 'ml' : '点击下方按钮开始记录今天的习惯数据'">今日摘要</p>
+                </div>
+            </div>
+            <div class="carousel-item" style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
+                <div class="carousel-caption">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-lightbulb text-warning"></i> 每日一语</h3>
+                    <p class="text-muted mb-0">微小的习惯不会让你瞬间改变，但时间会让坚持变成力量。</p>
+                </div>
+            </div>
+            <div class="carousel-item" style="background: linear-gradient(135deg, #fdf2f8, #fce7f3);">
+                <div class="carousel-caption">
+                    <h3 class="fw-bold mb-1"><i class="bi bi-bar-chart text-danger"></i> 本周概况</h3>
+                    <p class="text-muted mb-0" th:text="'最近 ' + ${recentRecords.size()} + ' 天记录已生成，快去查看趋势分析吧'">本周概况</p>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- 快捷统计卡片 -->
+    <!-- 4 个渐变统计卡片 -->
     <div class="row g-3 mb-4">
         <div class="col-md-3">
-            <div class="card stat-card text-center p-3">
-                <div class="text-primary fs-1"><i class="bi bi-moon-stars"></i></div>
-                <div class="text-muted small">今日睡眠</div>
-                <div class="fw-bold fs-5" th:text="${todayRecord?.sleepDuration != null} ? ${todayRecord.sleepDuration} + 'h' : '未打卡'">未打卡</div>
+            <div class="card stat-card stat-sleep p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">今日睡眠</div>
+                        <div class="stat-value" th:text="${todayRecord?.sleepDuration != null} ? ${todayRecord.sleepDuration} + 'h' : '—'">—</div>
+                    </div>
+                    <i class="bi bi-moon-stars stat-icon"></i>
+                </div>
+                <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
+                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.sleepDuration != null} ? (${todayRecord.sleepDuration} * 12.5) : 0) + '%'"></div>
+                </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-center p-3">
-                <div class="text-success fs-1"><i class="bi bi-droplet-half"></i></div>
-                <div class="text-muted small">今日饮水</div>
-                <div class="fw-bold fs-5" th:text="${todayRecord?.waterIntake != null} ? ${todayRecord.waterIntake} + 'ml' : '未打卡'">未打卡</div>
+            <div class="card stat-card stat-water p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">今日饮水</div>
+                        <div class="stat-value" th:text="${todayRecord?.waterIntake != null} ? ${todayRecord.waterIntake} + 'ml' : '—'">—</div>
+                    </div>
+                    <i class="bi bi-droplet-half stat-icon"></i>
+                </div>
+                <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
+                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.waterIntake != null} ? (${todayRecord.waterIntake} / 25) : 0) + '%'"></div>
+                </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-center p-3">
-                <div class="text-warning fs-1"><i class="bi bi-bicycle"></i></div>
-                <div class="text-muted small">今日运动</div>
-                <div class="fw-bold fs-5" th:text="${todayRecord?.exerciseDuration != null} ? ${todayRecord.exerciseDuration} + 'min' : '未打卡'">未打卡</div>
+            <div class="card stat-card stat-exercise p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">今日运动</div>
+                        <div class="stat-value" th:text="${todayRecord?.exerciseDuration != null} ? ${todayRecord.exerciseDuration} + 'min' : '—'">—</div>
+                    </div>
+                    <i class="bi bi-bicycle stat-icon"></i>
+                </div>
+                <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
+                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.exerciseDuration != null} ? (${todayRecord.exerciseDuration} * 1.5) : 0) + '%'"></div>
+                </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card stat-card text-center p-3">
-                <div class="text-info fs-1"><i class="bi bi-emoji-smile"></i></div>
-                <div class="text-muted small">今日心情</div>
-                <div class="fw-bold fs-5" th:text="${todayRecord?.mood != null} ? ${todayRecord.mood} + '/5' : '未打卡'">未打卡</div>
+            <div class="card stat-card stat-mood p-3">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <div class="stat-label">今日心情</div>
+                        <div class="stat-value" th:text="${todayRecord?.mood != null} ? ${todayRecord.mood} + '/5' : '—'">—</div>
+                    </div>
+                    <i class="bi bi-emoji-smile stat-icon"></i>
+                </div>
+                <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
+                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.mood != null} ? (${todayRecord.mood} * 20) : 0) + '%'"></div>
+                </div>
             </div>
         </div>
     </div>
 
-    <!-- 今日打卡入口 -->
-    <div class="row g-3">
-        <div class="col-md-6">
-            <div class="card p-4">
-                <h5><i class="bi bi-check2-circle text-primary"></i> 每日打卡</h5>
-                <p class="text-muted">记录今天的作息、饮食、运动数据</p>
-                <a href="/checkin" class="btn btn-primary">
-                    <i class="bi bi-pencil-square"></i> 去打卡
-                </a>
+    <div class="row g-4">
+        <!-- 左侧：心情饼状图 + 入口按钮 -->
+        <div class="col-lg-5">
+            <!-- 心情分布饼状图 -->
+            <div class="card p-4 mb-3">
+                <h5 class="mb-3"><i class="bi bi-pie-chart text-teal" style="color:var(--teal-700);"></i> 本周心情分布</h5>
+                <canvas id="moodChart" height="200"></canvas>
+            </div>
+            <!-- 入口按钮 -->
+            <div class="row g-2">
+                <div class="col-6">
+                    <a href="/checkin" class="btn btn-teal w-100 py-3">
+                        <i class="bi bi-pencil-square"></i><br/>每日打卡
+                    </a>
+                </div>
+                <div class="col-6">
+                    <a href="/ai-chat" class="btn btn-outline-teal w-100 py-3">
+                        <i class="bi bi-chat-dots"></i><br/>AI 建议
+                    </a>
+                </div>
             </div>
         </div>
-        <div class="col-md-6">
-            <div class="card p-4">
-                <h5><i class="bi bi-robot text-primary"></i> AI 智能建议</h5>
-                <p class="text-muted">与 AI 对话，获取个性化习惯改善建议</p>
-                <a href="/ai-chat" class="btn btn-success">
-                    <i class="bi bi-chat-dots"></i> 开始对话
-                </a>
-            </div>
-        </div>
-    </div>
 
-    <!-- 最近7天记录概览 -->
-    <div class="card mt-4">
-        <div class="card-body">
-            <h5 class="card-title"><i class="bi bi-clock-history"></i> 最近7天记录</h5>
-            <div th:if="${recentRecords.isEmpty()}" class="text-center text-muted py-3">
-                暂无记录，去 <a href="/checkin">打卡</a> 吧！
+        <!-- 右侧：最近 7 天记录表格 -->
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="bi bi-clock-history" style="color:var(--teal-700);"></i> 最近 7 天记录</h5>
+                        <a href="/history" class="btn btn-sm btn-outline-teal">查看全部</a>
+                    </div>
+                    <div th:if="${recentRecords.isEmpty()}" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1 d-block mb-2"></i>
+                        暂无记录，去 <a href="/checkin" class="text-decoration-none">打卡</a> 吧
+                    </div>
+                    <table th:unless="${recentRecords.isEmpty()}" class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr class="text-muted small">
+                                <th>日期</th><th>睡眠</th><th>运动</th><th>饮水</th><th>心情</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="r : ${recentRecords}">
+                                <td class="fw-medium" th:text="${#strings.substring(r.recordDate, 5)}">--</td>
+                                <td th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '—'">—</td>
+                                <td th:text="${r.exerciseDuration != null} ? ${r.exerciseDuration} + 'min' : '—'">—</td>
+                                <td th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '—'">—</td>
+                                <td>
+                                    <span th:if="${r.mood != null}" class="mood-badge"
+                                          th:style="${'background:' + (r.mood == 1 ? '#ef4444' : r.mood == 2 ? '#f97316' : r.mood == 3 ? '#eab308' : r.mood == 4 ? '#22c55e' : '#0d9488')}"
+                                          th:text="${r.mood}">5</span>
+                                    <span th:unless="${r.mood != null}">—</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <table th:unless="${recentRecords.isEmpty()}" class="table table-sm table-hover">
-                <thead>
-                    <tr><th>日期</th><th>睡眠</th><th>运动</th><th>饮水</th><th>心情</th></tr>
-                </thead>
-                <tbody>
-                    <tr th:each="r : ${recentRecords}">
-                        <td th:text="${r.recordDate}"></td>
-                        <td th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '-'"></td>
-                        <td th:text="${r.exerciseDuration != null} ? ${r.exerciseDuration} + 'min' : '-'"></td>
-                        <td th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '-'"></td>
-                        <td th:text="${r.mood != null} ? ${r.mood} + '/5' : '-'"></td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
 </div>
 
 <div th:replace="~{fragments :: scripts}"></div>
+<script th:inline="javascript">
+// 从后端数据生成心情分布饼状图
+const recentRecords = /*[[${recentRecords}]]*/ [];
+const moodCounts = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};
+recentRecords.forEach(r => { if (r.mood) moodCounts[r.mood]++; });
+
+const ctx = document.getElementById('moodChart');
+if (ctx && recentRecords.length > 0) {
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['😢 很差', '😕 一般', '😐 还行', '🙂 不错', '😄 很好'],
+            datasets: [{
+                data: [moodCounts[1], moodCounts[2], moodCounts[3], moodCounts[4], moodCounts[5]],
+                backgroundColor: ['#ef4444', '#f97316', '#eab308', '#22c55e', '#0d9488'],
+                borderWidth: 2, borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'bottom', labels: { padding: 12, font: { size: 12 } } } }
+        }
+    });
+} else if (ctx) {
+    ctx.parentElement.innerHTML = '<p class="text-muted text-center py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>暂无心情数据</p>';
+}
+</script>
 </body>
 </html>

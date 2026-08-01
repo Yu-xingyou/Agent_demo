@@ -1,17 +1,18 @@
 package com.habit.agent.common.exception;
 
-import com.habit.agent.common.constant.AgentConstants;
-import com.habit.agent.common.result.Result;
-import lombok.extern.slf4j.Slf4j;
+import java.util.stream.Collectors;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.stream.Collectors;
+import com.habit.agent.common.constant.AgentConstants;
+import com.habit.agent.common.result.Result;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 全局异常处理器（子模块 2-2，19 个错误码映射）
@@ -70,6 +71,18 @@ public class GlobalExceptionHandler {
         log.error("AI调用异常: code={}, message={}", ex.getCode(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                 .body(Result.error(ex.getCode(), ex.getMessage()));
+    }
+
+    // ===== 404 静态资源不存在（如 favicon.ico） =====
+
+    /**
+     * 静态资源不存在（浏览器自动请求 favicon.ico 等）
+     * 不记录 ERROR 日志，直接返回 404
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity<Result<Void>> handleNoResource(org.springframework.web.servlet.resource.NoResourceFoundException ex) {
+        log.debug("静态资源不存在: {}", ex.getResourcePath());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
     // ===== 500 系统异常 =====

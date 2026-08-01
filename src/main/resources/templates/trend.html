@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('趋势分析')}"></head>
+<body>
+<nav th:replace="~{fragments :: navbar('trend')}"></nav>
+
+<div class="container py-4">
+    <h4 class="fw-bold mb-3"><i class="bi bi-graph-up" style="color:var(--teal-700);"></i> 趋势分析</h4>
+
+    <!-- 统计概览：平均睡眠/运动/饮水 -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">平均睡眠时长</div>
+                <div class="fw-bold fs-4" style="color:#4f46e5;" th:text="${avgSleep} != null ? ${avgSleep} + 'h' : '—'">—</div>
+                <div class="text-muted small" th:text="'目标 8.0h · 达成率 ' + ${sleepRate} + '%'">目标 8.0h</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">平均运动时长</div>
+                <div class="fw-bold fs-4" style="color:#f59e0b;" th:text="${avgExercise} != null ? ${avgExercise} + 'min' : '—'">—</div>
+                <div class="text-muted small" th:text="'目标 30min · 达成率 ' + ${exerciseRate} + '%'">目标 30min</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-3 text-center">
+                <div class="text-muted small mb-1">平均饮水量</div>
+                <div class="fw-bold fs-4" style="color:#06b6d4;" th:text="${avgWater} != null ? ${avgWater} + 'ml' : '—'">—</div>
+                <div class="text-muted small" th:text="'目标 2000ml · 达成率 ' + ${waterRate} + '%'">目标 2000ml</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4 个 ECharts 图表容器 -->
+    <div class="row g-3">
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-moon-stars text-indigo"></i> 睡眠时长趋势</h6>
+                <div id="sleepChart" style="height: 280px;"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-bicycle text-warning"></i> 运动时长趋势</h6>
+                <div id="exerciseChart" style="height: 280px;"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-droplet text-info"></i> 饮水量趋势</h6>
+                <div id="waterChart" style="height: 280px;"></div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card p-3">
+                <h6 class="mb-2"><i class="bi bi-grid-3x3-gap" style="color:var(--teal-700);"></i> 习惯综合雷达图</h6>
+                <div id="radarChart" style="height: 280px;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script th:inline="javascript">
+// 本阶段仅初始化空图表容器，数据在阶段九实现
+const chartIds = ['sleepChart', 'exerciseChart', 'waterChart', 'radarChart'];
+const placeholderOption = {
+    title: { text: '待实现', left: 'center', top: 'center', textStyle: { color: '#cbd5e1', fontSize: 16 } },
+    xAxis: { type: 'category', data: [] },
+    yAxis: { type: 'value' },
+    series: []
+};
+chartIds.forEach(id => {
+    const dom = document.getElementById(id);
+    if (dom) {
+        const chart = echarts.init(dom);
+        if (id === 'radarChart') {
+            chart.setOption({
+                title: { text: '待实现', left: 'center', top: 'center', textStyle: { color: '#cbd5e1', fontSize: 16 } },
+                radar: { indicator: [{ name: '睡眠', max: 100 }, { name: '运动', max: 100 }, { name: '饮水', max: 100 }, { name: '饮食', max: 100 }, { name: '心情', max: 100 }] },
+                series: [{ type: 'radar', data: [] }]
+            });
+        } else {
+            chart.setOption(placeholderOption);
+        }
+    }
+});
+window.addEventListener('resize', () => chartIds.forEach(id => {
+    const inst = echarts.getInstanceByDom(document.getElementById(id));
+    if (inst) inst.resize();
+}));
+</script>
+</body>
+</html>

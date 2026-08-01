@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('AI 建议')}"></head>
+<body>
+<nav th:replace="~{fragments :: navbar('ai-chat')}"></nav>
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <h4 class="fw-bold mb-3"><i class="bi bi-robot" style="color:var(--teal-700);"></i> AI 生活习惯助手</h4>
+
+            <div class="card" style="height: 65vh; display: flex; flex-direction: column;">
+                <!-- 对话消息区域 -->
+                <div id="chat-messages" class="flex-grow-1 overflow-auto p-3" style="min-height: 0;">
+                    <!-- 欢迎消息 -->
+                    <div class="chat-message">
+                        <div class="chat-ai">
+                            <i class="bi bi-flower1" style="color:var(--teal-700);"></i>
+                            你好！我是你的生活习惯助手。可以问我关于睡眠、运动、饮食等问题，我会根据你的打卡数据给出建议。
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 快捷问题 -->
+                <div class="px-3 py-2 border-top">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-teal quick-question" data-q="分析我最近的睡眠质量">分析睡眠质量</button>
+                        <button class="btn btn-sm btn-outline-teal quick-question" data-q="本周运动达标了吗">运动达标情况</button>
+                        <button class="btn btn-sm btn-outline-teal quick-question" data-q="给我一些改善饮食的建议">饮食建议</button>
+                    </div>
+                </div>
+
+                <!-- 输入区域 -->
+                <div class="p-3 border-top">
+                    <div class="input-group">
+                        <input type="text" id="chat-input" class="form-control" placeholder="输入你的问题..." />
+                        <button class="btn btn-teal" id="send-btn" type="button">
+                            <i class="bi bi-send"></i> 发送
+                        </button>
+                        <button class="btn btn-outline-danger" id="stop-btn" type="button" style="display:none;">
+                            <i class="bi bi-stop-circle"></i> 停止
+                        </button>
+                    </div>
+                    <div class="form-text text-muted small mt-1">
+                        <i class="bi bi-info-circle"></i> AI 对话功能将在阶段四对接通义千问后启用
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script th:src="@{/js/chat-stream.js}"></script>
+<script>
+// 页面交互逻辑
+const chatInput = document.getElementById('chat-input');
+const sendBtn = document.getElementById('send-btn');
+const stopBtn = document.getElementById('stop-btn');
+
+// 发送消息
+function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+    chatInput.value = '';
+
+    // 渲染用户消息
+    if (typeof ChatStream !== 'undefined' && ChatStream.appendUserMessage) {
+        ChatStream.appendUserMessage(msg);
+    }
+
+    // 阶段五对接后启用 SSE 流式接收
+    // ChatStream.startStream(msg, conversationId);
+    // 当前阶段：显示占位提示
+    if (typeof ChatStream !== 'undefined' && ChatStream.appendAiMessage) {
+        ChatStream.appendAiMessage('AI 对话功能将在阶段四对接通义千问后启用，敬请期待 ✨');
+    }
+}
+
+// 发送按钮
+sendBtn.addEventListener('click', sendMessage);
+chatInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+    }
+});
+
+// 停止按钮
+stopBtn.addEventListener('click', () => {
+    if (typeof ChatStream !== 'undefined') {
+        ChatStream.stopGeneration();
+    }
+});
+
+// 快捷问题
+document.querySelectorAll('.quick-question').forEach(btn => {
+    btn.addEventListener('click', () => {
+        chatInput.value = btn.dataset.q;
+        sendMessage();
+    });
+});
+</script>
+</body>
+</html>

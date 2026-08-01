@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: habit-agent
+  profiles:
+    active: local              # 默认激活本地配置（application-local.yml 存放真实凭据，已 gitignore）
 
   # ===== MySQL 数据源（子模块 1-2）=====
   datasource:

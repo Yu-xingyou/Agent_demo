@@ -1,13 +1,28 @@
 package com.habit.agent.entity.jpa;
 
-import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * 习惯记录实体（子模块 2-1，核心业务表）
@@ -107,20 +122,21 @@ public class HabitRecord {
      * 1) sleepTime 或 wakeTime 任一为 null → sleepDuration 置 null
      * 2) wakeTime ≤ sleepTime（跨午夜）→ 加 24 小时
      * 3) 保留 2 位小数（HALF_UP），匹配 DECIMAL(4,2)
+     *
+     * 注意：@PrePersist/@PreUpdate 在 save() 返回后才触发，
+     * Service 层需在 save() 前显式调用此方法以确保 VO 值正确。
      */
-    private void calculateSleepDuration() {
+    public void calculateSleepDuration() {
         if (sleepTime == null || wakeTime == null) {
             this.sleepDuration = null;
             return;
         }
 
-        LocalTime adjustedWake = wakeTime;
-        // 跨午夜：起床时间 ≤ 入睡时间，加 24 小时
-        if (!wakeTime.isAfter(sleepTime)) {
-            adjustedWake = wakeTime.plusHours(24);
+        // Duration.between 跨午夜时返回负值，加 24 小时修正
+        long minutes = Duration.between(sleepTime, wakeTime).toMinutes();
+        if (minutes <= 0) {
+            minutes += 24 * 60; // 跨午夜：加 24 小时
         }
-
-        long minutes = Duration.between(sleepTime, adjustedWake).toMinutes();
         this.sleepDuration = BigDecimal.valueOf(minutes)
                 .divide(BigDecimal.valueOf(60), 2, RoundingMode.HALF_UP);
     }

@@ -2,7 +2,7 @@
 
 ## Summary
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 3 个后端功能模块、25 个 `/api` 端点（Habit 7 + Goal 14 + Analysis 4）；另有 5 个模块（26 个端点）规划中尚未实现。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 5 个后端功能模块、35 个 `/api` 端点（Habit 7 + Goal 14 + Chat 3 + Session 7 + Analysis 4）；另有 3 个模块（16 个端点）规划中尚未实现。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
 
 > 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录、AnalysisController）均已标注；「自定义目标打卡记录」6 个接口已整合进目标模块并提升为正式功能；尚未实现的 5 个 Controller 模块已标注「未实现，待模块化开发」。
 
@@ -14,7 +14,7 @@
   - `HabitController`（`/api/habits`，7 端点）
   - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点：目标 CRUD 8 + 自定义目标打卡记录 6，见下文"目标模块扩展接口"）
   - `AnalysisController`（`/api/analysis`，4 端点：趋势/达成率/概览/雷达）
-- 尚未实现（待模块化开发）的 Controller（5 个）：ChatController / SessionController / AiAnalysisController / RagController / ReminderController。
+- 尚未实现（待模块化开发）的 Controller（3 个）：AiAnalysisController / RagController / ReminderController。
 
 > **架构说明**：后端仅提供 REST API，**不含任何页面路由**（原 PageController 的 Thymeleaf 页面已移除）。前端页面由单仓库 Vue 工程 `agent_demo/frontend/` 实现，通过 `/api` 调用本接口。
 
@@ -28,8 +28,8 @@
 | 习惯目标管理 | GoalController | 8 | ✅ 已实现 | `/api/goals` 目标 CRUD，含 CUSTOM 类型 |
 | 自定义目标打卡记录 | GoalController | 6 | ✅ 已实现（正式功能） | 见"目标模块扩展接口"，原为超纲现提升为正式 |
 | 趋势分析 | AnalysisController | 4 | ✅ 已实现 | `/api/analysis` 趋势/达成率/概览/雷达 |
-| AI 对话 | ChatController | 3 | ❌ 未实现 | 待模块化开发（阶段五） |
-| 会话管理 | SessionController | 7 | ❌ 未实现 | 待模块化开发（阶段五） |
+| AI 对话 | ChatController | 3 | ✅ 已实现 | 非流式 + SSE 流式 + 停止 |
+| 会话管理 | SessionController | 7 | ✅ 已实现 | 会话元数据 CRUD + 清理过期 |
 | AI 分析结果 | AiAnalysisController | 6 | ❌ 未实现 | 待模块化开发 |
 | RAG 知识库 | RagController | 5 | ❌ 未实现 | 待模块化开发 |
 | 打卡提醒 | ReminderController | 5 | ❌ 未实现 | 待模块化开发（对应 PRD 可选功能「打卡提醒」） |
@@ -173,28 +173,28 @@ POST /api/goal-records/records
 
 > 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由单仓库 Vue 工程 `agent_demo/frontend/` 实现。以下按真实代码口径分「已落地 / 待开发」两表，替代原「8 模块 46 端点」规划值。
 
-**已落地（3 模块，25 端点）**：
+**已落地（5 模块，35 端点）**：
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
 | 习惯记录 CRUD | HabitController | 7 | POST/GET/DELETE `/api/habits` |
 | 习惯目标管理 | GoalController | 8 | CRUD `/api/goals`（含 CUSTOM 自定义目标） |
 | 自定义目标打卡记录 | GoalController | 6 | `/api/goal-records/records`（含达成率接口） |
+| AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
+| 会话管理 | SessionController | 7 | 会话 CRUD + 清理过期 |
 | 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 `/api/analysis` |
-| **小计** | | **25** | |
+| **小计** | | **35** | |
 
-**待开发（5 模块，26 端点）**：
+**待开发（3 模块，16 端点）**：
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
-| AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
-| 会话管理 | SessionController | 7 | 会话 CRUD + 消息历史 |
 | AI 分析结果 | AiAnalysisController | 6 | 列表/详情/触发/删除/每日评价 |
 | RAG 知识库 | RagController | 5 | 导入/检索/列表/删除/上传 |
 | 打卡提醒 | ReminderController | 5 | CRUD + 启用/禁用切换 |
-| **小计** | | **26** | |
+| **小计** | | **16** | |
 
-> 合计（最终实现全量）：25 + 26 = 51 个后端 REST 端点。
+> 合计（最终实现全量）：35 + 16 = 51 个后端 REST 端点。
 
 ### 3. SSE 特殊响应格式（仅 `GET /api/chat/stream` 流式端点使用）
 - 非流式端点 `POST /api/chat` 返回标准 `Result<ChatResponseVO>` JSON 响应
@@ -224,4 +224,4 @@ POST /api/goal-records/records
 3. 每个模块接口与开发计划阶段对应
 4. SSE 事件格式定义完整可实施
 5. VO 数据模型覆盖所有响应场景
-6. 已落地 25 个 `/api` 端点均有完整 JSON 请求/响应示例；待开发 26 个端点给出接口契约说明
+6. 已落地 35 个 `/api` 端点均有完整 JSON 请求/响应示例；待开发 16 个端点给出接口契约说明

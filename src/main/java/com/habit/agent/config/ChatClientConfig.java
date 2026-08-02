@@ -1,6 +1,8 @@
 package com.habit.agent.config;
 
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -31,11 +33,13 @@ public class ChatClientConfig {
     private Resource systemPromptResource;
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder) {
+    public ChatClient chatClient(ChatClient.Builder builder, MessageChatMemoryAdvisor memoryAdvisor) {
         // model / temperature 已在 application.yml 的 spring.ai.openai.chat.options 配置，
-        // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词。
+        // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词与对话记忆 Advisor。
+        // 记忆按 conversationId 隔离：调用方通过 advisorParams(ChatMemory.CONVERSATION_ID, id) 传入。
         return builder
                 .defaultSystem(systemPromptResource)
+                .defaultAdvisors(memoryAdvisor)
                 .build();
     }
 

@@ -794,23 +794,21 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：应用启动日志出现 `[阶段四] 通义千问连通性验证成功`（无 Key 时打印 WARN 不阻断启动）
 - **Git commit + push**
 
-### 阶段五：对话记忆与流式输出（技术点 5/11/12）
+### 阶段五：对话记忆与流式输出（技术点 5/11/12）✅ 已落地
 
 **目标**：多轮对话有记忆，SSE 流式打字效果，会话管理完整可用
 
-> 对应 API 文档：ChatController（3 端点：非流式对话 + SSE 流式 + 停止）+ SessionController（7 端点：会话 CRUD + 消息历史），共 10 端点。
+> 对应 API 文档：ChatController（3 端点：非流式对话 + SSE 流式 + 停止）+ SessionController（7 端点：会话 CRUD + 清理过期），共 10 端点。
 
-- 创建 MongoDB Document（ChatMessageDoc/ChatSessionDoc/AiAnalysisDoc）
-- 创建 MongoDB Repository
-- 实现 `MongoChatMemoryRepository`（自定义 MongoDB 存储）
-- 配置 `MessageWindowChatMemory`（滑动窗口 20 条）
-- 配置 `MessageChatMemoryAdvisor` 加入 Advisor 链
-- 实现会话管理：`SessionController`（会话列表/创建/查询/删除/消息历史/关闭）+ `SessionService`
+- 创建 MongoDB Document（ChatSession，集合 `chatSession`）+ `ChatSessionRepository`
+- 创建 `ChatMemoryConfig`：Spring AI 2.0 官方 `MongoChatMemoryRepository`（集合 `ai_chat_memory` 自动建索引）+ `MessageWindowChatMemory`（窗口 20 条）+ `MessageChatMemoryAdvisor`（注入 ChatClient）
+- 配置 Advisor 链：ChatClient 注入 `MessageChatMemoryAdvisor`，调用时按 `ChatMemory.CONVERSATION_ID` 隔离
+- 实现会话管理：`SessionController`（7 端点：列表/创建/查询/重命名/关闭/删除/清理过期）+ `SessionService`
 - 实现非流式对话：`ChatController` 的 `POST /api/chat`（企业标准，用于后端任务调用和测试调试）
-- 实现 SSE 流式输出：`ChatController` 的 `GET /api/chat/stream`
-- 实现停止生成：`POST /api/chat/stop`
-- 实现前端 `chat-stream.js`（EventSource + 停止按钮）
-- 验证：多轮对话有记忆；流式输出逐字显示；停止按钮能中断；会话列表正确展示
+- 实现 SSE 流式输出：`ChatController` 的 `GET /api/chat/stream`（SSE 事件 meta/chunk/done/error）
+- 实现停止生成：`POST /api/chat/stop`（基础版：标记位中断 + 清除会话记忆窗口）
+- 前端 `chat-stream.js`（EventSource + 停止按钮）待联调（前端单仓库工程）
+- 验证：多轮对话有记忆（MongoDB `ai_chat_memory` 可见）；流式输出逐字显示；停止按钮能中断；`GET /api/sessions` 正确展示
 - **Git commit + push**
 
 ### 阶段六：Tool Calling 与业务整合（技术点 3/7/8）
@@ -1020,28 +1018,27 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ## 九、接口与开发阶段映射表
 
-> 与《API接口文档设计计划.md》《API接口设计方案.md》《详细模块开发流程.md》保持一致。**真实代码口径（截至修订日）**：已落地 3 个后端 REST 模块、25 个 `/api` 端点；其余 5 个模块（26 端点）规划中尚未实现。以下按「已实现 / 待开发」分表，替代原「8 模块 46 端点」规划值（原值将待开发模块一并计入，与代码现状不符）。原 PageController 的 5 个页面路由已移除，前端改为单仓库 Vue SPA 路由；目标模块含自定义目标打卡记录 6 端点（原"5 个扩展接口"已扩充为 6 个，并提升为正式功能）。
+> 与《API接口文档设计计划.md》《API接口设计方案.md》《详细模块开发流程.md》保持一致。**真实代码口径（截至修订日）**：已落地 5 个后端 REST 模块、35 个 `/api` 端点；其余 3 个模块（16 端点）规划中尚未实现。以下按「已实现 / 待开发」分表，替代原「8 模块 46 端点」规划值（原值将待开发模块一并计入，与代码现状不符）。原 PageController 的 5 个页面路由已移除，前端改为单仓库 Vue SPA 路由；目标模块含自定义目标打卡记录 6 端点（原"5 个扩展接口"已扩充为 6 个，并提升为正式功能）。
 
-**已落地端点（25）**：
+**已落地端点（35）**：
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
 | 阶段二 | 习惯记录 | HabitController | 7 | 7 |
 | 阶段二 | 习惯目标 + 自定义目标打卡记录 | GoalController | 8 + 6 = 14 | 21 |
-| 阶段九 | 趋势分析 | AnalysisController | 4 | 25 |
-| **合计（已实现）** | | | **25** | |
+| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 31 |
+| 阶段九 | 趋势分析 | AnalysisController | 4 | 35 |
+| **合计（已实现）** | | | **35** | |
 
-**待开发端点（26，规划中）**：
+**待开发端点（16，规划中）**：
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
-| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 0 | ✅ 已落地 |
-| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 10 |
-| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 10 |
-| 阶段七 | RAG 知识库 | RagController | 5 | 15 |
-| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 15 |
-| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 26 |
-| **合计（待开发）** | | | **26** | |
+| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 0 |
+| 阶段七 | RAG 知识库 | RagController | 5 | 5 |
+| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 5 |
+| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 16 |
+| **合计（待开发）** | | | **16** | |
 
 **端点分布说明（最终实现全量）**：
 
@@ -1049,10 +1046,10 @@ public SseEmitter streamChat(@RequestParam String message,
 |---|---|---|---|---|
 | HabitController | `/api/habits` | 7 | 阶段二 | ✅ 已落地 |
 | GoalController | `/api/goals` + `/api/goal-records/records` | 14 | 阶段二 | ✅ 已落地 |
+| ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 | ✅ 已落地 |
+| SessionController | `/api/sessions` | 7 | 阶段五 | ✅ 已落地 |
 | AnalysisController | `/api/analysis` | 4 | 阶段九 | ✅ 已落地 |
-| ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 | ❌ 待开发 |
-| SessionController | `/api/sessions` | 7 | 阶段五 | ❌ 待开发 |
 | RagController | `/api/rag` | 5 | 阶段七 | ❌ 待开发 |
 | AiAnalysisController | `/api/ai-analysis` | 6 | 阶段十 | ❌ 待开发 |
 | ReminderController | `/api/reminders` | 5 | 阶段十 | ❌ 待开发 |
-| **合计（后端 REST 端点）** | | **51** | | 已实现 25 + 待开发 26 |
+| **合计（后端 REST 端点）** | | **51** | | 已实现 35 + 待开发 16 |

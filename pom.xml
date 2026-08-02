@@ -58,6 +58,12 @@
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
 
+        <!-- Spring AI MongoDB 对话记忆 Repository (阶段五：对话记忆持久化到 ai_chat_memory 集合) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-chat-memory-repository-mongodb</artifactId>
+        </dependency>
+
         <!-- Spring AI OpenAI Starter (通过 OpenAI 兼容模式接入通义千问 DashScope) -->
         <dependency>
             <groupId>org.springframework.ai</groupId>

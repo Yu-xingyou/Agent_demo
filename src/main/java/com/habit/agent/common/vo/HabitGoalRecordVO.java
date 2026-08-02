@@ -8,12 +8,11 @@ import lombok.Setter;
 import lombok.ToString;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
- * 习惯目标视图对象
- *
- * 支持内置类型(SLEEP/EXERCISE/WATER/DIET)和自定义类型(CUSTOM + customName)
+ * 自定义目标打卡记录视图对象
  */
 @Getter
 @Setter
@@ -21,19 +20,15 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Builder
 @ToString
-public class HabitGoalVO {
+public class HabitGoalRecordVO {
 
     private Long id;
     private Long userId;
+    private Long goalId;
     private String goalType;
-    /** 自定义目标名称（CUSTOM 类型使用） */
-    private String customName;
-    /** 显示名（CUSTOM→customName, 其他→goalType） */
-    private String displayName;
-    private BigDecimal targetValue;
-    private String unit;
-    private String period;
-    private Boolean isActive;
+    private LocalDate recordDate;
+    private BigDecimal value;
+    private String remark;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
 }

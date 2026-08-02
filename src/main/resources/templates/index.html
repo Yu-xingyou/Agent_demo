@@ -155,56 +155,66 @@
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h5 class="mb-0"><i class="bi bi-bullseye" style="color:var(--teal-700);"></i> 我的目标</h5>
-                        <span class="text-muted small">周平均达成进度</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="text-muted small">周平均达成进度</span>
+                            <button class="btn-add-goal" onclick="openAddGoalModal()">
+                                <i class="bi bi-plus-lg"></i> 新增目标
+                            </button>
+                        </div>
                     </div>
-                    <div class="row g-3" id="goalList">
-                        <!-- SLEEP -->
-                        <div class="col-12 col-sm-6 col-lg-6" th:each="g, s : ${goals}">
-                            <div class="goal-card p-3 rounded-3"
-                                 th:data-id="${g.id}"
-                                 th:data-type="${g.goalType}"
-                                 th:data-target="${g.targetValue}"
-                                 th:data-unit="${g.unit}"
-                                 th:data-period="${g.period}"
-                                 th:data-active="${g.isActive}"
-                                 th:style="${'border:1px solid ' + (s.index == 0 ? '#c7d2fe' : s.index == 1 ? '#fed7aa' : s.index == 2 ? '#a5f3fc' : '#e9d5ff') + '; background: linear-gradient(135deg, ' + (s.index == 0 ? '#eef2ff, #fff' : s.index == 1 ? '#fff7ed, #fff' : s.index == 2 ? '#ecfeff, #fff' : '#faf5ff, #fff') + ');'}">
-                                <div class="d-flex justify-content-between align-items-start mb-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="bi fs-5"
-                                           th:classappend="${s.index == 0 ? 'bi-moon-stars text-indigo' : s.index == 1 ? 'bi-bicycle text-warning' : s.index == 2 ? 'bi-droplet-half text-info' : 'bi-cup-hot text-purple'}"></i>
-                                        <div>
-                                            <div class="fw-bold small">
-                                                <span th:if="${g.goalType == 'SLEEP'}">睡眠目标</span>
-                                                <span th:if="${g.goalType == 'EXERCISE'}">运动目标</span>
-                                                <span th:if="${g.goalType == 'WATER'}">饮水目标</span>
-                                                <span th:if="${g.goalType == 'DIET'}">饮食目标</span>
-                                            </div>
-                                            <div class="text-muted small">
-                                                目标 <span th:text="${g.targetValue}"></span><span th:text="${g.unit}"></span>
-                                                / <span th:text="${g.period == 'DAILY'} ? '天' : (g.period == 'WEEKLY' ? '周' : '月')">天</span>
-                                            </div>
+                    <div class="fluid-grid" id="goalList">
+                        <div class="goal-card p-3 rounded-3"
+                             th:each="g, s : ${goals}"
+                             th:data-id="${g.id}"
+                             th:data-type="${g.goalType}"
+                             th:data-custom-name="${g.customName}"
+                             th:data-target="${g.targetValue}"
+                             th:data-unit="${g.unit}"
+                             th:data-period="${g.period}"
+                             th:data-active="${g.isActive}"
+                             th:data-rate="${goalRates[g.goalType]}"
+                             th:classappend="${g.goalType == 'CUSTOM'} ? 'goal-card-custom' : ''">
+                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                <div class="d-flex align-items-center gap-2">
+                                    <i class="bi fs-5"
+                                       th:classappend="${g.goalType == 'CUSTOM'} ? 'bi-star text-warning' : (g.goalType == 'SLEEP') ? 'bi-moon-stars text-indigo' : (g.goalType == 'EXERCISE') ? 'bi-bicycle text-warning' : (g.goalType == 'WATER') ? 'bi-droplet-half text-info' : 'bi-cup-hot text-purple'"></i>
+                                    <div>
+                                        <div class="fw-bold small" th:text="${g.displayName}">睡眠目标</div>
+                                        <div class="text-muted small">
+                                            目标 <span th:text="${g.targetValue}"></span><span th:text="${g.unit}"></span>
+                                            / <span th:text="${g.period == 'DAILY'} ? '天' : (g.period == 'WEEKLY' ? '周' : '月')">天</span>
                                         </div>
                                     </div>
-                                    <button class="btn btn-sm btn-outline-secondary btn-edit-goal" title="编辑目标"
+                                </div>
+                                <div class="goal-actions">
+                                    <button class="btn btn-sm btn-outline-secondary" title="编辑"
                                             th:onclick="|editGoal(${s.index})|">
                                         <i class="bi bi-pencil-square"></i>
                                     </button>
+                                    <button class="btn btn-sm btn-delete-goal" title="删除"
+                                            th:if="${g.id != null}"
+                                            th:onclick="|deleteGoal(${g.id}, ${s.index})|">
+                                        <i class="bi bi-trash3"></i>
+                                    </button>
                                 </div>
-                                <div class="d-flex justify-content-between align-items-center mb-1 small">
-                                    <span class="text-muted">周平均达成</span>
-                                    <strong th:if="${g.goalType == 'SLEEP'}"
-                                            th:text="${weekAvg['SLEEP']} + 'h / ' + ${g.targetValue} + ${g.unit}">6.5h / 8h</strong>
-                                    <strong th:if="${g.goalType == 'EXERCISE'}"
-                                            th:text="${weekAvg['EXERCISE']} + 'min / ' + ${g.targetValue} + ${g.unit}">20min / 30min</strong>
-                                    <strong th:if="${g.goalType == 'WATER'}"
-                                            th:text="${weekAvg['WATER']} + 'ml / ' + ${g.targetValue} + ${g.unit}">1500ml / 2000ml</strong>
-                                    <strong th:if="${g.goalType == 'DIET'}"
-                                            th:text="${weekAvg['DIET']} + ' / ' + ${g.targetValue} + ${g.unit}">3.2 / 4/5</strong>
-                                </div>
-                                <div class="progress" style="height:8px;">
-                                    <div class="progress-bar" role="progressbar"
-                                         th:style="${'width:' + goalRates[g.goalType] + '%; background: linear-gradient(90deg, ' + (s.index == 0 ? '#4f46e5, #818cf8' : s.index == 1 ? '#f59e0b, #fbbf24' : s.index == 2 ? '#06b6d4, #22d3ee' : '#db2777, #ec4899') + ');'}">
-                                    </div>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                <span class="text-muted">周平均达成</span>
+                                <strong th:if="${g.goalType == 'SLEEP'}"
+                                        th:text="${weekAvg['SLEEP']} + 'h / ' + ${g.targetValue} + ${g.unit}">6.5h / 8h</strong>
+                                <strong th:if="${g.goalType == 'EXERCISE'}"
+                                        th:text="${weekAvg['EXERCISE']} + 'min / ' + ${g.targetValue} + ${g.unit}">20min / 30min</strong>
+                                <strong th:if="${g.goalType == 'WATER'}"
+                                        th:text="${weekAvg['WATER']} + 'ml / ' + ${g.targetValue} + ${g.unit}">1500ml / 2000ml</strong>
+                                <strong th:if="${g.goalType == 'DIET'}"
+                                        th:text="${weekAvg['DIET']} + ' / ' + ${g.targetValue} + ${g.unit}">3.2 / 4/5</strong>
+                                <strong th:if="${g.goalType == 'CUSTOM'}">
+                                    <span th:text="${weekAvg[g.goalType] + ' / ' + g.targetValue + g.unit}">—</span>
+                                </strong>
+                            </div>
+                            <div class="progress" style="height:8px;">
+                                <div class="progress-bar progress-bar-animated" role="progressbar"
+                                     th:style="${'width:' + goalRates[g.goalType] + '%;'}">
                                 </div>
                             </div>
                         </div>
@@ -215,7 +225,7 @@
     </div>
 </div>
 
-<!-- 目标编辑模态弹窗 -->
+<!-- 目标编辑/新增模态弹窗 -->
 <div class="modal fade" id="goalModal" tabindex="-1" aria-hidden="true"
      style="backdrop-filter: blur(4px);">
     <div class="modal-dialog modal-dialog-centered">
@@ -233,10 +243,23 @@
                 <form id="goalForm">
                     <input type="hidden" id="goalId"/>
                     <input type="hidden" id="goalType"/>
-                    <div class="mb-3">
-                        <label class="form-label small fw-medium text-muted">目标类型</label>
-                        <input type="text" class="form-control-plaintext fw-bold" id="goalTypeName" readonly/>
+
+                    <div class="mb-3" id="goalTypeSelectWrap">
+                        <label class="form-label small fw-medium">目标类型</label>
+                        <select class="form-select" id="goalTypeSelect">
+                            <option value="SLEEP">睡眠</option>
+                            <option value="EXERCISE">运动</option>
+                            <option value="WATER">饮水</option>
+                            <option value="DIET">饮食</option>
+                            <option value="CUSTOM">✨ 自定义</option>
+                        </select>
                     </div>
+
+                    <div class="mb-3 d-none" id="goalCustomNameWrap">
+                        <label class="form-label small fw-medium">目标名称 <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="goalCustomName" placeholder="例如：冥想、阅读、练字..."/>
+                    </div>
+
                     <div class="mb-3">
                         <label class="form-label small fw-medium">目标值 <span class="text-danger">*</span></label>
                         <div class="input-group">
@@ -253,6 +276,9 @@
                                 <option value="ml">ml（毫升）</option>
                                 <option value="/5">/5（5分制）</option>
                                 <option value="次">次</option>
+                                <option value="页">页</option>
+                                <option value="个">个</option>
+                                <option value="步">步</option>
                             </select>
                         </div>
                         <div class="col-6">
@@ -279,6 +305,23 @@
                     <i class="bi bi-check2"></i> 保存目标
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- 删除确认弹窗 -->
+<div id="deleteConfirmModal" class="modal-overlay d-none">
+    <div class="confirm-dialog">
+        <div class="text-center mb-3">
+            <div style="width:48px;height:48px;margin:0 auto 12px;border-radius:50%;background:#fee2e2;display:flex;align-items:center;justify-content:center;">
+                <i class="bi bi-exclamation-triangle" style="font-size:1.5rem;color:#ef4444;"></i>
+            </div>
+            <h6 class="fw-bold mb-1">确认删除目标？</h6>
+            <p class="text-muted small mb-0" id="deleteConfirmText">删除后无法恢复，该目标的所有打卡记录也将被清除。</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary flex-fill" onclick="closeDeleteConfirm()">取消</button>
+            <button class="btn btn-danger flex-fill" id="deleteConfirmBtn">确认删除</button>
         </div>
     </div>
 </div>
@@ -311,108 +354,170 @@ if (ctx && recentRecords.length > 0) {
     ctx.parentElement.innerHTML = '<p class="text-muted text-center py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>暂无心情数据</p>';
 }
 
-// ========== 目标编辑功能 ==========
+// ========== 目标管理功能（使用 goal-manager.js 模块） ==========
 const goals = /*[[${goals}]]*/ [];
-const goalTypeMeta = {
-    'SLEEP':    { name: '睡眠目标', icon: 'bi-moon-stars', color: '#4f46e5', bg: 'linear-gradient(135deg, #eef2ff, #fff)' },
-    'EXERCISE': { name: '运动目标', icon: 'bi-bicycle',   color: '#f59e0b', bg: 'linear-gradient(135deg, #fff7ed, #fff)' },
-    'WATER':    { name: '饮水目标', icon: 'bi-droplet-half', color: '#06b6d4', bg: 'linear-gradient(135deg, #ecfeff, #fff)' },
-    'DIET':     { name: '饮食目标', icon: 'bi-cup-hot',   color: '#db2777', bg: 'linear-gradient(135deg, #faf5ff, #fff)' }
-};
+const goalRates = /*[[${goalRates}]]*/ {};
+const weekAvg = /*[[${weekAvg}]]*/ {};
+const builtinTypeNames = /*[[${builtinTypeNames}]]*/ {};
+
+// DOM 引用
 const goalModal = document.getElementById('goalModal');
 const alertBox = document.getElementById('goalAlert');
 const alertText = document.getElementById('goalAlertText');
 const saveBtn = document.getElementById('goalSaveBtn');
+const typeSelect = document.getElementById('goalTypeSelect');
+const customNameWrap = document.getElementById('goalCustomNameWrap');
+const customNameInput = document.getElementById('goalCustomName');
+const unitSelect = document.getElementById('goalUnit');
+const unitLabel = document.getElementById('goalUnitLabel');
 
-// 点击弹窗外部关闭
+// 全局变量
+let currentMode = 'edit'; // 'edit' or 'add'
+let deleteGoalId = null;
+
+// 弹窗事件
 goalModal.addEventListener('click', (e) => { if (e.target === goalModal) closeGoalModal(); });
-// ESC 关闭
 document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && goalModal.classList.contains('show')) closeGoalModal();
 });
+
+// 类型切换：CUSTOM 显示自定义名称输入
+typeSelect.addEventListener('change', () => {
+    if (typeSelect.value === 'CUSTOM') {
+        customNameWrap.classList.remove('d-none');
+        document.getElementById('goalTargetValue').placeholder = '例如 20';
+        unitLabel.textContent = '次';
+        if (unitSelect.value === 'h') unitSelect.value = '次';
+    } else {
+        customNameWrap.classList.add('d-none');
+        updateUnitLabel();
+    }
+    updateModalTitle();
+});
+
+// 单位联动 label
+unitSelect.addEventListener('change', updateUnitLabel);
+
+function updateUnitLabel() {
+    unitLabel.textContent = unitSelect.value;
+}
+
+function updateModalTitle() {
+    const type = typeSelect.value;
+    const title = currentMode === 'add' ? '新增目标' : '编辑目标';
+    const typeLabel = type === 'CUSTOM'
+        ? (customNameInput.value || '自定义目标')
+        : (builtinTypeNames[type] || type);
+    const palette = GoalUtils.getPalette({ goalType: type, customName: customNameInput.value });
+    document.getElementById('goalModalTitle').innerHTML =
+        '<i class="bi ' + (type === 'CUSTOM' ? 'bi-star' : GoalUtils.getIcon({ goalType: type })) + '" style="color:' + palette.color + ';"></i> ' + title + ' · ' + typeLabel;
+}
+
+// 打开新增目标弹窗
+function openAddGoalModal() {
+    currentMode = 'add';
+    document.getElementById('goalId').value = '';
+    typeSelect.value = 'SLEEP';
+    customNameInput.value = '';
+    document.getElementById('goalTargetValue').value = '';
+    unitSelect.value = 'h';
+    document.getElementById('goalPeriod').value = 'DAILY';
+    document.getElementById('goalActive').checked = true;
+    customNameWrap.classList.add('d-none');
+    updateUnitLabel();
+    updateModalTitle();
+    showAlert('');
+    openGoalModal();
+}
+
+// 打开编辑目标弹窗
+function editGoal(index) {
+    const g = goals[index];
+    if (!g) return;
+    currentMode = 'edit';
+    document.getElementById('goalId').value = g.id ?? '';
+    typeSelect.value = g.goalType;
+    customNameInput.value = g.customName || '';
+    document.getElementById('goalTargetValue').value = g.targetValue ?? '';
+    unitSelect.value = g.unit || 'h';
+    document.getElementById('goalPeriod').value = g.period || 'DAILY';
+    document.getElementById('goalActive').checked = g.isActive !== false;
+
+    if (g.goalType === 'CUSTOM') {
+        customNameWrap.classList.remove('d-none');
+    } else {
+        customNameWrap.classList.add('d-none');
+    }
+    updateUnitLabel();
+    updateModalTitle();
+    hideAlert();
+    openGoalModal();
+}
 
 function openGoalModal() {
     goalModal.classList.add('show');
     goalModal.style.display = 'flex';
     document.body.style.overflow = 'hidden';
 }
+
 function closeGoalModal() {
     goalModal.classList.remove('show');
     goalModal.style.display = 'none';
     document.body.style.overflow = '';
     hideAlert();
 }
+
 function showAlert(msg, type) {
+    if (!msg) { hideAlert(); return; }
     alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-info');
     alertBox.classList.add(type || 'alert-info');
     alertText.textContent = msg;
 }
+
 function hideAlert() { alertBox.classList.add('d-none'); }
 
-function editGoal(index) {
-    const g = goals[index];
-    if (!g) return;
-    const meta = goalTypeMeta[g.goalType] || { name: g.goalType };
-    document.getElementById('goalId').value = g.id ?? '';
-    document.getElementById('goalType').value = g.goalType;
-    document.getElementById('goalTypeName').value = meta.name;
-    document.getElementById('goalModalTitle').innerHTML =
-        '<i class="bi bi-pencil-square" style="color:' + (meta.color || 'var(--teal-700)') + ';"></i> 编辑' + meta.name;
-    document.getElementById('goalTargetValue').value = g.targetValue ?? '';
-    document.getElementById('goalUnit').value = g.unit || 'h';
-    document.getElementById('goalUnitLabel').textContent = g.unit || 'h';
-    document.getElementById('goalPeriod').value = g.period || 'DAILY';
-    document.getElementById('goalActive').checked = g.isActive !== false;
-    hideAlert();
-    openGoalModal();
-}
-// 单位联动 label
-document.getElementById('goalUnit').addEventListener('change', (e) => {
-    document.getElementById('goalUnitLabel').textContent = e.target.value;
-});
-
+// 保存目标
 async function saveGoal() {
     const id = document.getElementById('goalId').value;
-    const type = document.getElementById('goalType').value;
+    const type = typeSelect.value;
+    const customName = customNameInput.value.trim();
     const targetValue = parseFloat(document.getElementById('goalTargetValue').value);
-    const unit = document.getElementById('goalUnit').value;
+    const unit = unitSelect.value;
     const period = document.getElementById('goalPeriod').value;
     const isActive = document.getElementById('goalActive').checked;
 
+    if (type === 'CUSTOM' && !customName) {
+        showAlert('请输入自定义目标名称', 'alert-danger');
+        return;
+    }
     if (isNaN(targetValue) || targetValue <= 0) {
         showAlert('请输入有效的目标值（>0）', 'alert-danger');
         return;
     }
 
-    const body = { goalType: type, targetValue, unit, period, isActive };
+    const body = {
+        goalType: type,
+        customName: type === 'CUSTOM' ? customName : null,
+        targetValue, unit, period, isActive
+    };
+
     const origBtnHtml = saveBtn.innerHTML;
     saveBtn.disabled = true;
-    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> 保存中...';
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 保存中...';
     hideAlert();
 
     try {
-        let res;
+        let result;
         if (id) {
-            // 已存在则更新
-            res = await fetch('/api/goals/' + id, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            result = await GoalAPI.update(parseInt(id), body);
         } else {
-            // 新建
-            res = await fetch('/api/goals', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body)
-            });
+            result = await GoalAPI.create(body);
         }
-        const data = await res.json();
-        if (data.code === 200) {
-            showAlert('保存成功！即将刷新页面…', 'alert-success');
-            setTimeout(() => location.reload(), 800);
+        if (result.code === 200) {
+            showAlert('保存成功！即将刷新...', 'alert-success');
+            setTimeout(() => location.reload(), 600);
         } else {
-            showAlert('保存失败：' + (data.message || '未知错误'), 'alert-danger');
+            showAlert('保存失败：' + (result.message || '未知错误'), 'alert-danger');
         }
     } catch (err) {
         showAlert('网络错误：' + err.message, 'alert-danger');
@@ -421,6 +526,42 @@ async function saveGoal() {
         saveBtn.innerHTML = origBtnHtml;
     }
 }
+
+// 删除目标
+function deleteGoal(id, index) {
+    const g = goals[index];
+    if (!g || !g.id) return;
+    const displayName = g.displayName || GoalUtils.getDisplayName(g);
+    deleteGoalId = id;
+    document.getElementById('deleteConfirmText').textContent =
+        `确定要删除「${displayName}」吗？该目标的所有打卡记录也将被清除，且不可恢复。`;
+    document.getElementById('deleteConfirmModal').classList.remove('d-none');
+}
+
+function closeDeleteConfirm() {
+    deleteGoalId = null;
+    document.getElementById('deleteConfirmModal').classList.add('d-none');
+}
+
+document.getElementById('deleteConfirmBtn').addEventListener('click', async () => {
+    if (!deleteGoalId) return;
+    try {
+        const result = await GoalAPI.remove(deleteGoalId);
+        if (result.code === 200) {
+            closeDeleteConfirm();
+            location.reload();
+        } else {
+            alert('删除失败：' + (result.message || '未知错误'));
+        }
+    } catch (err) {
+        alert('网络错误：' + err.message);
+    }
+});
+
+// 点击弹窗外部关闭删除确认
+document.getElementById('deleteConfirmModal').addEventListener('click', (e) => {
+    if (e.target.id === 'deleteConfirmModal') closeDeleteConfirm();
+});
 </script>
 </body>
 </html>

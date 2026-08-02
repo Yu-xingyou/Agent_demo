@@ -99,6 +99,29 @@
                             </div>
                         </div>
 
+                        <!-- 自定义目标 -->
+                        <div th:if="${customGoals != null and !customGoals.isEmpty()}">
+                            <h6 class="mb-2"><i class="bi bi-star"></i> 自定义目标</h6>
+                            <div th:each="cg : ${customGoals}"
+                                 class="border-start border-3 ps-3 mb-3 custom-goal-item"
+                                 th:attr="data-goal-id=${cg.id}">
+                                <h6 class="mb-2" th:text="${cg.displayName}">自定义目标</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-6">
+                                        <label class="form-label small text-muted">数值</label>
+                                        <div class="input-group">
+                                            <input type="number" class="form-control custom-goal-input"
+                                                   step="0.01"
+                                                   th:attr="data-goal-id=${cg.id}"
+                                                   th:value="${customRecordMap[cg.id]?.value}"
+                                                   placeholder="0" />
+                                            <span class="input-group-text" th:text="${cg.unit}">单位</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- 备注 -->
                         <div class="mb-3">
                             <label class="form-label small text-muted">备注</label>
@@ -117,49 +140,82 @@
 </div>
 
 <div th:replace="~{fragments :: scripts}"></div>
-<script>
-document.getElementById('checkinForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const btn = document.getElementById('submitBtn');
-    btn.disabled = true;
-    const originalText = btn.innerHTML;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 提交中...';
+<script th:inline="javascript">
+    const goals = /*[[${allGoals}]]*/ [];
+    const customGoals = /*[[${customGoals}]]*/ [];
+    const customRecordMap = /*[[${customRecordMap}]]*/ {};
 
-    const data = {
-        userId: 1,
-        recordDate: document.getElementById('recordDate').value || new Date().toISOString().split('T')[0],
-        sleepTime: document.getElementById('sleepTime').value || null,
-        wakeTime: document.getElementById('wakeTime').value || null,
-        sleepQuality: parseInt(document.getElementById('sleepQuality').value) || null,
-        dietDesc: document.getElementById('dietDesc').value || null,
-        dietScore: parseInt(document.getElementById('dietScore').value) || null,
-        exerciseType: document.getElementById('exerciseType').value || null,
-        exerciseDuration: parseInt(document.getElementById('exerciseDuration').value) || null,
-        waterIntake: parseInt(document.getElementById('waterIntake').value) || null,
-        mood: parseInt(document.getElementById('mood').value) || null,
-        remark: document.getElementById('remark').value || null
-    };
-
-    try {
-        const res = await fetch('/api/habits', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-        });
-        const result = await res.json();
-        if (result.code === 200) {
-            alert('打卡成功！');
-            location.reload();
-        } else {
-            alert('提交失败: ' + result.message);
+    customGoals.forEach(function(cg) {
+        const palette = GoalUtils.getPalette(cg);
+        const section = document.querySelector('.custom-goal-item[data-goal-id="' + cg.id + '"]');
+        if (section) {
+            section.style.borderColor = palette.color;
+            const input = section.querySelector('.custom-goal-input');
+            if (input) {
+                input.style.setProperty('--goal-color', palette.color);
+            }
         }
-    } catch (err) {
-        alert('网络错误: ' + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-    }
-});
+    });
+
+    document.getElementById('checkinForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> 提交中...';
+
+        const data = {
+            userId: 1,
+            recordDate: document.getElementById('recordDate').value || new Date().toISOString().split('T')[0],
+            sleepTime: document.getElementById('sleepTime').value || null,
+            wakeTime: document.getElementById('wakeTime').value || null,
+            sleepQuality: parseInt(document.getElementById('sleepQuality').value) || null,
+            dietDesc: document.getElementById('dietDesc').value || null,
+            dietScore: parseInt(document.getElementById('dietScore').value) || null,
+            exerciseType: document.getElementById('exerciseType').value || null,
+            exerciseDuration: parseInt(document.getElementById('exerciseDuration').value) || null,
+            waterIntake: parseInt(document.getElementById('waterIntake').value) || null,
+            mood: parseInt(document.getElementById('mood').value) || null,
+            remark: document.getElementById('remark').value || null
+        };
+
+        try {
+            const res = await fetch('/api/habits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (result.code === 200) {
+                const date = data.recordDate;
+                const savePromises = customGoals.map(async function(cg) {
+                    const input = document.querySelector('.custom-goal-input[data-goal-id="' + cg.id + '"]');
+                    if (!input) return null;
+                    const val = input.value;
+                    if (val === '' || val === null) return null;
+                    return GoalAPI.saveRecord({
+                        userId: 1,
+                        goalId: cg.id,
+                        goalType: 'CUSTOM',
+                        recordDate: date,
+                        value: parseFloat(val),
+                        remark: ''
+                    });
+                });
+                await Promise.all(savePromises.filter(Boolean));
+
+                alert('打卡成功！');
+                location.reload();
+            } else {
+                alert('提交失败: ' + result.message);
+            }
+        } catch (err) {
+            alert('网络错误: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
 </script>
 </body>
 </html>

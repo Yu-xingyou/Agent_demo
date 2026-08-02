@@ -48,23 +48,23 @@
 
                 <!-- 概要指标 -->
                 <div class="col-7 col-md-8">
-                    <div class="row g-2 small">
-                        <div class="col-6 col-md-3">
+                    <div class="history-metrics small">
+                        <div class="metric-item">
                             <i class="bi bi-moon-stars text-indigo"></i>
                             <span class="text-muted">睡眠</span>
                             <strong th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '—'">—</strong>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="metric-item">
                             <i class="bi bi-droplet text-info"></i>
                             <span class="text-muted">饮水</span>
                             <strong th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '—'">—</strong>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="metric-item">
                             <i class="bi bi-bicycle text-warning"></i>
                             <span class="text-muted">运动</span>
                             <strong th:text="${r.exerciseType != null} ? ${r.exerciseType} + ' ' + (r.exerciseDuration != null ? r.exerciseDuration + 'min' : '') : '—'">—</strong>
                         </div>
-                        <div class="col-6 col-md-3">
+                        <div class="metric-item">
                             <i class="bi bi-emoji-smile"></i>
                             <span class="text-muted">心情</span>
                             <strong th:if="${r.mood != null}">
@@ -74,6 +74,25 @@
                             </strong>
                             <span th:unless="${r.mood != null}">—</span>
                         </div>
+
+                        <!-- 自定义指标 -->
+                        <th:block th:if="${!customGoals.isEmpty()}">
+                            <div th:each="cg : ${customGoals}"
+                                 class="metric-item custom-goal-metric"
+                                 th:data-goal-id="${cg.id}">
+                                <i class="bi bi-star"></i>
+                                <span th:text="${cg.displayName}">自定义</span>
+                                <strong>
+                                    <span th:with="${dayRecs = customRecordByDate[r.recordDate.toString()]}">
+                                        <span th:if="${dayRecs != null and dayRecs.get(cg.id) != null}"
+                                              th:text="${dayRecs.get(cg.id).value}">—</span>
+                                        <span th:unless="${dayRecs != null and dayRecs.get(cg.id) != null}">—</span>
+                                        <span th:if="${dayRecs != null and dayRecs.get(cg.id) != null and cg.unit != null}"
+                                              th:text="' ' + ${cg.unit}"></span>
+                                    </span>
+                                </strong>
+                            </div>
+                        </th:block>
                     </div>
                 </div>
 
@@ -149,6 +168,17 @@
 <div th:replace="~{fragments :: scripts}"></div>
 <script th:inline="javascript">
 const records = /*[[${records}]]*/ [];
+const customGoals = /*[[${customGoals}]]*/ [];
+
+// 自定义目标动态着色
+document.querySelectorAll('.custom-goal-metric').forEach(el => {
+    const goalId = el.dataset.goalId;
+    const cg = customGoals.find(g => g.id == goalId);
+    if (cg) {
+        const palette = GoalUtils.getPalette(cg);
+        el.style.color = palette.color;
+    }
+});
 
 // 图表数据（按日期升序）
 const sorted = [...records].reverse();

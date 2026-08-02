@@ -4,71 +4,161 @@
 <body>
 <nav th:replace="~{fragments :: navbar('trend')}"></nav>
 
+<style>
+    /* 饮食统计卡片渐变 */
+    .stat-gradient-diet {
+        background: linear-gradient(135deg, #faf5ff 0%, #f3e8ff 50%, #e9d5ff 100%);
+        border: none;
+        box-shadow: 0 4px 14px rgba(168,85,247,0.12), 0 1px 3px rgba(168,85,247,0.08);
+    }
+    .stat-gradient-mood {
+        background: linear-gradient(135deg, #fdf2f8 0%, #fce7f3 50%, #fbcfe8 100%);
+        border: none;
+        box-shadow: 0 4px 14px rgba(236,72,153,0.12), 0 1px 3px rgba(236,72,153,0.08);
+    }
+    /* 自定义目标统计卡片 - 动态颜色通过 CSS 变量 */
+    .stat-gradient-custom {
+        background: linear-gradient(135deg, var(--custom-bg-from, #f0fdfa) 0%, var(--custom-bg-to, #fff) 100%);
+        border: none;
+        box-shadow: 0 4px 14px var(--custom-shadow, rgba(6,182,212,0.12)), 0 1px 3px rgba(0,0,0,0.05);
+    }
+    /* 迷你图表容器 */
+    .mini-chart-card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.03);
+        transition: box-shadow 0.3s, transform 0.3s;
+    }
+    .mini-chart-card:hover {
+        box-shadow: 0 4px 6px rgba(0,0,0,0.05), 0 10px 24px rgba(0,0,0,0.06);
+    }
+    .custom-chart-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+        color: var(--teal-800);
+    }
+    .custom-chart-color-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+    }
+</style>
+
 <div class="container py-4">
     <h4 class="fw-bold mb-3"><i class="bi bi-graph-up" style="color:var(--teal-700);"></i> 趋势分析</h4>
 
-    <!-- 统计概览：平均睡眠/运动/饮水（渐变背景+粒子流动） -->
-    <div class="row g-3 mb-4">
+    <!-- ========== 第一部分：内置 + 自定义目标统计卡片（流体布局） ========== -->
+    <div class="trend-fluid-grid mb-4">
+
         <!-- 平均睡眠 -->
-        <div class="col-md-4">
-            <div class="stat-gradient stat-gradient-sleep p-3 text-center position-relative overflow-hidden rounded-4">
-                <canvas class="particle-canvas position-absolute top-0 start-0 w-100 h-100"
-                        data-c1="rgba(129,140,248,0.6)" data-c2="rgba(99,102,241,0.9)"
-                        data-bg1="#e0e7ff" data-bg2="#c7d2fe"
-                        style="pointer-events:none; opacity:0.9; z-index:0;"></canvas>
-                <div style="position:relative; z-index:1;">
-                    <div class="text-muted small mb-1">平均睡眠时长</div>
-                    <div class="fw-bold fs-4 text-indigo mb-1" style="color:#312e81;"
-                         th:text="${avgSleep} != null ? ${avgSleep} + 'h' : '—'">—</div>
-                    <div class="small" style="color:#4338ca;"
-                         th:text="'目标 ' + ${targetSleep} + 'h · 达成率 ' + ${sleepRate} + '%'">目标 8.0h · 达成率 92%</div>
-                    <div class="progress mt-2" style="height:5px; background:rgba(49,46,129,0.15);">
-                        <div class="progress-bar" th:style="'width:' + ${sleepRate} + '%; background:linear-gradient(90deg,#6366f1,#a5b4fc);'"></div>
-                    </div>
+        <div class="trend-stat-card stat-gradient-sleep">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(129,140,248,0.6)" data-c2="rgba(99,102,241,0.9)"
+                    data-bg1="#e0e7ff" data-bg2="#c7d2fe"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1">平均睡眠时长</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#312e81;"
+                     th:text="${avgSleep} != null ? ${avgSleep} + 'h' : '—'">—</div>
+                <div class="small" style="color:#4338ca;"
+                     th:text="'目标 ' + ${targetSleep} + 'h · 达成率 ' + ${sleepRate} + '%'">目标 8.0h · 达成率 92%</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(49,46,129,0.15);">
+                    <div class="progress-bar" th:style="'width:' + ${sleepRate} + '%; background:linear-gradient(90deg,#6366f1,#a5b4fc);'"></div>
                 </div>
             </div>
         </div>
+
         <!-- 平均运动 -->
-        <div class="col-md-4">
-            <div class="stat-gradient stat-gradient-exercise p-3 text-center position-relative overflow-hidden rounded-4">
-                <canvas class="particle-canvas position-absolute top-0 start-0 w-100 h-100"
-                        data-c1="rgba(251,191,36,0.6)" data-c2="rgba(245,158,11,0.9)"
-                        data-bg1="#fef3c7" data-bg2="#fed7aa"
-                        style="pointer-events:none; opacity:0.9; z-index:0;"></canvas>
-                <div style="position:relative; z-index:1;">
-                    <div class="text-muted small mb-1">平均运动时长</div>
-                    <div class="fw-bold fs-4 mb-1" style="color:#92400e;"
-                         th:text="${avgExercise} != null ? ${avgExercise} + 'min' : '—'">—</div>
-                    <div class="small" style="color:#9a3412;"
-                         th:text="'目标 ' + ${targetExercise} + 'min · 达成率 ' + ${exerciseRate} + '%'">目标 30min · 达成率 133%</div>
-                    <div class="progress mt-2" style="height:5px; background:rgba(146,64,14,0.15);">
-                        <div class="progress-bar" th:style="'width:' + ${exerciseRate} + '%; background:linear-gradient(90deg,#f59e0b,#fcd34d);'"></div>
-                    </div>
+        <div class="trend-stat-card stat-gradient-exercise">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(251,191,36,0.6)" data-c2="rgba(245,158,11,0.9)"
+                    data-bg1="#fef3c7" data-bg2="#fed7aa"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1">平均运动时长</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#92400e;"
+                     th:text="${avgExercise} != null ? ${avgExercise} + 'min' : '—'">—</div>
+                <div class="small" style="color:#9a3412;"
+                     th:text="'目标 ' + ${targetExercise} + 'min · 达成率 ' + ${exerciseRate} + '%'">目标 30min · 达成率 133%</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(146,64,14,0.15);">
+                    <div class="progress-bar" th:style="'width:' + ${exerciseRate} + '%; background:linear-gradient(90deg,#f59e0b,#fcd34d);'"></div>
                 </div>
             </div>
         </div>
+
         <!-- 平均饮水 -->
-        <div class="col-md-4">
-            <div class="stat-gradient stat-gradient-water p-3 text-center position-relative overflow-hidden rounded-4">
-                <canvas class="particle-canvas position-absolute top-0 start-0 w-100 h-100"
-                        data-c1="rgba(34,211,238,0.6)" data-c2="rgba(6,182,212,0.9)"
-                        data-bg1="#cffafe" data-bg2="#a5f3fc"
-                        style="pointer-events:none; opacity:0.9; z-index:0;"></canvas>
-                <div style="position:relative; z-index:1;">
-                    <div class="text-muted small mb-1">平均饮水量</div>
-                    <div class="fw-bold fs-4 mb-1" style="color:#155e75;"
-                         th:text="${avgWater} != null ? ${avgWater} + 'ml' : '—'">—</div>
-                    <div class="small" style="color:#0e7490;"
-                         th:text="'目标 ' + ${targetWater} + 'ml · 达成率 ' + ${waterRate} + '%'">目标 2000ml · 达成率 80%</div>
-                    <div class="progress mt-2" style="height:5px; background:rgba(21,94,117,0.15);">
-                        <div class="progress-bar" th:style="'width:' + ${waterRate} + '%; background:linear-gradient(90deg,#06b6d4,#67e8f9);'"></div>
-                    </div>
+        <div class="trend-stat-card stat-gradient-water">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(34,211,238,0.6)" data-c2="rgba(6,182,212,0.9)"
+                    data-bg1="#cffafe" data-bg2="#a5f3fc"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1">平均饮水量</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#155e75;"
+                     th:text="${avgWater} != null ? ${avgWater} + 'ml' : '—'">—</div>
+                <div class="small" style="color:#0e7490;"
+                     th:text="'目标 ' + ${targetWater} + 'ml · 达成率 ' + ${waterRate} + '%'">目标 2000ml · 达成率 80%</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(21,94,117,0.15);">
+                    <div class="progress-bar" th:style="'width:' + ${waterRate} + '%; background:linear-gradient(90deg,#06b6d4,#67e8f9);'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 平均饮食（新增，紫色渐变） -->
+        <div class="trend-stat-card stat-gradient-diet">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(192,132,252,0.6)" data-c2="rgba(168,85,247,0.9)"
+                    data-bg1="#faf5ff" data-bg2="#e9d5ff"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1">平均饮食评分</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#6b21a8;" id="avgDietDisplay">—</div>
+                <div class="small" style="color:#7e22ce;"
+                     th:text="'目标 ' + ${targetDiet} + '/5 · 达成率 ' + ${dietRate} + '%'">目标 4/5 · 达成率 75%</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(107,33,168,0.15);">
+                    <div class="progress-bar" th:style="'width:' + ${dietRate} + '%; background:linear-gradient(90deg,#a855f7,#d8b4fe);'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 平均心情 -->
+        <div class="trend-stat-card stat-gradient-mood">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(244,114,182,0.6)" data-c2="rgba(236,72,153,0.9)"
+                    data-bg1="#fdf2f8" data-bg2="#fbcfe8"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1">平均心情评分</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#9d174d;" id="avgMoodDisplay">—</div>
+                <div class="small" style="color:#be185d;"
+                     th:text="'目标 5/5 · 达成率 ' + ${moodRate} + '%'">目标 5/5 · 达成率 80%</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(157,23,77,0.15);">
+                    <div class="progress-bar" th:style="'width:' + ${moodRate} + '%; background:linear-gradient(90deg,#ec4899,#f9a8d4);'"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 自定义目标统计卡片（th:each 渲染，颜色由 JS 动态设置） -->
+        <div class="trend-stat-card stat-gradient-custom"
+             th:each="goal : ${customGoals}"
+             th:data-goal-id="${goal.id}"
+             th:if="${customGoals != null and !customGoals.isEmpty()}">
+            <canvas class="particle-canvas"
+                    data-c1="rgba(6,182,212,0.6)" data-c2="rgba(6,182,212,0.9)"
+                    data-bg1="#ecfeff" data-bg2="#ffffff"></canvas>
+            <div class="stat-content">
+                <div class="text-muted small mb-1" th:text="${goal.displayName}">自定义目标</div>
+                <div class="fw-bold fs-4 mb-1" style="color:var(--custom-color, #06b6d4);"
+                     th:text="${customGoalAvgs[goal.id]} != null ? ${customGoalAvgs[goal.id]} + ${goal.unit} : '—'">—</div>
+                <div class="small" style="color:var(--custom-color-light, #0891b2);"
+                     th:text="'目标 ' + ${goal.targetValue} + ${goal.unit} + ' · 达成率 ' + ${customGoalRates[goal.id]} + '%'">目标 · 达成率</div>
+                <div class="progress mt-2" style="height:5px; background:rgba(0,0,0,0.08);">
+                    <div class="progress-bar"
+                         th:style="'width:' + ${customGoalRates[goal.id]} + '%;'"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- 4 个 ECharts 图表容器 -->
+    <!-- ========== 第二部分：ECharts 图表区域 ========== -->
     <div class="row g-3">
         <div class="col-lg-6">
             <div class="card p-3">
@@ -95,6 +185,12 @@
             </div>
         </div>
     </div>
+
+    <!-- ========== 第三部分：自定义目标趋势迷你图表 ========== -->
+    <div class="trend-fluid-grid mt-4" id="customChartsContainer"
+         th:if="${customGoals != null and !customGoals.isEmpty()}">
+        <!-- 自定义目标迷你图表容器将在 JS 中动态生成 -->
+    </div>
 </div>
 
 <div th:replace="~{fragments :: scripts}"></div>
@@ -111,8 +207,103 @@ const exerciseRate = /*[[${exerciseRate}]]*/ 0;
 const waterRate = /*[[${waterRate}]]*/ 0;
 const dietRate = /*[[${dietRate}]]*/ 0;
 const moodRate = /*[[${moodRate}]]*/ 0;
+const customGoals = /*[[${customGoals}]]*/ [];
+const customGoalAvgs = /*[[${customGoalAvgs}]]*/ {};
+const customGoalRates = /*[[${customGoalRates}]]*/ {};
+const customGoalHistory = /*[[${customGoalHistory}]]*/ {};
 
-// 按日期升序（records 是 DESC 从新到旧，反转一下）
+// ========== 计算缺失的平均值（后端未提供的字段） ==========
+function calcAvgFromRecords(records, getter) {
+    const vals = records.map(getter).filter(v => v != null && v !== undefined);
+    if (vals.length === 0) return null;
+    const sum = vals.reduce((a, b) => a + Number(b), 0);
+    return parseFloat((sum / vals.length).toFixed(1));
+}
+const avgDietScore = calcAvgFromRecords(records, r => r.dietScore);
+const avgMood = calcAvgFromRecords(records, r => r.mood);
+document.getElementById('avgDietDisplay').textContent = avgDietScore != null ? avgDietScore + '/5' : '—';
+document.getElementById('avgMoodDisplay').textContent = avgMood != null ? avgMood + '/5' : '—';
+
+// ========== 为自定义目标卡片设置动态颜色 ==========
+function setupCustomGoalCard(goal) {
+    const card = document.querySelector(`.stat-gradient-custom[data-goal-id="${goal.id}"]`);
+    if (!card) return;
+    const palette = GoalUtils.getPalette(goal);
+
+    const rgbValues = hexOrHslToRgb(palette.color);
+
+    // 设置 CSS 变量（背景渐变 + 前景文字色）
+    card.style.setProperty('--custom-color', palette.color);
+    card.style.setProperty('--custom-color-light', palette.colorLight);
+    card.style.setProperty('--custom-bg-from', palette.bgFrom || '#f0fdfa');
+    card.style.setProperty('--custom-bg-to', palette.bgTo || '#ffffff');
+    card.style.setProperty('--custom-shadow', `rgba(${rgbValues.r},${rgbValues.g},${rgbValues.b},0.12)`);
+
+    // 设置进度条渐变背景
+    const progressBar = card.querySelector('.progress-bar');
+    if (progressBar) {
+        progressBar.style.background = `linear-gradient(90deg, ${palette.color}, ${palette.colorLight})`;
+    }
+
+    // 设置粒子画布颜色（rgba 格式供粒子系统解析）
+    const canvas = card.querySelector('canvas.particle-canvas');
+    if (canvas) {
+        canvas.dataset.c1 = `rgba(${rgbValues.r},${rgbValues.g},${rgbValues.b},0.6)`;
+        canvas.dataset.c2 = `rgba(${rgbValues.r},${rgbValues.g},${rgbValues.b},0.9)`;
+        canvas.dataset.bg1 = palette.bgFrom || '#f0fdfa';
+        canvas.dataset.bg2 = palette.bgTo || '#ffffff';
+    }
+}
+
+// 将 hex 或 hsl 颜色转为 rgb 对象
+function hexOrHslToRgb(color) {
+    if (!color) return { r: 6, g: 182, b: 212 };
+    if (color.startsWith('#')) {
+        const hex = color.slice(1);
+        const fullHex = hex.length === 3 ? hex.split('').map(c => c + c).join('') : hex;
+        return {
+            r: parseInt(fullHex.substring(0, 2), 16),
+            g: parseInt(fullHex.substring(2, 4), 16),
+            b: parseInt(fullHex.substring(4, 6), 16)
+        };
+    }
+    if (color.startsWith('hsl')) {
+        const match = color.match(/hsl\((\d+),\s*(\d+)%?,\s*(\d+)%?\)/);
+        if (match) {
+            const h = parseInt(match[1]) / 360;
+            const s = parseInt(match[2]) / 100;
+            const l = parseInt(match[3]) / 100;
+            return hslToRgb(h, s, l);
+        }
+    }
+    return { r: 6, g: 182, b: 212 };
+}
+
+function hslToRgb(h, s, l) {
+    let r, g, b;
+    if (s === 0) { r = g = b = l; }
+    else {
+        const hue2rgb = (p, q, t) => {
+            if (t < 0) t += 1;
+            if (t > 1) t -= 1;
+            if (t < 1/6) return p + (q - p) * 6 * t;
+            if (t < 1/2) return q;
+            if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+            return p;
+        };
+        const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        const p = 2 * l - q;
+        r = hue2rgb(p, q, h + 1/3);
+        g = hue2rgb(p, q, h);
+        b = hue2rgb(p, q, h - 1/3);
+    }
+    return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+}
+
+// 初始化所有自定义目标卡片
+customGoals.forEach(setupCustomGoalCard);
+
+// ========== 数据处理（按日期排序） ==========
 const sorted = [...records].sort((a, b) => (a.recordDate || '').localeCompare(b.recordDate || ''));
 const labels = sorted.map(r => r.recordDate ? r.recordDate.substring(5) : '');
 const sleepData = sorted.map(r => r.sleepDuration ? +r.sleepDuration : null);
@@ -218,50 +409,158 @@ waterChart.setOption({
     ]
 });
 
-// ========== 习惯综合雷达图（5维度达成率） ==========
-const radarChart = echarts.init(document.getElementById('radarChart'));
-radarChart.setOption({
-    tooltip: { valueFormatter: v => v + '%' },
-    radar: {
-        indicator: [
-            { name: '睡眠', max: 100 },
-            { name: '运动', max: 100 },
-            { name: '饮水', max: 100 },
-            { name: '饮食', max: 100 },
-            { name: '心情', max: 100 }
-        ],
-        radius: '65%',
-        splitArea: { areaStyle: { color: ['rgba(15,118,110,0.03)', 'rgba(15,118,110,0.06)'] } },
-        axisName: { color: '#475569', fontSize: 13, fontWeight: 500 }
-    },
-    series: [{
-        type: 'radar',
-        data: [{
-            name: '30天平均达成率',
-            value: [sleepRate, exerciseRate, waterRate, dietRate, moodRate],
-            symbol: 'circle',
-            symbolSize: 6,
-            lineStyle: { color: '#0f766e', width: 2 },
-            itemStyle: { color: '#0f766e' },
-            areaStyle: {
-                color: {
-                    type: 'radial', x: 0.5, y: 0.5, r: 0.5,
-                    colorStops: [
-                        { offset: 0, color: 'rgba(13,148,136,0.55)' },
-                        { offset: 1, color: 'rgba(20,184,166,0.15)' }
-                    ]
-                }
-            },
-            label: { show: true, formatter: '{c}%', color: '#115e59', fontSize: 11, fontWeight: 600 }
+// ========== 习惯综合雷达图（动态维度：内置目标 + 心情 + 自定义目标） ==========
+function buildRadarChart() {
+    const indicators = [
+        { name: '睡眠', max: 100 },
+        { name: '运动', max: 100 },
+        { name: '饮水', max: 100 },
+        { name: '饮食', max: 100 },
+        { name: '心情', max: 100 }
+    ];
+    const radarValues = [sleepRate, exerciseRate, waterRate, dietRate, moodRate];
+
+    // 动态添加自定义目标维度
+    customGoals.forEach(g => {
+        indicators.push({ name: GoalUtils.getDisplayName(g), max: 100 });
+        radarValues.push(customGoalRates[g.id] || 0);
+    });
+
+    const radarChart = echarts.init(document.getElementById('radarChart'));
+    radarChart.setOption({
+        tooltip: { valueFormatter: v => v + '%' },
+        radar: {
+            indicator: indicators,
+            radius: '65%',
+            splitArea: { areaStyle: { color: ['rgba(15,118,110,0.03)', 'rgba(15,118,110,0.06)'] } },
+            axisName: { color: '#475569', fontSize: 13, fontWeight: 500 }
+        },
+        series: [{
+            type: 'radar',
+            data: [{
+                name: '30天平均达成率',
+                value: radarValues,
+                symbol: 'circle',
+                symbolSize: 6,
+                lineStyle: { color: '#0f766e', width: 2 },
+                itemStyle: { color: '#0f766e' },
+                areaStyle: {
+                    color: {
+                        type: 'radial', x: 0.5, y: 0.5, r: 0.5,
+                        colorStops: [
+                            { offset: 0, color: 'rgba(13,148,136,0.55)' },
+                            { offset: 1, color: 'rgba(20,184,166,0.15)' }
+                        ]
+                    }
+                },
+                label: { show: true, formatter: '{c}%', color: '#115e59', fontSize: 11, fontWeight: 600 }
+            }]
         }]
-    }]
-});
+    });
+    return radarChart;
+}
+const radarChart = buildRadarChart();
+
+// ========== 自定义目标迷你图表 ==========
+const customCharts = [];
+function buildCustomMiniCharts() {
+    const container = document.getElementById('customChartsContainer');
+    if (!container || customGoals.length === 0) return;
+
+    customGoals.forEach(goal => {
+        const history = customGoalHistory[goal.id] || [];
+        const palette = GoalUtils.getPalette(goal);
+        const displayName = GoalUtils.getDisplayName(goal);
+        const unit = goal.unit || '';
+
+        // 按日期排序
+        const sortedHistory = [...history].sort((a, b) =>
+            (a.recordDate || '').localeCompare(b.recordDate || '')
+        );
+        const miniLabels = sortedHistory.map(h =>
+            h.recordDate ? h.recordDate.toString().substring(5) : ''
+        );
+        const miniData = sortedHistory.map(h => h.value != null ? Number(h.value) : null);
+        const targetVal = goal.targetValue != null ? Number(goal.targetValue) : null;
+
+        // 创建图表容器
+        const chartId = `customChart_${goal.id}`;
+        const cardDiv = document.createElement('div');
+        cardDiv.className = 'mini-chart-card p-3';
+        cardDiv.innerHTML = `
+            <h6 class="mb-2 custom-chart-title">
+                <span class="custom-chart-color-dot" style="background:${palette.color};"></span>
+                <span>${displayName}趋势</span>
+            </h6>
+            <div id="${chartId}" style="height: 220px;"></div>
+        `;
+        container.appendChild(cardDiv);
+
+        // 初始化迷你图表
+        const chart = echarts.init(document.getElementById(chartId));
+        const isEmpty = miniData.length === 0 || miniData.every(v => v == null);
+
+        if (isEmpty) {
+            chart.setOption({
+                title: {
+                    text: '暂无打卡数据',
+                    left: 'center',
+                    top: 'middle',
+                    textStyle: { color: '#94a3b8', fontSize: 14 }
+                }
+            });
+        } else {
+            chart.setOption({
+                tooltip: {
+                    trigger: 'axis',
+                    valueFormatter: v => v != null ? v + unit : '未记录'
+                },
+                grid: { left: 40, right: 20, top: 30, bottom: 40 },
+                xAxis: {
+                    type: 'category',
+                    data: miniLabels,
+                    axisLabel: { color: '#64748b', fontSize: 11 }
+                },
+                yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#64748b' }
+                },
+                series: [{
+                    name: displayName,
+                    type: 'bar',
+                    data: miniData,
+                    barWidth: 14,
+                    itemStyle: {
+                        borderRadius: [6, 6, 0, 0],
+                        color: {
+                            type: 'linear', x: 0, y: 0, x2: 0, y2: 1,
+                            colorStops: [
+                                { offset: 0, color: palette.color },
+                                { offset: 1, color: palette.colorLight }
+                            ]
+                        }
+                    },
+                    markLine: targetVal ? {
+                        symbol: 'none',
+                        lineStyle: { type: 'dashed', color: '#ef4444' },
+                        data: [{
+                            yAxis: targetVal,
+                            label: { color: '#ef4444', formatter: '目标 {c}' + unit }
+                        }]
+                    } : undefined
+                }]
+            });
+        }
+        customCharts.push(chart);
+    });
+}
+buildCustomMiniCharts();
 
 // 响应式 resize
-const allCharts = [sleepChart, exerciseChart, waterChart, radarChart];
+const allCharts = [sleepChart, exerciseChart, waterChart, radarChart, ...customCharts];
 window.addEventListener('resize', () => allCharts.forEach(c => c.resize()));
 
-// ========== 粒子流动效果（三个卡片 canvas） ==========
+// ========== 粒子流动效果（所有卡片 canvas） ==========
 /**
  * 每个卡片 canvas：
  *  - 绘制 80 个随机漂浮的粒子

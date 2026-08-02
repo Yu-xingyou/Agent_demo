@@ -1,15 +1,33 @@
 package com.habit.agent.entity.jpa;
 
-import jakarta.persistence.*;
-import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Index;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+import jakarta.persistence.UniqueConstraint;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
+
 /**
- * 习惯目标实体（子模块 2-1）
+ * 习惯目标实体（支持内置类型 + 自定义类型）
  *
- * 四种目标类型: SLEEP(睡眠) / EXERCISE(运动) / WATER(饮水) / DIET(饮食)
- * 用于达成率统计和雷达图展示。
+ * 内置类型: SLEEP(睡眠) / EXERCISE(运动) / WATER(饮水) / DIET(饮食)
+ * 自定义类型: CUSTOM — 通过 custom_name 字段存储自定义目标的显示名
  * 对应 MySQL 表: habit_goal
  */
 @Entity
@@ -27,10 +45,10 @@ import java.time.LocalDateTime;
 public class HabitGoal {
 
     /**
-     * 目标类型枚举
+     * 目标类型枚举（含 CUSTOM 自定义类型）
      */
     public enum GoalType {
-        SLEEP, EXERCISE, WATER, DIET
+        SLEEP, EXERCISE, WATER, DIET, CUSTOM
     }
 
     /**
@@ -51,6 +69,13 @@ public class HabitGoal {
     @Enumerated(EnumType.STRING)
     @Column(name = "goal_type", nullable = false, length = 30)
     private GoalType goalType;
+
+    /**
+     * 自定义目标的显示名称（仅当 goalType=CUSTOM 时使用）
+     * 例如："冥想"、"阅读"、"练字"
+     */
+    @Column(name = "custom_name", length = 100)
+    private String customName;
 
     @Column(name = "target_value", nullable = false, precision = 8, scale = 2)
     private BigDecimal targetValue;
@@ -82,5 +107,16 @@ public class HabitGoal {
     @PreUpdate
     void onUpdate() {
         this.updateTime = LocalDateTime.now();
+    }
+
+    /**
+     * 获取目标显示名（CUSTOM 类型使用 customName，其他使用枚举名）
+     */
+    @Transient
+    public String getDisplayName() {
+        if (goalType == GoalType.CUSTOM && customName != null) {
+            return customName;
+        }
+        return goalType != null ? goalType.name() : "";
     }
 }

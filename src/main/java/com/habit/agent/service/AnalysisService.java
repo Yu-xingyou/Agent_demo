@@ -74,12 +74,14 @@ public class AnalysisService {
         List<BigDecimal> exercise = new ArrayList<>();
         List<BigDecimal> water = new ArrayList<>();
         List<Integer> mood = new ArrayList<>();
+        List<Integer> diet = new ArrayList<>();
         for (String date : dateList) {
             HabitRecord r = byDate.get(date);
             sleep.add(r == null ? null : r.getSleepDuration());
             exercise.add(r == null ? null : nullToZero(r.getExerciseDuration()));
             water.add(r == null ? null : nullToZero(r.getWaterIntake()));
             mood.add(r == null ? null : (r.getMood() == null ? null : r.getMood()));
+            diet.add(r == null ? null : (r.getDietScore() == null ? null : r.getDietScore()));
         }
 
         TrendDataVO vo = TrendDataVO.builder()
@@ -88,6 +90,7 @@ public class AnalysisService {
                 .exercise(exercise)
                 .water(water)
                 .mood(mood)
+                .diet(diet)
                 .build();
 
         vo.setCustomSeries(buildCustomSeries(startDate, endDate, dateList));
@@ -255,8 +258,12 @@ public class AnalysisService {
     }
 
     private List<BigDecimal> dietScores(TrendDataVO trend) {
-        // 饮食以 1-5 评分近似，这里复用趋势中未单独存储，返回空序列（由雷达/达成按目标均值处理）
-        return trend.getDates().stream().map(d -> (BigDecimal) null).collect(Collectors.toList());
+        // 饮食以 1-5 评分近似，读取每日打卡 dietScore
+        List<Integer> diet = trend.getDiet();
+        if (diet == null) return new ArrayList<>();
+        return diet.stream()
+                .map(d -> d == null ? null : BigDecimal.valueOf(d))
+                .collect(Collectors.toList());
     }
 
     private BigDecimal nullToZero(Integer v) {

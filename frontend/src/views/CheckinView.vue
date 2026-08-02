@@ -3,14 +3,13 @@ import { ref, onMounted, computed } from 'vue'
 import { Moon, Apple, Dumbbell, Droplets, Save, Target, Plus } from 'lucide-vue-next'
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
-import { MOOD_COLORS, MOOD_LABELS, goalColor } from '@/constants/theme'
+import { MOOD_LABELS, MOOD_EMOJIS, goalColor } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 
 const today = ref(null)
 const submitting = ref(false)
 const customGoals = ref([])
 const customInputs = ref({})
-const customSaving = ref(false)
 
 // 本地时区的今日年月日，避免使用 toISOString() 导致的 UTC 偏移（UTC+8 下午会差一天）
 function localDateStr(d = new Date()) {
@@ -59,31 +58,6 @@ async function loadCustomGoals() {
   }
 }
 
-// 保存单个自定义目标打卡（存在则更新）
-async function saveCustom(g) {
-  const inp = customInputs.value[g.id]
-  if (inp.value == null || inp.value === '') {
-    ElMessage.warning('请填写「' + g.displayName + '」的数值')
-    return
-  }
-  customSaving.value = true
-  try {
-    await goalApi.save({
-      goalId: g.id,
-      goalType: 'CUSTOM',
-      recordDate: localDateStr(),
-      value: Number(inp.value),
-      remark: inp.remark || '',
-    })
-    ElMessage.success('「' + g.displayName + '」已记录')
-    await loadCustomGoals()
-  } catch (e) {
-    /* 拦截器已提示 */
-  } finally {
-    customSaving.value = false
-  }
-}
-
 async function load() {
   try {
     const t = await habitApi.getToday().catch(() => null)
@@ -112,8 +86,28 @@ async function load() {
 async function submit() {
   submitting.value = true
   try {
+    // 1) 保存内置打卡
     await habitApi.saveOrUpdate({ ...form.value })
-    ElMessage.success(isChecked.value ? '记录已更新' : '打卡成功')
+    // 2) 遍历有值填写的自定义目标逐一保存
+    let savedCount = 0
+    for (const g of customGoals.value) {
+      const inp = customInputs.value[g.id]
+      if (inp && inp.value != null && inp.value !== '') {
+        await goalApi.save({
+          goalId: g.id,
+          goalType: 'CUSTOM',
+          recordDate: localDateStr(),
+          value: Number(inp.value),
+          remark: inp.remark || '',
+        })
+        savedCount++
+      }
+    }
+    ElMessage.success(
+      isChecked.value
+        ? (savedCount ? '记录已更新，' + savedCount + ' 项自定义目标已保存' : '记录已更新')
+        : (savedCount ? '打卡成功，' + savedCount + ' 项自定义目标已保存' : '打卡成功')
+    )
     await load()
   } catch (e) {
     /* 错误已由拦截器提示 */
@@ -140,13 +134,13 @@ onMounted(load)
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <label class="text-sm text-slate-500">入睡时间
-            <input v-model="form.sleepTime" type="time" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model="form.sleepTime" type="time" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
           <label class="text-sm text-slate-500">起床时间
-            <input v-model="form.wakeTime" type="time" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model="form.wakeTime" type="time" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
           <label class="text-sm text-slate-500">睡眠质量 (1-5)
-            <input v-model.number="form.sleepQuality" type="number" min="1" max="5" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model.number="form.sleepQuality" type="number" min="1" max="5" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
         </div>
       </div>
@@ -158,10 +152,10 @@ onMounted(load)
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="text-sm text-slate-500">饮食描述
-            <input v-model="form.dietDesc" type="text" placeholder="今天吃了什么？" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model="form.dietDesc" type="text" placeholder="今天吃了什么？" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
           <label class="text-sm text-slate-500">饮食评分 (1-5)
-            <input v-model.number="form.dietScore" type="number" min="1" max="5" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model.number="form.dietScore" type="number" min="1" max="5" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
         </div>
       </div>
@@ -173,10 +167,10 @@ onMounted(load)
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="text-sm text-slate-500">运动类型
-            <input v-model="form.exerciseType" type="text" placeholder="跑步 / 游泳 / 瑜伽" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model="form.exerciseType" type="text" placeholder="跑步 / 游泳 / 瑜伽" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
           <label class="text-sm text-slate-500">时长 (分钟)
-            <input v-model.number="form.exerciseDuration" type="number" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model.number="form.exerciseDuration" type="number" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
         </div>
       </div>
@@ -188,31 +182,31 @@ onMounted(load)
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <label class="text-sm text-slate-500">饮水量 (ml)
-            <input v-model.number="form.waterIntake" type="number" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo" />
+            <input v-model.number="form.waterIntake" type="number" min="0" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand" />
           </label>
           <div class="text-sm text-slate-500">心情
             <div class="mt-2 flex gap-2">
               <button
                 v-for="m in [1,2,3,4,5]"
                 :key="m"
-                class="mood-badge transition-transform"
-                :class="form.mood === m ? 'ring-2 ring-offset-2 ring-slate-400 scale-110' : ''"
-                :style="{ background: MOOD_COLORS[m] }"
+                type="button"
+                class="mood-emoji text-2xl leading-none transition-transform duration-200 hover:scale-125"
+                :class="form.mood === m ? 'scale-125 drop-shadow-[0_0_8px_rgba(102,126,234,0.6)]' : 'opacity-60 hover:opacity-100'"
                 @click="form.mood = m"
-              >{{ m }}</button>
+              >{{ MOOD_EMOJIS[m] }}</button>
             </div>
             <div class="text-xs text-slate-400 mt-1">{{ form.mood ? MOOD_LABELS[form.mood] : '点击选择' }}</div>
           </div>
         </div>
         <label class="block text-sm text-slate-500 mt-4">备注
-          <textarea v-model="form.remark" rows="2" placeholder="今天的小感想…" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo resize-none"></textarea>
+          <textarea v-model="form.remark" rows="2" placeholder="今天的小感想…" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand resize-none"></textarea>
         </label>
       </div>
 
       <!-- 自定义任务目标：新增后自动腾出录入位 -->
       <div v-if="customGoals.length" class="space-y-4">
         <div class="flex items-center gap-2 text-slate-700 font-medium px-1">
-          <Target class="text-brand-purple" /> 自定义目标
+          <Target class="text-brand-soft" /> 自定义目标
         </div>
         <div
           v-for="g in customGoals"
@@ -233,7 +227,7 @@ onMounted(load)
                 v-model.number="customInputs[g.id].value"
                 type="number"
                 :placeholder="'填写 ' + g.displayName"
-                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand"
               />
             </label>
             <label class="text-sm text-slate-500">备注
@@ -241,17 +235,10 @@ onMounted(load)
                 v-model="customInputs[g.id].remark"
                 type="text"
                 placeholder="可选"
-                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand"
               />
             </label>
           </div>
-          <button
-            class="btn-grad mt-4 w-full py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-60"
-            :disabled="customSaving"
-            @click="saveCustom(g)"
-          >
-            <Save :size="16" /> 记录「{{ g.displayName }}」
-          </button>
         </div>
       </div>
 

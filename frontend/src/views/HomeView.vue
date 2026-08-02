@@ -2,28 +2,28 @@
 import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
-  Flower2, Moon, Droplets, Dumbbell, Smile, Sparkles, ArrowRight, TrendingUp,
+  Flower2, Moon, Droplets, Dumbbell, Smile, Sparkles, ArrowRight,
   Target, ChevronRight, Plus,
 } from 'lucide-vue-next'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { PieChart, LineChart } from 'echarts/charts'
-import { TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
+import { PieChart, RadarChart } from 'echarts/charts'
+import { TooltipComponent, LegendComponent, RadarComponent } from 'echarts/components'
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
 import * as analysisApi from '@/api/analysis'
-import { goalColor, MOOD_COLORS, MOOD_LABELS, CHART_PALETTE } from '@/constants/theme'
+import { goalColor, MOOD_LABELS } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 
-use([CanvasRenderer, PieChart, LineChart, TooltipComponent, LegendComponent, GridComponent])
+use([CanvasRenderer, PieChart, RadarChart, TooltipComponent, LegendComponent, RadarComponent])
 
 const router = useRouter()
 const today = ref(null)
 const recent = ref([])
 const goals = ref([])
 const overview = ref(null)
-const trend = ref(null)
+const radar = ref(null)
 const loading = ref(false)
 
 const cards = computed(() => {
@@ -65,33 +65,56 @@ const moodOption = computed(() => {
     itemStyle: { color: MOOD_COLORS[k] },
   }))
   return {
-    tooltip: { trigger: 'item', backgroundColor: 'rgba(15,23,42,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
-    legend: { bottom: 0, textStyle: { color: '#64748b' } },
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderWidth: 1,
+      borderColor: 'rgba(102,126,234,0.25)',
+      textStyle: { color: '#1f2440' },
+      extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
+    },
+    legend: { bottom: 0, textStyle: { color: '#5b6178' } },
     series: [{
       type: 'pie',
       radius: ['48%', '72%'],
       avoidLabelOverlap: true,
-      itemStyle: { borderRadius: 8, borderColor: 'rgba(255,255,255,0.7)', borderWidth: 2 },
+      itemStyle: { borderRadius: 8, borderColor: 'rgba(255,255,255,0.8)', borderWidth: 2 },
       label: { show: false },
       data,
     }],
   }
 })
 
-// 近 7 天趋势折线（真实 analysis/trends）
-const trendOption = computed(() => {
-  const tr = trend.value || { dates: [], sleep: [], exercise: [], water: [] }
+// 近 7 天多维能力画像雷达图（真实 analysis/radar）
+const radarOption = computed(() => {
+  const ra = radar.value || { dimensions: ['睡眠', '运动', '饮水', '饮食', '心情'], values: [0, 0, 0, 0, 0] }
+  const max = Math.max(...ra.values, 100)
   return {
-    tooltip: { trigger: 'axis', backgroundColor: 'rgba(15,23,42,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
-    legend: { data: ['睡眠(h)', '运动(min)', '饮水(ml)'], textStyle: { color: '#64748b' }, top: 0 },
-    grid: { left: 36, right: 12, top: 36, bottom: 24 },
-    xAxis: { type: 'category', data: tr.dates, axisLine: { lineStyle: { color: '#cbd5e1' } }, axisLabel: { color: '#94a3b8' } },
-    yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(148,163,184,0.2)' } }, axisLabel: { color: '#94a3b8' } },
-    series: [
-      { name: '睡眠(h)', type: 'line', smooth: true, data: tr.sleep, itemStyle: { color: '#6366f1' }, areaStyle: { color: 'rgba(99,102,241,0.12)' } },
-      { name: '运动(min)', type: 'line', smooth: true, data: tr.exercise, itemStyle: { color: '#f59e0b' }, areaStyle: { color: 'rgba(245,158,11,0.1)' } },
-      { name: '饮水(ml)', type: 'line', smooth: true, data: tr.water, itemStyle: { color: '#06b6d4' }, areaStyle: { color: 'rgba(6,182,212,0.1)' } },
-    ],
+    tooltip: {
+      backgroundColor: 'rgba(255,255,255,0.92)',
+      borderWidth: 1,
+      borderColor: 'rgba(102,126,234,0.25)',
+      textStyle: { color: '#1f2440' },
+      extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
+    },
+    radar: {
+      indicator: ra.dimensions.map((name) => ({ name, max })),
+      radius: '66%',
+      center: ['50%', '54%'],
+      axisName: { color: '#5b6178', fontSize: 12 },
+      splitLine: { lineStyle: { color: 'rgba(102,126,234,0.12)' } },
+      splitArea: { areaStyle: { color: ['rgba(102,126,234,0.04)', 'rgba(118,75,162,0.05)'] } },
+      axisLine: { lineStyle: { color: 'rgba(102,126,234,0.18)' } },
+    },
+    series: [{
+      type: 'radar',
+      symbol: 'circle',
+      symbolSize: 6,
+      lineStyle: { color: '#667eea', width: 2.5 },
+      itemStyle: { color: '#764ba2' },
+      areaStyle: { color: 'rgba(102,126,234,0.28)' },
+      data: [{ value: ra.values, name: '近7天能力画像' }],
+    }],
   }
 })
 
@@ -131,18 +154,18 @@ const tips = [
 async function load() {
   loading.value = true
   try {
-    const [t, r, g, ov, tr] = await Promise.all([
+    const [t, r, g, ov, ra] = await Promise.all([
       habitApi.getToday().catch(() => null),
       habitApi.getRecent(7),
       goalApi.getActiveWithCustom().catch(() => []),
       analysisApi.getOverview(7).catch(() => null),
-      analysisApi.getTrends(7).catch(() => null),
+      analysisApi.getRadar(7).catch(() => null),
     ])
     today.value = t
     recent.value = r || []
     goals.value = g || []
     overview.value = ov
-    trend.value = tr
+    radar.value = ra
   } catch (e) {
     ElMessage.error('加载首页数据失败')
   } finally {
@@ -200,12 +223,12 @@ async function load() {
       </div>
       <div class="glass rounded-card-xl p-5 lg:col-span-2">
         <div class="flex items-center justify-between mb-2">
-          <h3 class="font-semibold text-slate-700">近 7 天趋势</h3>
-          <button class="text-brand-indigo text-sm hover:text-brand-purple flex items-center" @click="router.push('/trend')">
+          <h3 class="font-semibold text-slate-700">近 7 天能力画像</h3>
+          <button class="text-brand text-sm hover:text-brand-soft flex items-center" @click="router.push('/trend')">
             详细分析 <ChevronRight :size="14" />
           </button>
         </div>
-        <VChart :option="trendOption" autoresize style="height: 250px" />
+        <VChart :option="radarOption" autoresize style="height: 250px" />
       </div>
     </div>
 
@@ -218,8 +241,8 @@ async function load() {
           </div>
           <h3 class="font-semibold text-slate-700">任务目标</h3>
         </div>
-        <button class="text-brand-indigo text-sm hover:text-brand-purple flex items-center" @click="router.push('/checkin')">
-          去打卡设定 <ChevronRight :size="14" />
+        <button class="text-brand text-sm hover:text-brand-soft flex items-center" @click="router.push('/ai-chat')">
+          让 AI 帮你设定 <ChevronRight :size="14" />
         </button>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -235,13 +258,13 @@ async function load() {
         </div>
         <div
           class="goal-card p-4 rounded-xl border-2 border-dashed border-indigo-200 flex flex-col items-center justify-center text-indigo-400 cursor-pointer hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-          @click="router.push('/checkin')"
+          @click="router.push('/ai-chat')"
         >
           <Plus :size="22" />
           <span class="text-xs mt-1">设定新目标</span>
         </div>
       </div>
-      <div v-if="!goals.length" class="text-slate-400 text-sm text-center py-4">暂无激活目标，去「每日打卡」页设定吧</div>
+      <div v-if="!goals.length" class="text-slate-400 text-sm text-center py-4">还没有目标，点击上方「设定新目标」，让 AI 为你定制专属习惯计划</div>
     </section>
 
     <!-- 横向滑动卡片（习惯贴士） -->

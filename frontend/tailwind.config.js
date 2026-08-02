@@ -4,39 +4,30 @@ export default {
   theme: {
     extend: {
       colors: {
-        teal: {
-          700: '#6f8a82',
-          800: '#5f7a72',
-          900: '#4f6a62',
-        },
-        amber: {
-          500: '#c39b7e',
-        },
-        warm: '#f5f4f2',
         brand: {
-          teal: '#6f8a82',
-          indigo: '#7e88a3',
-          purple: '#8f8196',
+          DEFAULT: '#667eea',
+          soft: '#764ba2',
+          deep: '#5a67d8',
         },
       },
       fontFamily: {
         sans: ['Noto Sans SC', 'system-ui', 'sans-serif'],
       },
       backgroundImage: {
-        'grad-primary': 'linear-gradient(135deg, #6f8a82 0%, #7e88a3 50%, #8f8196 100%)',
-        'grad-sleep': 'linear-gradient(135deg, #6f7a99, #7e88a3)',
-        'grad-water': 'linear-gradient(135deg, #5f8a92, #6f97a0)',
-        'grad-exercise': 'linear-gradient(135deg, #b08a6f, #c39b7e)',
-        'grad-diet': 'linear-gradient(135deg, #6f9a8a, #7faa9a)',
-        'grad-mood': 'linear-gradient(135deg, #a87f8e, #b88f9e)',
-        'grad-custom': 'linear-gradient(135deg, #8a7fa0, #9a8fb0)',
-        'grad-soft': 'linear-gradient(135deg, rgba(111,138,130,0.14), rgba(143,129,150,0.14))',
+        'grad-primary': 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        'grad-sleep': 'linear-gradient(135deg, #60a5fa, #6366f1)',
+        'grad-water': 'linear-gradient(135deg, #22d3ee, #38bdf8)',
+        'grad-exercise': 'linear-gradient(135deg, #fb923c, #f59e0b)',
+        'grad-diet': 'linear-gradient(135deg, #34d399, #10b981)',
+        'grad-mood': 'linear-gradient(135deg, #f472b6, #ec4899)',
+        'grad-custom': 'linear-gradient(135deg, #a78bfa, #8b5cf6)',
+        'grad-soft': 'linear-gradient(135deg, rgba(102,126,234,0.16), rgba(118,75,162,0.16))',
       },
       boxShadow: {
-        card: '0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04)',
-        'card-hover': '0 8px 24px rgba(111,138,130,0.14)',
-        glow: '0 10px 40px rgba(126,136,163,0.22)',
-        'glow-purple': '0 10px 40px rgba(143,129,150,0.22)',
+        card: '0 10px 34px rgba(31,38,89,0.08), 0 2px 8px rgba(31,38,89,0.04)',
+        'card-hover': '0 18px 48px rgba(102,126,234,0.16), 0 4px 12px rgba(31,38,89,0.06)',
+        glow: '0 12px 30px rgba(102,126,234,0.32)',
+        'glow-purple': '0 12px 30px rgba(236,72,153,0.26)',
       },
       borderRadius: {
         card: '16px',

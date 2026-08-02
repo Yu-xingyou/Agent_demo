@@ -6,15 +6,15 @@
 
 @layer base {
   :root {
-    --bg-0: #f5f4f2;
-    --bg-1: #ebeae7;
-    --bg-2: #2b2a28;
-    --grad-primary: linear-gradient(135deg, #6f8a82 0%, #7e88a3 50%, #8f8196 100%);
-    --grad-primary-soft: linear-gradient(135deg, rgba(111, 138, 130, 0.14), rgba(143, 129, 150, 0.14));
-    --glass-bg: rgba(255, 255, 255, 0.5);
-    --glass-border: rgba(255, 255, 255, 0.55);
-    --text-strong: #2b2a28;
-    --text-soft: #6b6862;
+    --bg-0: #f8f9fc;
+    --bg-1: #eef1f8;
+    --bg-2: #1e1b2e;
+    --grad-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --grad-primary-soft: linear-gradient(135deg, rgba(102, 126, 234, 0.16), rgba(118, 75, 162, 0.16));
+    --glass-bg: rgba(255, 255, 255, 0.62);
+    --glass-border: rgba(255, 255, 255, 0.72);
+    --text-strong: #1f2440;
+    --text-soft: #5b6178;
   }
 
   * {
@@ -25,9 +25,9 @@
     margin: 0;
     color: var(--text-strong);
     background:
-      radial-gradient(1200px 600px at 10% -10%, rgba(126, 136, 163, 0.1), transparent 60%),
-      radial-gradient(1000px 500px at 100% 0%, rgba(143, 129, 150, 0.09), transparent 55%),
-      radial-gradient(900px 700px at 50% 120%, rgba(111, 138, 130, 0.08), transparent 60%),
+      radial-gradient(1100px 620px at 8% -8%, rgba(102, 126, 234, 0.22), transparent 58%),
+      radial-gradient(1000px 560px at 102% 4%, rgba(236, 72, 153, 0.16), transparent 55%),
+      radial-gradient(900px 720px at 50% 118%, rgba(34, 211, 238, 0.16), transparent 60%),
       linear-gradient(180deg, var(--bg-0), var(--bg-1));
     background-attachment: fixed;
     min-height: 100vh;
@@ -38,17 +38,22 @@
   .glass {
     background: var(--glass-bg);
     border: 1px solid var(--glass-border);
-    backdrop-filter: blur(18px) saturate(160%);
-    -webkit-backdrop-filter: blur(18px) saturate(160%);
-    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+    backdrop-filter: blur(22px) saturate(170%);
+    -webkit-backdrop-filter: blur(22px) saturate(170%);
+    box-shadow: 0 10px 34px rgba(31, 38, 89, 0.08), 0 2px 8px rgba(31, 38, 89, 0.04);
+    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .glass:hover {
+    border-color: rgba(102, 126, 234, 0.35);
+    box-shadow: 0 18px 48px rgba(102, 126, 234, 0.16), 0 4px 12px rgba(31, 38, 89, 0.06);
   }
 
   .glass-strong {
-    background: rgba(255, 255, 255, 0.7);
-    border: 1px solid rgba(255, 255, 255, 0.8);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+    background: rgba(255, 255, 255, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    box-shadow: 0 16px 50px rgba(31, 38, 89, 0.12), 0 4px 14px rgba(31, 38, 89, 0.06);
   }
 
   .gradient-text {
@@ -72,7 +77,7 @@
     -webkit-mask-composite: xor;
     mask-composite: exclude;
     pointer-events: none;
-    opacity: 0.5;
+    opacity: 0.55;
     transition: opacity 0.3s ease;
   }
   .gradient-border:hover::before {
@@ -84,12 +89,12 @@
     color: #fff;
     border: none;
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
-    box-shadow: 0 8px 22px rgba(111, 138, 130, 0.28);
+    box-shadow: 0 10px 26px rgba(102, 126, 234, 0.36);
   }
   .btn-grad:hover {
     transform: translateY(-2px);
-    filter: brightness(1.04);
-    box-shadow: 0 12px 30px rgba(143, 129, 150, 0.32);
+    filter: brightness(1.06);
+    box-shadow: 0 16px 36px rgba(118, 75, 162, 0.42);
   }
   .btn-grad:active {
     transform: translateY(0);
@@ -109,6 +114,9 @@
   .animate-shimmer {
     background-size: 200% 100%;
     animation: shimmer 3.5s linear infinite;
+  }
+  .text-soft {
+    color: var(--text-soft);
   }
 }
 
@@ -142,8 +150,14 @@
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #7e88a3, #8f8196);
+  background: linear-gradient(180deg, #667eea, #764ba2);
   border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #764ba2, #667eea);
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-track {
   background: transparent;

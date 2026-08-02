@@ -41,41 +41,77 @@ function baseGrid() {
 }
 function axisStyle() {
   return {
-    axisLine: { lineStyle: { color: 'rgba(107,104,98,0.35)' } },
-    axisLabel: { color: '#8a857d' },
+    axisLine: { lineStyle: { color: '#dbe0f0' } },
+    axisLabel: { color: '#94a3b8' },
+  }
+}
+// 玻璃卡片化 tooltip
+const chartTooltip = {
+  trigger: 'axis',
+  backgroundColor: 'rgba(255,255,255,0.92)',
+  borderWidth: 1,
+  borderColor: 'rgba(102,126,234,0.25)',
+  textStyle: { color: '#1f2440' },
+  extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
+}
+const chartTooltipItem = {
+  backgroundColor: 'rgba(255,255,255,0.92)',
+  borderWidth: 1,
+  borderColor: 'rgba(102,126,234,0.25)',
+  textStyle: { color: '#1f2440' },
+  extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
+}
+// 过滤脏数据（值大于目标值 10 倍视为异常），动态计算 yAxis max
+function dynamicYAxis(data, target) {
+  const cleaned = (data || []).map((v) => {
+    if (v == null) return null
+    if (target && v > target * 10) return null
+    return v
+  })
+  const valid = cleaned.filter((v) => v != null)
+  const peak = valid.length ? Math.max(...valid) : 0
+  const max = Math.max(target ? target * 1.5 : 10, peak * 1.2)
+  return {
+    type: 'value',
+    min: 0,
+    max: Math.ceil(max),
+    splitLine: { lineStyle: { color: 'rgba(102,126,234,0.1)' } },
+    axisLabel: { color: '#94a3b8' },
   }
 }
 
 const sleepOption = computed(() => ({
-  tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,42,40,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
+  tooltip: chartTooltip,
   grid: baseGrid(),
   xAxis: { type: 'category', data: trend.value?.dates || [], ...axisStyle() },
-  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(107,104,98,0.18)' } }, axisLabel: { color: '#8a857d' } },
+  yAxis: dynamicYAxis(trend.value?.sleep, overview.value?.sleepTarget),
   series: [{
     name: '睡眠(h)', type: 'line', smooth: true, data: trend.value?.sleep || [],
-    itemStyle: { color: '#6f7a99' }, areaStyle: { color: 'rgba(111,122,153,0.16)' },
+    itemStyle: { color: '#6366f1' }, areaStyle: { color: 'rgba(99,102,241,0.16)' },
+    lineStyle: { width: 2.5, color: '#6366f1' }, symbol: 'circle', symbolSize: 6,
   }],
 }))
 
 const exerciseOption = computed(() => ({
-  tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,42,40,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
+  tooltip: chartTooltip,
   grid: baseGrid(),
   xAxis: { type: 'category', data: trend.value?.dates || [], ...axisStyle() },
-  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(107,104,98,0.18)' } }, axisLabel: { color: '#8a857d' } },
+  yAxis: dynamicYAxis(trend.value?.exercise, overview.value?.exerciseTarget),
   series: [{
     name: '运动(min)', type: 'bar', data: trend.value?.exercise || [],
-    itemStyle: { color: '#c39b7e', borderRadius: [6, 6, 0, 0] },
+    itemStyle: { color: '#f59e0b', borderRadius: [6, 6, 0, 0] },
   }],
 }))
 
 const waterOption = computed(() => ({
-  tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,42,40,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
+  tooltip: chartTooltip,
   grid: baseGrid(),
   xAxis: { type: 'category', data: trend.value?.dates || [], ...axisStyle() },
-  yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(107,104,98,0.18)' } }, axisLabel: { color: '#8a857d' } },
+  yAxis: dynamicYAxis(trend.value?.water, overview.value?.waterTarget),
   series: [{
     name: '饮水(ml)', type: 'line', smooth: true, data: trend.value?.water || [],
-    itemStyle: { color: '#6f97a0' }, areaStyle: { color: 'rgba(111,151,160,0.16)' },
+    itemStyle: { color: '#22d3ee' }, areaStyle: { color: 'rgba(34,211,238,0.16)' },
+    lineStyle: { width: 2.5, color: '#22d3ee' }, symbol: 'circle', symbolSize: 6,
   }],
 }))
 
@@ -85,20 +121,21 @@ const radarOption = computed(() => {
     typeof it === 'string' ? { name: it, max: 100 } : { name: it.name, max: it.max || 100 }
   )
   return {
-    tooltip: { backgroundColor: 'rgba(43,42,40,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
-    legend: { data: ['实际', '目标'], textStyle: { color: '#6b6862' }, bottom: 0 },
+    tooltip: chartTooltipItem,
+    legend: { data: ['实际', '目标'], textStyle: { color: '#5b6178' }, bottom: 0 },
     radar: {
       indicator: indicators,
       radius: '62%',
-      axisName: { color: '#5f5c56', fontSize: 12 },
-      splitLine: { lineStyle: { color: 'rgba(107,104,98,0.28)' } },
-      splitArea: { areaStyle: { color: ['rgba(126,136,163,0.04)', 'rgba(143,129,150,0.04)'] } },
+      axisName: { color: '#5b6178', fontSize: 12 },
+      splitLine: { lineStyle: { color: 'rgba(102,126,234,0.12)' } },
+      splitArea: { areaStyle: { color: ['rgba(102,126,234,0.04)', 'rgba(118,75,162,0.05)'] } },
+      axisLine: { lineStyle: { color: 'rgba(102,126,234,0.18)' } },
     },
     series: [{
       type: 'radar',
       data: [
-        { value: rd.values || [], name: '实际', itemStyle: { color: '#7e88a3' }, areaStyle: { color: 'rgba(126,136,163,0.22)' } },
-        { value: rd.targets || [], name: '目标', itemStyle: { color: '#8f8196' }, lineStyle: { type: 'dashed' } },
+        { value: rd.values || [], name: '实际', itemStyle: { color: '#667eea' }, areaStyle: { color: 'rgba(102,126,234,0.28)' }, lineStyle: { width: 2.5, color: '#667eea' } },
+        { value: rd.targets || [], name: '目标', itemStyle: { color: '#ec4899' }, lineStyle: { type: 'dashed', color: '#ec4899' } },
       ],
     }],
   }
@@ -114,14 +151,14 @@ const customOptions = computed(() =>
     colorFrom: s.colorFrom,
     colorTo: s.colorTo,
     option: {
-      tooltip: { trigger: 'axis', backgroundColor: 'rgba(43,42,40,0.85)', borderWidth: 0, textStyle: { color: '#fff' } },
+      tooltip: chartTooltip,
       grid: baseGrid(),
       xAxis: { type: 'category', data: trend.value?.dates || [], ...axisStyle() },
-      yAxis: { type: 'value', splitLine: { lineStyle: { color: 'rgba(107,104,98,0.18)' } }, axisLabel: { color: '#8a857d' } },
+      yAxis: dynamicYAxis(s.data, s.targetValue),
       series: [{
         name: s.name, type: 'line', smooth: true, data: s.data || [],
-        itemStyle: { color: s.colorFrom }, lineStyle: { color: s.colorFrom },
-        areaStyle: { color: 'rgba(138,127,160,0.16)' },
+        itemStyle: { color: s.colorFrom }, lineStyle: { width: 2.5, color: s.colorFrom },
+        areaStyle: { color: 'rgba(138,127,160,0.16)' }, symbol: 'circle', symbolSize: 6,
       }],
     },
   }))
@@ -141,7 +178,7 @@ const statCards = computed(() => {
 <template>
   <div class="max-w-6xl mx-auto px-5 py-6 relative z-10">
     <div class="flex items-center gap-2 mb-1">
-      <TrendingUp class="text-brand-indigo" />
+      <TrendingUp class="text-brand" />
       <h1 class="text-2xl font-semibold text-slate-800">趋势分析</h1>
     </div>
     <p class="text-sm text-slate-500 mb-5">
@@ -160,7 +197,7 @@ const statCards = computed(() => {
     <!-- 内置四块图表网格 -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <div class="glass rounded-card-xl p-5">
-        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Moon class="text-brand-indigo" /> 睡眠趋势</div>
+        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Moon class="text-brand" /> 睡眠趋势</div>
         <VChart :option="sleepOption" autoresize style="height: 240px" />
       </div>
       <div class="glass rounded-card-xl p-5">
@@ -168,11 +205,11 @@ const statCards = computed(() => {
         <VChart :option="exerciseOption" autoresize style="height: 240px" />
       </div>
       <div class="glass rounded-card-xl p-5">
-        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Droplets class="text-brand-indigo" /> 饮水趋势</div>
+        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Droplets class="text-brand" /> 饮水趋势</div>
         <VChart :option="waterOption" autoresize style="height: 240px" />
       </div>
       <div class="glass rounded-card-xl p-5">
-        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Radar class="text-brand-purple" /> 综合能力雷达</div>
+        <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><Radar class="text-brand-soft" /> 综合能力雷达</div>
         <VChart :option="radarOption" autoresize style="height: 240px" />
       </div>
     </div>
@@ -182,7 +219,7 @@ const statCards = computed(() => {
       <div v-for="c in customOptions" :key="c.key" class="glass rounded-card-xl p-5">
         <div class="flex items-center justify-between mb-3">
           <div class="flex items-center gap-2 text-slate-700 font-medium">
-            <Target class="text-brand-purple" /> {{ c.name }}趋势
+            <Target class="text-brand-soft" /> {{ c.name }}趋势
           </div>
           <span class="text-xs text-slate-400">目标 {{ c.targetValue }}{{ c.unit || '' }}</span>
         </div>

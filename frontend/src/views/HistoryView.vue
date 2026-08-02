@@ -3,7 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { History, CalendarDays, Table, Moon, Dumbbell, Droplets } from 'lucide-vue-next'
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
-import { MOOD_COLORS, MOOD_LABELS } from '@/constants/theme'
+import { MOOD_LABELS, MOOD_EMOJIS } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -117,7 +117,7 @@ function customVal(date, goalId) {
   <div class="max-w-5xl mx-auto px-5 py-6 relative z-10">
     <div class="flex items-center justify-between mb-1">
       <div class="flex items-center gap-2">
-        <History class="text-brand-indigo" />
+        <History class="text-brand" />
         <h1 class="text-2xl font-semibold text-slate-800">历史记录</h1>
       </div>
       <div class="flex items-center gap-1 glass rounded-xl p-1">
@@ -143,7 +143,7 @@ function customVal(date, goalId) {
     <!-- 维度迷你趋势 -->
     <section class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
       <div class="glass rounded-card-xl p-4">
-        <div class="flex items-center gap-2 text-slate-600 text-sm mb-1"><Moon class="text-brand-indigo" /> 睡眠趋势</div>
+        <div class="flex items-center gap-2 text-slate-600 text-sm mb-1"><Moon class="text-brand" /> 睡眠趋势</div>
         <VChart :option="sparkSleep" autoresize style="height: 56px" />
       </div>
       <div class="glass rounded-card-xl p-4">
@@ -151,7 +151,7 @@ function customVal(date, goalId) {
         <VChart :option="sparkExercise" autoresize style="height: 56px" />
       </div>
       <div class="glass rounded-card-xl p-4">
-        <div class="flex items-center gap-2 text-slate-600 text-sm mb-1"><Droplets class="text-brand-indigo" /> 饮水趋势</div>
+        <div class="flex items-center gap-2 text-slate-600 text-sm mb-1"><Droplets class="text-brand" /> 饮水趋势</div>
         <VChart :option="sparkWater" autoresize style="height: 56px" />
       </div>
     </section>
@@ -175,7 +175,7 @@ function customVal(date, goalId) {
         </el-table-column>
         <el-table-column label="心情" width="80">
           <template #default="{ row }">
-            <span v-if="row.mood" class="mood-badge" :style="{ background: MOOD_COLORS[row.mood] }">{{ row.mood }}</span>
+            <span v-if="row.mood" class="text-xl leading-none">{{ MOOD_EMOJIS[row.mood] }}</span>
             <span v-else>-</span>
           </template>
         </el-table-column>
@@ -204,14 +204,14 @@ function customVal(date, goalId) {
         <div class="text-xs text-slate-400 mb-2">{{ c.date.slice(5) }}</div>
         <template v-if="c.row">
           <div class="flex items-center gap-1.5 mb-1.5">
-            <span v-if="c.row.mood" class="mood-badge !w-5 !h-5" :style="{ background: MOOD_COLORS[c.row.mood] }">{{ c.row.mood }}</span>
+            <span v-if="c.row.mood" class="text-base leading-none">{{ MOOD_EMOJIS[c.row.mood] }}</span>
             <span class="text-sm font-medium text-slate-700">{{ MOOD_LABELS[c.row.mood] || '' }}</span>
           </div>
           <div class="text-xs text-slate-500 space-y-0.5">
             <div>睡 {{ c.row.sleepDuration || '-' }}h</div>
             <div>动 {{ c.row.exerciseDuration || '-' }}min</div>
             <div>水 {{ c.row.waterIntake || '-' }}ml</div>
-            <div v-for="g in customGoals" :key="g.id" class="text-brand-purple">
+            <div v-for="g in customGoals" :key="g.id" class="text-brand-soft">
               {{ g.displayName }}: {{ customVal(c.date, g.id) != null ? customVal(c.date, g.id) + (g.unit || '') : '-' }}
             </div>
           </div>

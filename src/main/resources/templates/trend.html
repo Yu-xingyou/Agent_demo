@@ -61,11 +61,12 @@
             <div class="stat-content">
                 <div class="text-muted small mb-1">平均睡眠时长</div>
                 <div class="fw-bold fs-4 mb-1" style="color:#312e81;"
-                     th:text="${avgSleep} != null ? ${avgSleep} + 'h' : '—'">—</div>
+                     th:if="${avgSleep != null}" th:text="${avgSleep + 'h'}">—</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#312e81;" th:unless="${avgSleep != null}">—</div>
                 <div class="small" style="color:#4338ca;"
-                     th:text="'目标 ' + ${targetSleep} + 'h · 达成率 ' + ${sleepRate} + '%'">目标 8.0h · 达成率 92%</div>
+                     th:text="${'目标 ' + targetSleep + 'h · 达成率 ' + sleepRate + '%'}">目标 8.0h · 达成率 92%</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(49,46,129,0.15);">
-                    <div class="progress-bar" th:style="'width:' + ${sleepRate} + '%; background:linear-gradient(90deg,#6366f1,#a5b4fc);'"></div>
+                    <div class="progress-bar" th:style="${'width:' + sleepRate + '%; background:linear-gradient(90deg,#6366f1,#a5b4fc);'}"></div>
                 </div>
             </div>
         </div>
@@ -78,11 +79,12 @@
             <div class="stat-content">
                 <div class="text-muted small mb-1">平均运动时长</div>
                 <div class="fw-bold fs-4 mb-1" style="color:#92400e;"
-                     th:text="${avgExercise} != null ? ${avgExercise} + 'min' : '—'">—</div>
+                     th:if="${avgExercise != null}" th:text="${avgExercise + 'min'}">—</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#92400e;" th:unless="${avgExercise != null}">—</div>
                 <div class="small" style="color:#9a3412;"
-                     th:text="'目标 ' + ${targetExercise} + 'min · 达成率 ' + ${exerciseRate} + '%'">目标 30min · 达成率 133%</div>
+                     th:text="${'目标 ' + targetExercise + 'min · 达成率 ' + exerciseRate + '%'}">目标 30min · 达成率 133%</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(146,64,14,0.15);">
-                    <div class="progress-bar" th:style="'width:' + ${exerciseRate} + '%; background:linear-gradient(90deg,#f59e0b,#fcd34d);'"></div>
+                    <div class="progress-bar" th:style="${'width:' + exerciseRate + '%; background:linear-gradient(90deg,#f59e0b,#fcd34d);'}"></div>
                 </div>
             </div>
         </div>
@@ -95,11 +97,12 @@
             <div class="stat-content">
                 <div class="text-muted small mb-1">平均饮水量</div>
                 <div class="fw-bold fs-4 mb-1" style="color:#155e75;"
-                     th:text="${avgWater} != null ? ${avgWater} + 'ml' : '—'">—</div>
+                     th:if="${avgWater != null}" th:text="${avgWater + 'ml'}">—</div>
+                <div class="fw-bold fs-4 mb-1" style="color:#155e75;" th:unless="${avgWater != null}">—</div>
                 <div class="small" style="color:#0e7490;"
-                     th:text="'目标 ' + ${targetWater} + 'ml · 达成率 ' + ${waterRate} + '%'">目标 2000ml · 达成率 80%</div>
+                     th:text="${'目标 ' + targetWater + 'ml · 达成率 ' + waterRate + '%'}">目标 2000ml · 达成率 80%</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(21,94,117,0.15);">
-                    <div class="progress-bar" th:style="'width:' + ${waterRate} + '%; background:linear-gradient(90deg,#06b6d4,#67e8f9);'"></div>
+                    <div class="progress-bar" th:style="${'width:' + waterRate + '%; background:linear-gradient(90deg,#06b6d4,#67e8f9);'}"></div>
                 </div>
             </div>
         </div>
@@ -113,9 +116,9 @@
                 <div class="text-muted small mb-1">平均饮食评分</div>
                 <div class="fw-bold fs-4 mb-1" style="color:#6b21a8;" id="avgDietDisplay">—</div>
                 <div class="small" style="color:#7e22ce;"
-                     th:text="'目标 ' + ${targetDiet} + '/5 · 达成率 ' + ${dietRate} + '%'">目标 4/5 · 达成率 75%</div>
+                     th:text="${'目标 ' + targetDiet + '/5 · 达成率 ' + dietRate + '%'}">目标 4/5 · 达成率 75%</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(107,33,168,0.15);">
-                    <div class="progress-bar" th:style="'width:' + ${dietRate} + '%; background:linear-gradient(90deg,#a855f7,#d8b4fe);'"></div>
+                    <div class="progress-bar" th:style="${'width:' + dietRate + '%; background:linear-gradient(90deg,#a855f7,#d8b4fe);'}"></div>
                 </div>
             </div>
         </div>
@@ -129,9 +132,9 @@
                 <div class="text-muted small mb-1">平均心情评分</div>
                 <div class="fw-bold fs-4 mb-1" style="color:#9d174d;" id="avgMoodDisplay">—</div>
                 <div class="small" style="color:#be185d;"
-                     th:text="'目标 5/5 · 达成率 ' + ${moodRate} + '%'">目标 5/5 · 达成率 80%</div>
+                     th:text="${'目标 5/5 · 达成率 ' + moodRate + '%'}">目标 5/5 · 达成率 80%</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(157,23,77,0.15);">
-                    <div class="progress-bar" th:style="'width:' + ${moodRate} + '%; background:linear-gradient(90deg,#ec4899,#f9a8d4);'"></div>
+                    <div class="progress-bar" th:style="${'width:' + moodRate + '%; background:linear-gradient(90deg,#ec4899,#f9a8d4);'}"></div>
                 </div>
             </div>
         </div>
@@ -147,12 +150,15 @@
             <div class="stat-content">
                 <div class="text-muted small mb-1" th:text="${goal.displayName}">自定义目标</div>
                 <div class="fw-bold fs-4 mb-1" style="color:var(--custom-color, #06b6d4);"
-                     th:text="${customGoalAvgs[goal.id]} != null ? ${customGoalAvgs[goal.id]} + ${goal.unit} : '—'">—</div>
+                     th:if="${customGoalAvgs[goal.id] != null}" 
+                     th:text="${customGoalAvgs[goal.id] + goal.unit}">—</div>
+                <div class="fw-bold fs-4 mb-1" style="color:var(--custom-color, #06b6d4);" 
+                     th:unless="${customGoalAvgs[goal.id] != null}">—</div>
                 <div class="small" style="color:var(--custom-color-light, #0891b2);"
-                     th:text="'目标 ' + ${goal.targetValue} + ${goal.unit} + ' · 达成率 ' + ${customGoalRates[goal.id]} + '%'">目标 · 达成率</div>
+                     th:text="${'目标 ' + goal.targetValue + goal.unit + ' · 达成率 ' + customGoalRates[goal.id] + '%'}">目标 · 达成率</div>
                 <div class="progress mt-2" style="height:5px; background:rgba(0,0,0,0.08);">
                     <div class="progress-bar"
-                         th:style="'width:' + ${customGoalRates[goal.id]} + '%;'"></div>
+                         th:style="${'width:' + customGoalRates[goal.id] + '%;'}"></div>
                 </div>
             </div>
         </div>

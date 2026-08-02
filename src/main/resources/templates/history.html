@@ -33,14 +33,14 @@
     </div>
 
     <div th:unless="${records.isEmpty()}" id="recordList">
-        <div th:each="r : ${records}" th:id="'card-' + ${r.id}" class="history-card card p-3 mb-2"
+        <div th:each="r : ${records}" th:id="${'card-' + r.id}" class="history-card card p-3 mb-2"
              style="transition: all 0.25s ease;">
             <div class="row g-2 align-items-center">
                 <!-- 日期列 -->
                 <div class="col-2 col-md-2">
                     <div class="d-flex flex-column">
                         <span class="fs-5 fw-bold" style="color:var(--teal-800);"
-                              th:text="${r.recordDate != null} ? #strings.abbreviate(r.recordDate, 5) : ''">08-01</span>
+                              th:text="${#strings.substring(r.recordDate, 5)}">08-01</span>
                         <span class="text-muted small"
                               th:text="${r.recordDate}">2026-08-01</span>
                     </div>
@@ -52,17 +52,21 @@
                         <div class="metric-item">
                             <i class="bi bi-moon-stars text-indigo"></i>
                             <span class="text-muted">睡眠</span>
-                            <strong th:text="${r.sleepDuration != null} ? r.sleepDuration + 'h' : '—'">—</strong>
+                            <strong th:if="${r.sleepDuration != null}" th:text="${r.sleepDuration + 'h'}">—</strong>
+                            <strong th:unless="${r.sleepDuration != null}">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-droplet text-info"></i>
                             <span class="text-muted">饮水</span>
-                            <strong th:text="${r.waterIntake != null} ? r.waterIntake + 'ml' : '—'">—</strong>
+                            <strong th:if="${r.waterIntake != null}" th:text="${r.waterIntake + 'ml'}">—</strong>
+                            <strong th:unless="${r.waterIntake != null}">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-bicycle text-warning"></i>
                             <span class="text-muted">运动</span>
-                            <strong th:text="${r.exerciseType != null} ? r.exerciseType + ' ' + (r.exerciseDuration != null ? r.exerciseDuration + 'min' : '') : '—'">—</strong>
+                            <strong th:if="${r.exerciseType != null}" 
+                                    th:text="${r.exerciseType + (r.exerciseDuration != null ? ' ' + r.exerciseDuration + 'min' : '')}">—</strong>
+                            <strong th:unless="${r.exerciseType != null}">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-emoji-smile"></i>
@@ -88,7 +92,7 @@
                                               th:text="${dayRecs.get(cg.id).value}">—</span>
                                         <span th:unless="${dayRecs != null and dayRecs.get(cg.id) != null}">—</span>
                                         <span th:if="${dayRecs != null and dayRecs.get(cg.id) != null and cg.unit != null}"
-                                              th:text="' ' + ${cg.unit}"></span>
+                                              th:text="${' ' + cg.unit}"></span>
                                     </span>
                                 </strong>
                             </div>

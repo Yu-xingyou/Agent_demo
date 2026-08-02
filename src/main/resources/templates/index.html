@@ -12,7 +12,9 @@
             <div class="carousel-item active" style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1);">
                 <div class="carousel-caption">
                     <h3 class="fw-bold mb-1" th:text="${todayRecord != null} ? '今日已打卡，继续保持！' : '今天还没打卡哦'">今日打卡</h3>
-                    <p class="text-muted mb-0" th:text="${todayRecord != null} ? '睡眠 ' + todayRecord.sleepDuration + 'h · 饮水 ' + todayRecord.waterIntake + 'ml' : '点击下方按钮开始记录今天的习惯数据'">今日摘要</p>
+                    <p class="text-muted mb-0" th:if="${todayRecord != null}"
+                       th:text="${'睡眠 ' + todayRecord.sleepDuration + 'h | 饮水 ' + todayRecord.waterIntake + 'ml'}">今日摘要</p>
+                    <p class="text-muted mb-0" th:unless="${todayRecord != null}">点击下方按钮开始记录今天的习惯数据</p>
                 </div>
             </div>
             <div class="carousel-item" style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
@@ -24,7 +26,7 @@
             <div class="carousel-item" style="background: linear-gradient(135deg, #fdf2f8, #fce7f3);">
                 <div class="carousel-caption">
                     <h3 class="fw-bold mb-1"><i class="bi bi-bar-chart text-danger"></i> 本周概况</h3>
-                    <p class="text-muted mb-0" th:text="'最近 ' + ${recentRecords.size()} + ' 天记录已生成，快去查看趋势分析吧'">本周概况</p>
+                    <p class="text-muted mb-0" th:text="${'最近 ' + recentRecords.size() + ' 天记录已生成，快去查看趋势分析吧'}">本周概况</p>
                 </div>
             </div>
         </div>
@@ -37,12 +39,14 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日睡眠</div>
-                        <div class="stat-value" th:text="${todayRecord?.sleepDuration != null} ? todayRecord.sleepDuration + 'h' : '—'">—</div>
+                        <div class="stat-value" th:if="${todayRecord != null and todayRecord.sleepDuration != null}"
+                             th:text="${todayRecord.sleepDuration + 'h'}">—</div>
+                        <div class="stat-value" th:unless="${todayRecord != null and todayRecord.sleepDuration != null}">—</div>
                     </div>
                     <i class="bi bi-moon-stars stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.sleepDuration != null ? todayRecord.sleepDuration * 12.5 : 0) + '%'}"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord != null and todayRecord.sleepDuration != null ? todayRecord.sleepDuration * 12.5 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -51,12 +55,14 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日饮水</div>
-                        <div class="stat-value" th:text="${todayRecord?.waterIntake != null} ? todayRecord.waterIntake + 'ml' : '—'">—</div>
+                        <div class="stat-value" th:if="${todayRecord != null and todayRecord.waterIntake != null}"
+                             th:text="${todayRecord.waterIntake + 'ml'}">—</div>
+                        <div class="stat-value" th:unless="${todayRecord != null and todayRecord.waterIntake != null}">—</div>
                     </div>
                     <i class="bi bi-droplet-half stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.waterIntake != null ? todayRecord.waterIntake / 25 : 0) + '%'}"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord != null and todayRecord.waterIntake != null ? todayRecord.waterIntake / 25 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -65,12 +71,14 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日运动</div>
-                        <div class="stat-value" th:text="${todayRecord?.exerciseDuration != null} ? todayRecord.exerciseDuration + 'min' : '—'">—</div>
+                        <div class="stat-value" th:if="${todayRecord != null and todayRecord.exerciseDuration != null}"
+                             th:text="${todayRecord.exerciseDuration + 'min'}">—</div>
+                        <div class="stat-value" th:unless="${todayRecord != null and todayRecord.exerciseDuration != null}">—</div>
                     </div>
                     <i class="bi bi-bicycle stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.exerciseDuration != null ? todayRecord.exerciseDuration * 1.5 : 0) + '%'}"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord != null and todayRecord.exerciseDuration != null ? todayRecord.exerciseDuration * 1.5 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -79,12 +87,14 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日心情</div>
-                        <div class="stat-value" th:text="${todayRecord?.mood != null} ? todayRecord.mood + '/5' : '—'">—</div>
+                        <div class="stat-value" th:if="${todayRecord != null and todayRecord.mood != null}"
+                             th:text="${todayRecord.mood + '/5'}">—</div>
+                        <div class="stat-value" th:unless="${todayRecord != null and todayRecord.mood != null}">—</div>
                     </div>
                     <i class="bi bi-emoji-smile stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.mood != null ? todayRecord.mood * 20 : 0) + '%'}"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord != null and todayRecord.mood != null ? todayRecord.mood * 20 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -182,7 +192,7 @@
                                         <div class="fw-bold small" th:text="${g.displayName}">睡眠目标</div>
                                         <div class="text-muted small">
                                             目标 <span th:text="${g.targetValue}"></span><span th:text="${g.unit}"></span>
-                                            / <span th:text="${g.period == 'DAILY'} ? '天' : (g.period == 'WEEKLY' ? '周' : '月')">天</span>
+                                            / <span th:text="${ {'DAILY':'天','WEEKLY':'周','MONTHLY':'月'}[g.period] }">天</span>
                                         </div>
                                     </div>
                                 </div>
@@ -201,13 +211,13 @@
                             <div class="d-flex justify-content-between align-items-center mb-1 small">
                                 <span class="text-muted">周平均达成</span>
                                 <strong th:if="${g.goalType == 'SLEEP'}"
-                                        th:text="${weekAvg['SLEEP']} + 'h / ' + ${g.targetValue} + ${g.unit}">6.5h / 8h</strong>
+                                        th:text="${weekAvg['SLEEP'] + 'h / ' + g.targetValue + g.unit}">6.5h / 8h</strong>
                                 <strong th:if="${g.goalType == 'EXERCISE'}"
-                                        th:text="${weekAvg['EXERCISE']} + 'min / ' + ${g.targetValue} + ${g.unit}">20min / 30min</strong>
+                                        th:text="${weekAvg['EXERCISE'] + 'min / ' + g.targetValue + g.unit}">20min / 30min</strong>
                                 <strong th:if="${g.goalType == 'WATER'}"
-                                        th:text="${weekAvg['WATER']} + 'ml / ' + ${g.targetValue} + ${g.unit}">1500ml / 2000ml</strong>
+                                        th:text="${weekAvg['WATER'] + 'ml / ' + g.targetValue + g.unit}">1500ml / 2000ml</strong>
                                 <strong th:if="${g.goalType == 'DIET'}"
-                                        th:text="${weekAvg['DIET']} + ' / ' + ${g.targetValue} + ${g.unit}">3.2 / 4/5</strong>
+                                        th:text="${weekAvg['DIET'] + ' / ' + g.targetValue + g.unit}">3.2 / 4/5</strong>
                                 <strong th:if="${g.goalType == 'CUSTOM'}">
                                     <span th:text="${weekAvg[g.goalType] + ' / ' + g.targetValue + g.unit}">—</span>
                                 </strong>

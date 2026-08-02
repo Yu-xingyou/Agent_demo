@@ -178,6 +178,16 @@ public class GoalService {
                 default -> goalTypeName;
             };
         }
+        String unit = entity.getUnit();
+        if (entity.getGoalType() != null && entity.getGoalType() != GoalType.CUSTOM) {
+            unit = switch (entity.getGoalType()) {
+                case SLEEP -> "h";
+                case EXERCISE -> "min";
+                case WATER -> "ml";
+                case DIET -> "/5";
+                default -> unit;
+            };
+        }
         return HabitGoalVO.builder()
                 .id(entity.getId())
                 .userId(entity.getUserId())
@@ -185,7 +195,7 @@ public class GoalService {
                 .customName(entity.getCustomName())
                 .displayName(displayName)
                 .targetValue(entity.getTargetValue())
-                .unit(entity.getUnit())
+                .unit(unit)
                 .period(entity.getPeriod() != null ? entity.getPeriod().name() : null)
                 .isActive(entity.getIsActive())
                 .createTime(entity.getCreateTime())

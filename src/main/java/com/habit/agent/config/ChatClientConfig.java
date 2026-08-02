@@ -1,0 +1,76 @@
+package com.habit.agent.config;
+
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.Resource;
+
+import lombok.extern.slf4j.Slf4j;
+
+/**
+ * 阶段四（Spring AI 基础）：ChatClient 配置与通义千问连通验证。
+ *
+ * <p>职责：
+ * <ol>
+ *   <li>构建全局 {@link ChatClient} Bean，注入 defaultSystem（生活习惯助手人格）。</li>
+ *   <li>系统提示词从 {@code classpath:prompts/system-prompt.st} 读取，便于维护。</li>
+ *   <li>启动时对通义千问做一次轻量连通性 ping，验证 API Key 与模型可用。</li>
+ * </ol>
+ *
+ * <p>阶段四仅搭建基础能力，不接入对话记忆 / 工具 / 多智能体路由
+ * （分别属于阶段五 / 阶段六 / 阶段九），后续阶段将向该 ChatClient 追加 Advisor。
+ */
+@Slf4j
+@Configuration
+public class ChatClientConfig {
+
+    /** 系统提示词模板（生活习惯助手人格）。 */
+    @Value("classpath:prompts/system-prompt.st")
+    private Resource systemPromptResource;
+
+    @Bean
+    public ChatClient chatClient(ChatClient.Builder builder) {
+        // model / temperature 已在 application.yml 的 spring.ai.openai.chat.options 配置，
+        // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词。
+        return builder
+                .defaultSystem(systemPromptResource)
+                .build();
+    }
+
+    /**
+     * 启动时连通性验证：用最小 token 消耗向通义千问发一句话，确认打通。
+     * 失败仅打印 WARN 不阻断启动（避免在本地无 Key 环境下无法启动）。
+     */
+    @Bean
+    public ChatConnectivityProbe chatConnectivityProbe(OpenAiChatModel chatModel) {
+        return new ChatConnectivityProbe(chatModel);
+    }
+
+    /** 通义千问连通性探针（阶段四验证产出）。 */
+    @Slf4j
+    static class ChatConnectivityProbe {
+
+        private final OpenAiChatModel chatModel;
+
+        ChatConnectivityProbe(OpenAiChatModel chatModel) {
+            this.chatModel = chatModel;
+            probe();
+        }
+
+        private void probe() {
+            try {
+                String reply = chatModel.call("ping");
+                if (reply == null || reply.isBlank()) {
+                    log.warn("[阶段四] 通义千问连通性验证返回空响应，请检查 DASHSCOPE_API_KEY 与模型权限。");
+                } else {
+                    log.info("[阶段四] 通义千问连通性验证成功，模型已就绪。");
+                }
+            } catch (Exception e) {
+                log.warn("[阶段四] 通义千问连通性验证失败（不影响应用启动，请检查网络/DASHSCOPE_API_KEY）：{}",
+                        e.getMessage());
+            }
+        }
+    }
+}

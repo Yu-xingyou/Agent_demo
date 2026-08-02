@@ -781,17 +781,17 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：各前端路由页面能正常渲染，打卡表单能提交保存
 - **Git commit + push（前端仓库）**
 
-### 阶段四：Spring AI 基础对接（技术点 1/2/4/6/10）
+### 阶段四：Spring AI 基础对接（技术点 1/2/4/6/10）✅ 已落地
 
 **目标**：ChatClient 配置就绪，通义千问连通，System Prompt 生效
 
 > 本阶段不产出对外端点（0 端点）。ChatController 的非流式 `POST /api/chat` 和 SSE 流式 `GET /api/chat/stream` 端点在阶段五实现。本阶段仅完成 ChatClient Bean 配置和模型连通验证。
 
-- 配置 DashScope API Key，验证模型连通
-- 编写 System Prompt 模板（`system-prompt.st`）
-- 创建 `ChatClientConfig`，配置 `defaultSystem`
-- 创建 `ChatService` 基础结构（对话方法骨架，记忆/流式在阶段五实现）
-- 验证：通过单元测试或临时 main 方法验证 `chatClient.prompt().user("你好").call().content()` 能返回通义千问回复
+- 配置 DashScope API Key（`application.yml` 的 `spring.ai.openai.api-key`，读取 `DASHSCOPE_API_KEY` 环境变量）
+- 编写 System Prompt 模板（`resources/prompts/system-prompt.st`）
+- 创建 `ChatClientConfig`：构建全局 `ChatClient` Bean，`defaultSystem` 从模板注入；`defaultOptions` 复用 yml 的 `qwen-plus`/`temperature=0.7`；含启动连通性探针 `ChatConnectivityProbe`
+- 创建 `ChatService` 基础结构（对话方法骨架：`chat` 非流式 + `stream` 流式，记忆/工具在后续阶段扩展）
+- 验证：应用启动日志出现 `[阶段四] 通义千问连通性验证成功`（无 Key 时打印 WARN 不阻断启动）
 - **Git commit + push**
 
 ### 阶段五：对话记忆与流式输出（技术点 5/11/12）
@@ -1035,7 +1035,7 @@ public SseEmitter streamChat(@RequestParam String message,
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
-| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 0 |
+| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 0 | ✅ 已落地 |
 | 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 10 |
 | 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 10 |
 | 阶段七 | RAG 知识库 | RagController | 5 | 15 |

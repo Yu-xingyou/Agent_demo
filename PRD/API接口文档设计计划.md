@@ -2,7 +2,7 @@
 
 ## 任务概述
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式）。真实代码已落地 3 个后端功能模块、25 个 `/api` 接口端点（Habit 7 + Goal 14 + Analysis 4）；另有 5 个模块（26 个端点）规划中尚未实现，共 51 个端点。**每个已落地接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出；待开发接口给出契约说明。
 
 > **前后端分离约定**：后端仅提供 REST API（无页面路由），前端为单仓库 Vue 3 + Vite 工程 `agent_demo/frontend/`，通过 `/api` 调用。本文档为纯 API 文档，不再描述 Thymeleaf 页面；文档同时以 OpenAPI 3.0 规范描述，便于 Swagger UI 浏览与前端通过 OpenAPI 生成请求代码。文档替换现有骨架文件 `API接口设计方案.md`。
 
@@ -90,8 +90,8 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 ## 1. 文档概述（项目背景、前后端分离架构、技术栈、通用约定）
 ## 2. 通用规范（Result<T> JSON 格式、CORS、鉴权、API 版本化、错误码体系、日期时间格式）
 ## 3. SSE 流式输出规范（5种事件类型 JSON 格式、时序图、前端 EventSource 对接代码）
-## 4. 接口总览表（46 端点速查矩阵）
-## 5. 各模块接口详细设计（8 个后端模块，每接口含完整 JSON 请求/响应示例）
+## 4. 接口总览表（51 端点速查矩阵：已落地 25 + 待开发 26）
+## 5. 各模块接口详细设计（3 个已落地后端模块含完整 JSON 示例 + 5 个待开发模块契约说明）
 ## 6. VO 数据模型清单（VO 类，每个含字段表格 + JSON 示例）
 ## 7. 错误码完整对照表
 ## 8. 前端消费方式（Axios 封装、Pinia 状态、Vue Router 与 API 映射、OpenAPI 代码生成）
@@ -272,7 +272,9 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 
 **端点 4-7**：`GET /api/habits/recent/{days}`、`GET /api/habits/all`、`GET /api/habits/{id}`、`DELETE /api/habits/{id}` — 响应格式同上（单个或列表），DELETE 响应为 `{"code":200,"message":"success","data":null}`
 
-### 5.2 习惯目标模块（GoalController `/api/goals`）— 6 端点
+### 5.2 习惯目标模块（GoalController `/api/goals` + `/api/goal-records`）— 14 端点
+
+> GoalController 共 14 端点：目标 CRUD（8 端点，`/api/goals`）+ 自定义目标打卡记录（6 端点，`/api/goal-records/records`，正式功能）。`goalType` 含 `SLEEP/EXERCISE/WATER/DIET/CUSTOM`；`period` 枚举 `DAILY/WEEKLY/MONTHLY`。`CUSTOM` 为自定义目标（agent 模型「自定义习惯目标（可选）」的落地）。
 
 **端点 1：POST `/api/goals` — 创建目标**
 
@@ -280,18 +282,31 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 
 | 字段 | 类型 | 必填 | 说明 |
 |---|---|---|---|
-| goalType | String | 是 | 目标类型：SLEEP/EXERCISE/WATER/DIET |
+| goalType | String | 是 | 目标类型：SLEEP/EXERCISE/WATER/DIET/CUSTOM |
+| customName | String | 否 | 自定义目标名称，`goalType=CUSTOM` 时必填 |
 | targetValue | Number | 是 | 目标值 |
 | unit | String | 否 | 单位（如 hours/minutes/ml） |
 | period | String | 否 | 周期：DAILY/WEEKLY/MONTHLY，默认 DAILY |
 | isActive | Boolean | 否 | 是否启用，默认 true |
 
-请求示例：
+请求示例（标准目标）：
 ```json
 {
   "goalType": "SLEEP",
   "targetValue": 8.0,
   "unit": "hours",
+  "period": "DAILY",
+  "isActive": true
+}
+```
+
+请求示例（CUSTOM 自定义目标）：
+```json
+{
+  "goalType": "CUSTOM",
+  "customName": "每天阅读",
+  "targetValue": 30.0,
+  "unit": "minutes",
   "period": "DAILY",
   "isActive": true
 }
@@ -306,9 +321,13 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
     "id": 1,
     "userId": 1,
     "goalType": "SLEEP",
+    "customName": null,
+    "displayName": "SLEEP",
     "targetValue": 8.0,
     "unit": "hours",
     "period": "DAILY",
+    "currentValue": 0.0,
+    "weeklyAchievement": 0.0,
     "isActive": true,
     "createTime": "2026-07-30T10:30:00",
     "updateTime": "2026-07-30T10:30:00"
@@ -327,17 +346,45 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 
 **端点 2-6**：`GET /api/goals`、`GET /api/goals/active`、`GET /api/goals/{type}`、`PUT /api/goals/{id}`、`DELETE /api/goals/{id}` — GET 响应为 `Result<List<HabitGoalVO>>` 或 `Result<HabitGoalVO>`，PUT 请求/响应同 POST 格式，DELETE 响应为 `{"code":200,"message":"success","data":null}`
 
-GET 列表响应示例：
+GET 列表响应示例（含 CUSTOM 自定义目标与本周达成率）：
 ```json
 {
   "code": 200,
   "message": "success",
   "data": [
-    {"id":1,"userId":1,"goalType":"SLEEP","targetValue":8.0,"unit":"hours","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
-    {"id":2,"userId":1,"goalType":"EXERCISE","targetValue":30.0,"unit":"minutes","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
-    {"id":3,"userId":1,"goalType":"WATER","targetValue":2000.0,"unit":"ml","period":"DAILY","isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
-    {"id":4,"userId":1,"goalType":"DIET","targetValue":4.0,"unit":"score","period":"DAILY","isActive":false,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"}
+    {"id":1,"userId":1,"goalType":"SLEEP","customName":null,"displayName":"SLEEP","targetValue":8.0,"unit":"hours","period":"DAILY","currentValue":7.25,"weeklyAchievement":90.6,"isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":2,"userId":1,"goalType":"EXERCISE","customName":null,"displayName":"EXERCISE","targetValue":30.0,"unit":"minutes","period":"DAILY","currentValue":28.0,"weeklyAchievement":93.3,"isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":3,"userId":1,"goalType":"WATER","customName":null,"displayName":"WATER","targetValue":2000.0,"unit":"ml","period":"DAILY","currentValue":1671.0,"weeklyAchievement":83.6,"isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"},
+    {"id":5,"userId":1,"goalType":"CUSTOM","customName":"每天阅读","displayName":"每天阅读","targetValue":30.0,"unit":"minutes","period":"DAILY","currentValue":20.0,"weeklyAchievement":66.7,"isActive":true,"createTime":"2026-07-30T10:30:00","updateTime":"2026-07-30T10:30:00"}
   ]
+}
+```
+
+**端点 2-8**（目标管理）：`GET /api/goals`、`GET /api/goals/active`、`GET /api/goals/active-with-custom`、`GET /api/goals/{type}`、`PUT /api/goals/{id}`、`DELETE /api/goals/{id}`、`POST /api/goals/{id}/toggle`。GET 响应为 `Result<List<HabitGoalVO>>` 或 `Result<HabitGoalVO>`，PUT 请求/响应同 POST 格式，DELETE/TOGGLE 响应为 `{"code":200,"message":"success","data":null}`。
+
+**端点 9-14（自定义目标打卡记录，`/api/goal-records/records`，正式功能）**：
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| POST | `/api/goal-records/records` | 录入/更新自定义目标打卡（goalId、recordDate 必填） |
+| GET | `/api/goal-records/records/today` | 今日所有自定义目标打卡 |
+| GET | `/api/goal-records/records?startDate=&endDate=` | 日期范围查询 |
+| GET | `/api/goal-records/records/recent/{days}` | 最近 N 天打卡 |
+| GET | `/api/goal-records/records/goal/{goalId}/recent/{days}` | 按目标最近 N 天打卡 |
+| GET | `/api/goal-records/records/goal/{goalId}/achievement?period=WEEKLY` | 按目标/周期查询达成率（驱动 VO.weeklyAchievement） |
+
+打卡录入请求示例：
+```json
+POST /api/goal-records/records
+{ "goalId": 5, "recordDate": "2026-07-30", "value": 25, "remark": "读完一章" }
+```
+
+打卡录入成功响应示例：
+```json
+{
+  "code": 200,
+  "message": "success",
+  "data": { "id": 12, "goalId": 5, "recordDate": "2026-07-30", "value": 25, "remark": "读完一章" }
 }
 ```
 
@@ -1062,7 +1109,7 @@ curl -X POST http://localhost:8080/api/rag/upload \
 |---|---|---|
 | 通用 | `Result<T>`、`ErrorResponseVO` | 2 |
 | 习惯记录 | `HabitRecordVO`、`HabitRecordFormVO` | 2 |
-| 目标管理 | `HabitGoalVO`、`HabitGoalFormVO` | 2 |
+| 目标管理 | `HabitGoalVO`、`HabitGoalFormVO` | 2 | `HabitGoalVO` 含 customName/displayName/currentValue/weeklyAchievement，`goalType` 含 CUSTOM |
 | AI 对话 | `ChatRequestVO`、`ChatResponseVO`、`ChatStopVO` | 3 |
 | 会话管理 | `ChatSessionVO`、`ChatMessageVO` | 2 |
 | 趋势分析 | `TrendDataVO`、`AchievementRateVO`、`AnalysisOverviewVO`、`RadarDataVO` | 4 |
@@ -1113,7 +1160,7 @@ JSON 示例：
 | 200 | 200 | SUCCESS | 成功 | `{"code":200,"message":"success","data":{...}}` |
 | 400 | 40001 | INVALID_PARAM | 参数校验失败 | `{"code":40001,"message":"recordDate 不能为空","data":null}` |
 | 400 | 40002 | INVALID_DATE_RANGE | 日期范围无效 | `{"code":40002,"message":"startDate 不能晚于 endDate","data":null}` |
-| 400 | 40003 | INVALID_ENUM_VALUE | 枚举值不合法 | `{"code":40003,"message":"goalType 必须为 SLEEP/EXERCISE/WATER/DIET 之一","data":null}` |
+| 400 | 40003 | INVALID_ENUM_VALUE | 枚举值不合法 | `{"code":40003,"message":"goalType 必须为 SLEEP/EXERCISE/WATER/DIET/CUSTOM 之一","data":null}` |
 | 400 | 40004 | DAILY_NO_RECORD | 当日未打卡无法生成评价 | `{"code":40004,"message":"当日尚未打卡，请先完成打卡再生成评价","data":null}` |
 | 404 | 40401 | HABIT_NOT_FOUND | 习惯记录不存在 | `{"code":40401,"message":"习惯记录不存在","data":null}` |
 | 404 | 40402 | GOAL_NOT_FOUND | 目标不存在 | `{"code":40402,"message":"目标不存在","data":null}` |
@@ -1132,18 +1179,22 @@ JSON 示例：
 
 ## 接口与开发阶段映射
 
-| 开发阶段 | 模块 | 端点数 |
-|---|---|---|
-| 阶段二 | HabitController + GoalController | 13 |
-| 阶段三 | 前端工程 SPA 路由（单仓库，不占后端端点） | 0 |
-| 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 |
-| 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 10 |
-| 阶段七 | RagController | 5 |
-| 阶段九 | AnalysisController | 4 |
-| 阶段十 | AiAnalysisController + ReminderController | 11 |
-| **合计（后端 REST 端点，按实际代码落地）** | | **46** |
+| 开发阶段 | 模块 | 端点数 | 状态 |
+|---|---|---|---|
+| 阶段二 | HabitController + GoalController（目标 8 + 打卡记录 6） | 7 + 14 = 21 | ✅ 已落地 |
+| 阶段三 | 前端工程 SPA 路由（单仓库，不占后端端点） | 0 | ✅ 已落地 |
+| 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 | ❌ 待开发 |
+| 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 3 + 7 = 10 | ❌ 待开发 |
+| 阶段六 | Tool Calling + Advisor（无对外端点） | 0 | ❌ 待开发 |
+| 阶段七 | RagController | 5 | ❌ 待开发 |
+| 阶段八 | 多智能体路由（无新增端点） | 0 | ❌ 待开发 |
+| 阶段九 | AnalysisController | 4 | ✅ 已落地 |
+| 阶段十 | AiAnalysisController + ReminderController | 6 + 5 = 11 | ❌ 待开发 |
+| **已落地小计** | | **25** | |
+| **待开发小计** | | **26** | |
+| **合计（后端 REST 端点，最终实现全量）** | | **51** | 已落地 25 + 待开发 26 |
 
-> 说明：目标模块含 5 个自定义目标打卡记录扩展接口（`/api/goal-records/records`），故 Controller 实际端点总数为 46。与《API接口设计方案.md》口径一致。
+> 说明：目标模块含 6 个自定义目标打卡记录接口（`/api/goal-records/records`，正式功能），故 GoalController 实际端点为 14。与《API接口设计方案.md》《详细模块开发流程.md》口径一致。
 
 ## 关键设计决策
 
@@ -1161,7 +1212,7 @@ JSON 示例：
 
 1. 编写文档头部与通用规范（第 1-2 章）：Base URL、Result<T> 的 JSON 格式定义、错误码框架、日期时间格式
 2. 编写 SSE 规范章节（第 3 章）：5 种事件类型的完整 JSON data 格式、时序图、前端 EventSource 对接代码示例、停止机制
-3. 编写接口总览表（第 4 章）：46 端点速查矩阵
+3. 编写接口总览表（第 4 章）：51 端点速查矩阵（已落地 25 + 待开发 26）
 4. 逐模块编写接口详情（第 5 章）：每个接口包含：
    - 请求方法 + 路径
    - 请求参数表格（字段名/类型/必填/说明）
@@ -1182,7 +1233,7 @@ JSON 示例：
 5. 22 个 VO 类都有字段表格 + JSON 示例
 6. 19 个错误码都有 JSON 响应示例
 7. 文档覆盖 PRD 所有必做功能（打卡/历史/AI分析/建议）
-8. 46 个端点的 JSON 示例可直接复制到 Postman 测试
+8. 已落地 25 个端点的 JSON 示例可直接复制到 Postman 测试；待开发 26 个端点给出契约说明
 
 ## 假设与约束
 

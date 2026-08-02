@@ -2,18 +2,19 @@
 
 ## Summary
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点的完整 REST API 接口文档。包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 3 个后端功能模块、25 个 `/api` 端点（Habit 7 + Goal 14 + Analysis 4）；另有 5 个模块（26 个端点）规划中尚未实现。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
 
-> 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录）均已标注；超出原接口设计的「自定义目标打卡记录」5 个接口已整合进目标模块；尚未实现的 7 个 Controller 模块已标注「未实现，待模块化开发」。
+> 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录、AnalysisController）均已标注；「自定义目标打卡记录」6 个接口已整合进目标模块并提升为正式功能；尚未实现的 5 个 Controller 模块已标注「未实现，待模块化开发」。
 
 ## Current State Analysis
 
-- 项目已有部分 Java 代码落地：已实现 `HabitController`（习惯记录）与 `GoalController`（习惯目标 + 自定义目标打卡记录）两大模块。
+- 项目已有部分 Java 代码落地：已实现 `HabitController`（习惯记录）、`GoalController`（习惯目标 + 自定义目标打卡记录）、`AnalysisController`（趋势分析）三大模块。
 - 数据存储采用 MongoDB + MySQL 双库架构。
-- 已实现 Controller（2 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
+- 已实现 Controller（3 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
   - `HabitController`（`/api/habits`，7 端点）
-  - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点，含超出原接口设计的「自定义目标打卡记录」5 个接口，见下文"目标模块扩展接口"）
-- 尚未实现（待模块化开发）的 Controller（6 个）：ChatController / SessionController / AnalysisController / AiAnalysisController / RagController / ReminderController。
+  - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点：目标 CRUD 8 + 自定义目标打卡记录 6，见下文"目标模块扩展接口"）
+  - `AnalysisController`（`/api/analysis`，4 端点：趋势/达成率/概览/雷达）
+- 尚未实现（待模块化开发）的 Controller（5 个）：ChatController / SessionController / AiAnalysisController / RagController / ReminderController。
 
 > **架构说明**：后端仅提供 REST API，**不含任何页面路由**（原 PageController 的 Thymeleaf 页面已移除）。前端页面由单仓库 Vue 工程 `agent_demo/frontend/` 实现，通过 `/api` 调用本接口。
 
@@ -24,18 +25,18 @@
 | 模块 | Controller | 端点数 | 实现状态 | 备注 |
 |---|---|---|---|---|
 | 习惯记录 CRUD | HabitController | 7 | ✅ 已实现 | 含 @Validated + @Tag + 参数校验 |
-| 习惯目标管理 | GoalController | 9 | ✅ 已实现 | 原设计 6 端点，实际扩展至 9（含 active-with-custom 等） |
-| 自定义目标打卡记录 | GoalController | 5 | ✅ 已实现（超纲） | 原接口文档未定义，见"目标模块扩展接口" |
+| 习惯目标管理 | GoalController | 8 | ✅ 已实现 | `/api/goals` 目标 CRUD，含 CUSTOM 类型 |
+| 自定义目标打卡记录 | GoalController | 6 | ✅ 已实现（正式功能） | 见"目标模块扩展接口"，原为超纲现提升为正式 |
+| 趋势分析 | AnalysisController | 4 | ✅ 已实现 | `/api/analysis` 趋势/达成率/概览/雷达 |
 | AI 对话 | ChatController | 3 | ❌ 未实现 | 待模块化开发（阶段五） |
 | 会话管理 | SessionController | 7 | ❌ 未实现 | 待模块化开发（阶段五） |
-| 趋势分析 | AnalysisController | 4 | ❌ 未实现 | 待模块化开发 |
 | AI 分析结果 | AiAnalysisController | 6 | ❌ 未实现 | 待模块化开发 |
 | RAG 知识库 | RagController | 5 | ❌ 未实现 | 待模块化开发 |
 | 打卡提醒 | ReminderController | 5 | ❌ 未实现 | 待模块化开发（对应 PRD 可选功能「打卡提醒」） |
 
-## 目标模块扩展接口（自定义目标打卡记录）
+## 目标模块扩展接口（自定义目标打卡记录，正式功能）
 
-> 以下 5 个接口为代码实现中新增、**超出原《API接口设计方案》接口定义**的部分，现整合进「目标模块」一并管理，统一前缀 `/api/goal-records`。
+> 以下 6 个接口为自定义目标打卡记录管理，统一前缀 `/api/goal-records`。原属超纲扩展接口，现提升为正式功能（对应 agent 模型「自定义习惯目标（可选）」），与目标 CRUD（8 端点）共同构成 GoalController 的 14 端点。
 
 | 方法 | 路径 | 说明 | 参数 |
 |---|---|---|---|
@@ -44,6 +45,7 @@
 | GET | `/api/goal-records/records?startDate=&endDate=` | 按日期范围查询 | startDate、endDate（可选，ISO 日期） |
 | GET | `/api/goal-records/records/recent/{days}` | 查询最近 N 天打卡 | days（路径参数，必填） |
 | GET | `/api/goal-records/records/goal/{goalId}/recent/{days}` | 按目标查询最近 N 天打卡 | goalId（路径，必填）、days（路径，必填） |
+| GET | `/api/goal-records/records/goal/{goalId}/achievement?period=WEEKLY` | 按目标/周期查询达成率 | goalId（路径，必填）、period（查询参数，WEEKLY/DAILY/MONTHLY，默认 WEEKLY，驱动 HabitGoalVO.weeklyAchievement） |
 
 **请求示例（录入打卡）**
 
@@ -167,22 +169,32 @@ POST /api/goal-records/records
   - 未知异常 → `Result.error(50001, "系统异常")`
 - 前端 `utils/request.js` 拦截器：非 `code===0` 时 `ElMessage.error(message)` 并 reject
 
-### 2. 八大后端模块接口（共 46 个端点）
+### 2. 后端模块接口统计（最终实现全量 51 端点）
 
-> 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由单仓库 Vue 工程 `agent_demo/frontend/` 实现。以下为按**实际代码落地**统计的 8 个后端 REST 模块，共 46 个 `/api` 端点（目标模块含 5 个自定义目标打卡记录扩展接口）。
+> 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由单仓库 Vue 工程 `agent_demo/frontend/` 实现。以下按真实代码口径分「已落地 / 待开发」两表，替代原「8 模块 46 端点」规划值。
+
+**已落地（3 模块，25 端点）**：
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
 | 习惯记录 CRUD | HabitController | 7 | POST/GET/DELETE `/api/habits` |
-| 习惯目标管理 | GoalController | 9 | CRUD `/api/goals`（含 5 个 `/api/goal-records/records` 扩展） |
+| 习惯目标管理 | GoalController | 8 | CRUD `/api/goals`（含 CUSTOM 自定义目标） |
+| 自定义目标打卡记录 | GoalController | 6 | `/api/goal-records/records`（含达成率接口） |
+| 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 `/api/analysis` |
+| **小计** | | **25** | |
+
+**待开发（5 模块，26 端点）**：
+
+| 模块 | Controller | 端点数 | 核心接口 |
+|---|---|---|---|
 | AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
 | 会话管理 | SessionController | 7 | 会话 CRUD + 消息历史 |
-| 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 |
 | AI 分析结果 | AiAnalysisController | 6 | 列表/详情/触发/删除/每日评价 |
 | RAG 知识库 | RagController | 5 | 导入/检索/列表/删除/上传 |
 | 打卡提醒 | ReminderController | 5 | CRUD + 启用/禁用切换 |
+| **小计** | | **26** | |
 
-> 合计：7 + 9 + 3 + 7 + 4 + 6 + 5 + 5 = 46 个后端 REST 端点。
+> 合计（最终实现全量）：25 + 26 = 51 个后端 REST 端点。
 
 ### 3. SSE 特殊响应格式（仅 `GET /api/chat/stream` 流式端点使用）
 - 非流式端点 `POST /api/chat` 返回标准 `Result<ChatResponseVO>` JSON 响应
@@ -212,4 +224,4 @@ POST /api/goal-records/records
 3. 每个模块接口与开发计划阶段对应
 4. SSE 事件格式定义完整可实施
 5. VO 数据模型覆盖所有响应场景
-6. 46 个后端 `/api` 端点均有完整 JSON 请求/响应示例
+6. 已落地 25 个 `/api` 端点均有完整 JSON 请求/响应示例；待开发 26 个端点给出接口契约说明

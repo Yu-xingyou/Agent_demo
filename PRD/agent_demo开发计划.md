@@ -193,9 +193,9 @@ habit-agent/
 │   │   ├── VectorStoreConfig.java          # 向量库、EmbeddingModel 配置
 │   │   └── AgentConfig.java                # 多智能体路由配置
 │   │
-│   ├── controller/                         # 控制层（8 个 REST Controller，46 个 /api 端点）
-│   │   ├── HabitController.java            # 习惯记录 CRUD（REST，7 端点）
-│   │   ├── GoalController.java             # 习惯目标管理（REST，6 端点）
+│   ├── controller/                         # 控制层（已落地 3 个 REST Controller，25 个 /api 端点；规划中再增 5 个，共 51 端点）
+│   │   ├── HabitController.java            # 习惯记录 CRUD（REST，7 端点，✅ 已落地）
+│   │   ├── GoalController.java             # 习惯目标管理 + 自定义目标打卡记录（REST，14 端点，✅ 已落地）
 │   │   ├── ChatController.java             # AI 对话（非流式 + SSE 流式 + 停止，3 端点）
 │   │   ├── SessionController.java          # 会话管理（REST，7 端点）
 │   │   ├── AnalysisController.java         # 趋势分析数据（REST，4 端点）
@@ -752,15 +752,17 @@ public SseEmitter streamChat(@RequestParam String message,
 
 **目标**：习惯记录可录入、可查询，习惯目标可管理
 
-> 对应 API 文档：HabitController（7 端点）+ GoalController（6 端点），共 13 端点。
+> 对应 API 文档：HabitController（7 端点）+ GoalController（14 端点，含自定义目标打卡记录 6 端点），共 21 端点。**本阶段已全部落地。**
 
 - 创建 JPA Entity（User/HabitRecord/HabitGoal）
 - 创建 JPA Repository 接口
-- 创建 `HabitService` + `HabitController`（习惯记录 7 端点）
-- 创建 `GoalService` + `GoalController`（习惯目标 6 端点）
-- 创建 VO 类（HabitRecordVO/HabitGoalVO 等）
+- 创建 `HabitService` + `HabitController`（习惯记录 7 端点，已落地）
+- 创建 `GoalService` + `GoalController`：
+  - 习惯目标 CRUD（8 端点，`/api/goals`，已落地）；`goalType` 含 `SLEEP/EXERCISE/WATER/DIET/CUSTOM`，`period` 枚举 `DAILY/WEEKLY/MONTHLY`
+  - 自定义目标打卡记录（6 端点，`/api/goal-records/records`，已落地）：录入/今日/范围/最近N天/按目标最近N天/按目标达成率（CUSTOM 目标正式功能，对应 agent 模型「自定义习惯目标（可选）」）
+- 创建 VO 类（HabitRecordVO/HabitGoalVO 等）；`HabitGoalVO` 含 `customName/displayName/currentValue/weeklyAchievement`
 - 编写测试数据初始化（DataInitializer）
-- 验证：通过 API 测试录入和查询习惯记录、创建和管理目标
+- 验证：通过 API 测试录入和查询习惯记录、创建和管理目标（含 CUSTOM 自定义目标）、录入自定义目标打卡并查看达成率
 - **Git commit + push**
 
 ### 阶段三：前端工程（Vue 3 + Vite，单仓库 frontend/）
@@ -1018,30 +1020,39 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ## 九、接口与开发阶段映射表
 
-> 与《API接口文档设计计划.md》《API接口设计方案.md》保持一致，共 8 个后端 REST 模块、46 个 `/api` 端点（原 PageController 的 5 个页面路由已移除，前端改为单仓库 Vue SPA 路由，不计入后端端点；目标模块含 5 个自定义目标打卡记录扩展接口）。
+> 与《API接口文档设计计划.md》《API接口设计方案.md》《详细模块开发流程.md》保持一致。**真实代码口径（截至修订日）**：已落地 3 个后端 REST 模块、25 个 `/api` 端点；其余 5 个模块（26 端点）规划中尚未实现。以下按「已实现 / 待开发」分表，替代原「8 模块 46 端点」规划值（原值将待开发模块一并计入，与代码现状不符）。原 PageController 的 5 个页面路由已移除，前端改为单仓库 Vue SPA 路由；目标模块含自定义目标打卡记录 6 端点（原"5 个扩展接口"已扩充为 6 个，并提升为正式功能）。
+
+**已落地端点（25）**：
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
-| 阶段二 | 习惯记录 + 习惯目标 | HabitController + GoalController | 7 + 9 = 16 | 16 |
-| 阶段三 | 前端工程（单仓库 SPA 路由，不占后端端点） | — | 0 | 16 |
-| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 16 |
-| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 26 |
-| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 26 |
-| 阶段七 | RAG 知识库 | RagController | 5 | 31 |
-| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 31 |
-| 阶段九 | 趋势分析 | AnalysisController | 4 | 35 |
-| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 46 |
+| 阶段二 | 习惯记录 | HabitController | 7 | 7 |
+| 阶段二 | 习惯目标 + 自定义目标打卡记录 | GoalController | 8 + 6 = 14 | 21 |
+| 阶段九 | 趋势分析 | AnalysisController | 4 | 25 |
+| **合计（已实现）** | | | **25** | |
 
-**端点分布说明**：
+**待开发端点（26，规划中）**：
 
-| Controller | 路径前缀 | 端点数 | 开发阶段 |
-|---|---|---|---|
-| HabitController | `/api/habits` | 7 | 阶段二 |
-| GoalController | `/api/goals` + `/api/goal-records/records` | 9 | 阶段二 |
-| ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 |
-| SessionController | `/api/sessions` | 7 | 阶段五 |
-| RagController | `/api/rag` | 5 | 阶段七 |
-| AnalysisController | `/api/analysis` | 4 | 阶段九 |
-| AiAnalysisController | `/api/ai-analysis` | 6 | 阶段十 |
-| ReminderController | `/api/reminders` | 5 | 阶段十 |
-| **合计（后端 REST 端点）** | | **46** | |
+| 开发阶段 | 模块 | Controller | 端点数 | 累计 |
+|---|---|---|---|---|
+| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 0 |
+| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 10 |
+| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 10 |
+| 阶段七 | RAG 知识库 | RagController | 5 | 15 |
+| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 15 |
+| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 26 |
+| **合计（待开发）** | | | **26** | |
+
+**端点分布说明（最终实现全量）**：
+
+| Controller | 路径前缀 | 端点数 | 开发阶段 | 状态 |
+|---|---|---|---|---|
+| HabitController | `/api/habits` | 7 | 阶段二 | ✅ 已落地 |
+| GoalController | `/api/goals` + `/api/goal-records/records` | 14 | 阶段二 | ✅ 已落地 |
+| AnalysisController | `/api/analysis` | 4 | 阶段九 | ✅ 已落地 |
+| ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 | ❌ 待开发 |
+| SessionController | `/api/sessions` | 7 | 阶段五 | ❌ 待开发 |
+| RagController | `/api/rag` | 5 | 阶段七 | ❌ 待开发 |
+| AiAnalysisController | `/api/ai-analysis` | 6 | 阶段十 | ❌ 待开发 |
+| ReminderController | `/api/reminders` | 5 | 阶段十 | ❌ 待开发 |
+| **合计（后端 REST 端点）** | | **51** | | 已实现 25 + 待开发 26 |

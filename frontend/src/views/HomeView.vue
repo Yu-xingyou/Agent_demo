@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Flower2, Moon, Droplets, Dumbbell, Smile, Sparkles, ArrowRight,
-  Target, ChevronRight, Plus,
+  Target, ChevronRight, Plus, Trash2, X,
 } from 'lucide-vue-next'
 import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
@@ -14,7 +14,7 @@ import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
 import * as analysisApi from '@/api/analysis'
 import { goalColor, MOOD_COLORS, MOOD_LABELS } from '@/constants/theme'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
 use([CanvasRenderer, PieChart, RadarChart, TooltipComponent, LegendComponent, RadarComponent])
 
@@ -85,12 +85,18 @@ const moodOption = computed(() => {
   }
 })
 
-// 近 7 天多维能力画像雷达图（真实 analysis/radar）
+// 近 7 天多维能力画像雷达图（真实 analysis/radar，含自定义目标动态维度）
 const radarOption = computed(() => {
-  const ra = radar.value || {}
-  const dims = ra.dimensions || ['睡眠', '运动', '饮水', '饮食', '心情']
-  const vals = Array.isArray(ra.values) ? ra.values : [0, 0, 0, 0, 0]
-  const max = Math.max(...vals, 100)
+  const ra = radar.value || { indicators: [], values: [] }
+  const rawIndicators = Array.isArray(ra.indicators) && ra.indicators.length
+    ? ra.indicators
+    : ['睡眠', '运动', '饮水', '饮食', '心情'].map((name) => ({ name, max: 100 }))
+  const indicators = rawIndicators.map((it) =>
+    typeof it === 'string' ? { name: it, max: 100 } : { name: it.name, max: it.max || 100 }
+  )
+  const dims = indicators.length
+  const vals = Array.isArray(ra.values) ? ra.values.slice(0, dims) : []
+  while (vals.length < dims) vals.push(0)
   return {
     tooltip: {
       backgroundColor: 'rgba(255,255,255,0.92)',
@@ -100,7 +106,7 @@ const radarOption = computed(() => {
       extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
     },
     radar: {
-      indicator: dims.map((name) => ({ name, max })),
+      indicator: indicators,
       radius: '66%',
       center: ['50%', '54%'],
       axisName: { color: '#5b6178', fontSize: 12 },
@@ -171,6 +177,59 @@ async function load() {
     ElMessage.error('加载首页数据失败')
   } finally {
     loading.value = false
+  }
+}
+
+// ===== 自定义目标：首页内联新增 & 删除 =====
+const showAddGoal = ref(false)
+const addGoalForm = ref({ customName: '', targetValue: null, unit: '' })
+const adding = ref(false)
+
+async function confirmAddGoal() {
+  const name = addGoalForm.value.customName.trim()
+  if (!name) {
+    ElMessage.warning('请填写目标名称')
+    return
+  }
+  if (!addGoalForm.value.targetValue || Number(addGoalForm.value.targetValue) <= 0) {
+    ElMessage.warning('请填写有效的目标值')
+    return
+  }
+  adding.value = true
+  try {
+    await goalApi.create({
+      goalType: 'CUSTOM',
+      customName: name,
+      targetValue: Number(addGoalForm.value.targetValue),
+      unit: addGoalForm.value.unit.trim(),
+    })
+    ElMessage.success('目标已添加')
+    showAddGoal.value = false
+    addGoalForm.value = { customName: '', targetValue: null, unit: '' }
+    await load() // 重新加载，雷达图随自定义目标增减自动更新
+  } catch (e) {
+    ElMessage.error('添加目标失败')
+  } finally {
+    adding.value = false
+  }
+}
+
+async function removeGoal(g) {
+  try {
+    await ElMessageBox.confirm(`确定删除目标「${g.displayName}」吗？相关打卡记录也会一并清除。`, '删除目标', {
+      type: 'warning',
+      confirmButtonText: '删除',
+      cancelButtonText: '取消',
+    })
+  } catch {
+    return
+  }
+  try {
+    await goalApi.deleteGoal(g.id)
+    ElMessage.success('目标已删除')
+    await load() // 重新加载，雷达图随自定义目标增减自动更新
+  } catch (e) {
+    ElMessage.error('删除目标失败')
   }
 }
 </script>
@@ -247,10 +306,20 @@ async function load() {
         </button>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div v-for="g in goalCards" :key="g.id" class="goal-card p-4 rounded-xl" :style="{ '--gc': g.color.from, '--gc2': g.color.to }">
+        <div v-for="g in goalCards" :key="g.id" class="goal-card p-4 rounded-xl group" :style="{ '--gc': g.color.from, '--gc2': g.color.to }">
           <div class="flex items-center justify-between">
             <span class="font-semibold text-slate-700">{{ g.displayName }}</span>
-            <span class="text-xs px-2 py-0.5 rounded-full text-white" :style="{ background: g.color.from }">{{ g.progress }}%</span>
+            <div class="flex items-center gap-2">
+              <span class="text-xs px-2 py-0.5 rounded-full text-white" :style="{ background: g.color.from }">{{ g.progress }}%</span>
+              <button
+                v-if="g.goalType === 'CUSTOM'"
+                class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-500 transition-all"
+                title="删除目标"
+                @click="removeGoal(g)"
+              >
+                <Trash2 :size="15" />
+              </button>
+            </div>
           </div>
           <div class="text-xs text-slate-400 mt-1">目标 {{ g.targetValue }}{{ g.unit }}</div>
           <div class="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
@@ -259,10 +328,49 @@ async function load() {
         </div>
         <div
           class="goal-card p-4 rounded-xl border-2 border-dashed border-indigo-200 flex flex-col items-center justify-center text-indigo-400 cursor-pointer hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-          @click="router.push('/ai-chat')"
+          @click="showAddGoal = true"
         >
           <Plus :size="22" />
           <span class="text-xs mt-1">设定新目标</span>
+        </div>
+      </div>
+
+      <!-- 内联新增自定义目标表单 -->
+      <div v-if="showAddGoal" class="glass rounded-card-xl p-5 mt-4 border border-indigo-200">
+        <div class="flex items-center justify-between mb-3">
+          <h4 class="font-semibold text-slate-700">新增自定义目标</h4>
+          <button class="text-slate-400 hover:text-slate-600" @click="showAddGoal = false">
+            <X :size="18" />
+          </button>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <input
+            v-model="addGoalForm.customName"
+            class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+            placeholder="目标名称，如「阅读」"
+          />
+          <input
+            v-model="addGoalForm.targetValue"
+            type="number"
+            min="1"
+            class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+            placeholder="目标值，如 30"
+          />
+          <input
+            v-model="addGoalForm.unit"
+            class="px-3 py-2 rounded-lg border border-slate-200 text-sm outline-none focus:border-indigo-300"
+            placeholder="单位，如「分钟」"
+          />
+        </div>
+        <div class="flex justify-end gap-2 mt-3">
+          <button class="px-4 py-1.5 rounded-lg text-sm text-slate-500 hover:bg-slate-100" @click="showAddGoal = false">取消</button>
+          <button
+            class="px-4 py-1.5 rounded-lg text-sm text-white bg-grad-primary disabled:opacity-50"
+            :disabled="adding"
+            @click="confirmAddGoal"
+          >
+            {{ adding ? '保存中…' : '保存目标' }}
+          </button>
         </div>
       </div>
       <div v-if="!goals.length" class="text-slate-400 text-sm text-center py-4">还没有目标，点击上方「设定新目标」，让 AI 为你定制专属习惯计划</div>

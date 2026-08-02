@@ -8,6 +8,14 @@ export function getActiveWithCustom() {
   return request.get('/goals/active-with-custom')
 }
 
+export function deleteGoal(id) {
+  return request.delete(`/goals/${id}`)
+}
+
+export function create(goal) {
+  return request.post('/goals', goal)
+}
+
 export function save(record) {
   return request.post('/goal-records/records', record)
 }

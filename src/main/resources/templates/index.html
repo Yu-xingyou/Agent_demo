@@ -113,8 +113,9 @@
             </div>
         </div>
 
-        <!-- 右侧：最近 7 天记录表格 -->
-        <div class="col-lg-7">
+        <!-- 右侧：最近 7 天记录 + 我的目标 -->
+        <div class="col-lg-7 d-flex flex-column gap-3">
+            <!-- 最近 7 天记录 -->
             <div class="card">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center mb-3">
@@ -148,13 +149,143 @@
                     </table>
                 </div>
             </div>
+
+            <!-- 我的目标 -->
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0"><i class="bi bi-bullseye" style="color:var(--teal-700);"></i> 我的目标</h5>
+                        <span class="text-muted small">周平均达成进度</span>
+                    </div>
+                    <div class="row g-3" id="goalList">
+                        <!-- SLEEP -->
+                        <div class="col-12 col-sm-6 col-lg-6" th:each="g, s : ${goals}">
+                            <div class="goal-card p-3 rounded-3"
+                                 th:data-id="${g.id}"
+                                 th:data-type="${g.goalType}"
+                                 th:data-target="${g.targetValue}"
+                                 th:data-unit="${g.unit}"
+                                 th:data-period="${g.period}"
+                                 th:data-active="${g.isActive}"
+                                 th:style="${'border:1px solid ' + (s.index == 0 ? '#c7d2fe' : s.index == 1 ? '#fed7aa' : s.index == 2 ? '#a5f3fc' : '#e9d5ff') + '; background: linear-gradient(135deg, ' + (s.index == 0 ? '#eef2ff, #fff' : s.index == 1 ? '#fff7ed, #fff' : s.index == 2 ? '#ecfeff, #fff' : '#faf5ff, #fff') + ');'}">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi fs-5"
+                                           th:classappend="${s.index == 0 ? 'bi-moon-stars text-indigo' : s.index == 1 ? 'bi-bicycle text-warning' : s.index == 2 ? 'bi-droplet-half text-info' : 'bi-cup-hot text-purple'}"></i>
+                                        <div>
+                                            <div class="fw-bold small">
+                                                <span th:if="${g.goalType == 'SLEEP'}">睡眠目标</span>
+                                                <span th:if="${g.goalType == 'EXERCISE'}">运动目标</span>
+                                                <span th:if="${g.goalType == 'WATER'}">饮水目标</span>
+                                                <span th:if="${g.goalType == 'DIET'}">饮食目标</span>
+                                            </div>
+                                            <div class="text-muted small">
+                                                目标 <span th:text="${g.targetValue}"></span><span th:text="${g.unit}"></span>
+                                                / <span th:text="${g.period == 'DAILY'} ? '天' : (g.period == 'WEEKLY' ? '周' : '月')">天</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm btn-outline-secondary btn-edit-goal" title="编辑目标"
+                                            th:onclick="|editGoal(${s.index})|">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-1 small">
+                                    <span class="text-muted">周平均达成</span>
+                                    <strong th:if="${g.goalType == 'SLEEP'}"
+                                            th:text="${weekAvg['SLEEP']} + 'h / ' + ${g.targetValue} + ${g.unit}">6.5h / 8h</strong>
+                                    <strong th:if="${g.goalType == 'EXERCISE'}"
+                                            th:text="${weekAvg['EXERCISE']} + 'min / ' + ${g.targetValue} + ${g.unit}">20min / 30min</strong>
+                                    <strong th:if="${g.goalType == 'WATER'}"
+                                            th:text="${weekAvg['WATER']} + 'ml / ' + ${g.targetValue} + ${g.unit}">1500ml / 2000ml</strong>
+                                    <strong th:if="${g.goalType == 'DIET'}"
+                                            th:text="${weekAvg['DIET']} + ' / ' + ${g.targetValue} + ${g.unit}">3.2 / 4/5</strong>
+                                </div>
+                                <div class="progress" style="height:8px;">
+                                    <div class="progress-bar" role="progressbar"
+                                         th:style="${'width:' + goalRates[g.goalType] + '%; background: linear-gradient(90deg, ' + (s.index == 0 ? '#4f46e5, #818cf8' : s.index == 1 ? '#f59e0b, #fbbf24' : s.index == 2 ? '#06b6d4, #22d3ee' : '#db2777, #ec4899') + ');'}">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 目标编辑模态弹窗 -->
+<div class="modal fade" id="goalModal" tabindex="-1" aria-hidden="true"
+     style="backdrop-filter: blur(4px);">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border: none; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+            <div class="modal-header" style="border-bottom: 1px solid #e2e8f0; padding: 1rem 1.5rem;">
+                <div>
+                    <h5 class="modal-title fw-bold mb-0" id="goalModalTitle">
+                        <i class="bi bi-pencil-square" style="color:var(--teal-700);"></i> 编辑目标
+                    </h5>
+                    <span class="text-muted small" id="goalModalSubtitle">自定义你的习惯目标</span>
+                </div>
+                <button type="button" class="btn-close" onclick="closeGoalModal()" aria-label="关闭"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="goalForm">
+                    <input type="hidden" id="goalId"/>
+                    <input type="hidden" id="goalType"/>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium text-muted">目标类型</label>
+                        <input type="text" class="form-control-plaintext fw-bold" id="goalTypeName" readonly/>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-medium">目标值 <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" step="0.1" min="0" class="form-control" id="goalTargetValue" required placeholder="例如 8"/>
+                            <span class="input-group-text" id="goalUnitLabel">h</span>
+                        </div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-medium">单位</label>
+                            <select class="form-select" id="goalUnit">
+                                <option value="h">h（小时）</option>
+                                <option value="min">min（分钟）</option>
+                                <option value="ml">ml（毫升）</option>
+                                <option value="/5">/5（5分制）</option>
+                                <option value="次">次</option>
+                            </select>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-medium">周期</label>
+                            <select class="form-select" id="goalPeriod">
+                                <option value="DAILY">每日</option>
+                                <option value="WEEKLY">每周</option>
+                                <option value="MONTHLY">每月</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-2 form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="goalActive" checked/>
+                        <label class="form-check-label small" for="goalActive">启用此目标</label>
+                    </div>
+                </form>
+                <div id="goalAlert" class="alert alert-dismissible fade show d-none mb-0 mt-2" role="alert" style="font-size: 0.85rem;">
+                    <span id="goalAlertText"></span>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-top: 1px solid #e2e8f0; padding: 0.75rem 1.5rem;">
+                <button type="button" class="btn btn-outline-secondary" onclick="closeGoalModal()">取消</button>
+                <button type="button" class="btn btn-teal" id="goalSaveBtn" onclick="saveGoal()">
+                    <i class="bi bi-check2"></i> 保存目标
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
 <div th:replace="~{fragments :: scripts}"></div>
 <script th:inline="javascript">
-// 从后端数据生成心情分布饼状图
+// ========== 心情分布饼状图 ==========
 const recentRecords = /*[[${recentRecords}]]*/ [];
 const moodCounts = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};
 recentRecords.forEach(r => { if (r.mood) moodCounts[r.mood]++; });
@@ -178,6 +309,117 @@ if (ctx && recentRecords.length > 0) {
     });
 } else if (ctx) {
     ctx.parentElement.innerHTML = '<p class="text-muted text-center py-4"><i class="bi bi-inbox fs-2 d-block mb-2"></i>暂无心情数据</p>';
+}
+
+// ========== 目标编辑功能 ==========
+const goals = /*[[${goals}]]*/ [];
+const goalTypeMeta = {
+    'SLEEP':    { name: '睡眠目标', icon: 'bi-moon-stars', color: '#4f46e5', bg: 'linear-gradient(135deg, #eef2ff, #fff)' },
+    'EXERCISE': { name: '运动目标', icon: 'bi-bicycle',   color: '#f59e0b', bg: 'linear-gradient(135deg, #fff7ed, #fff)' },
+    'WATER':    { name: '饮水目标', icon: 'bi-droplet-half', color: '#06b6d4', bg: 'linear-gradient(135deg, #ecfeff, #fff)' },
+    'DIET':     { name: '饮食目标', icon: 'bi-cup-hot',   color: '#db2777', bg: 'linear-gradient(135deg, #faf5ff, #fff)' }
+};
+const goalModal = document.getElementById('goalModal');
+const alertBox = document.getElementById('goalAlert');
+const alertText = document.getElementById('goalAlertText');
+const saveBtn = document.getElementById('goalSaveBtn');
+
+// 点击弹窗外部关闭
+goalModal.addEventListener('click', (e) => { if (e.target === goalModal) closeGoalModal(); });
+// ESC 关闭
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && goalModal.classList.contains('show')) closeGoalModal();
+});
+
+function openGoalModal() {
+    goalModal.classList.add('show');
+    goalModal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+function closeGoalModal() {
+    goalModal.classList.remove('show');
+    goalModal.style.display = 'none';
+    document.body.style.overflow = '';
+    hideAlert();
+}
+function showAlert(msg, type) {
+    alertBox.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-info');
+    alertBox.classList.add(type || 'alert-info');
+    alertText.textContent = msg;
+}
+function hideAlert() { alertBox.classList.add('d-none'); }
+
+function editGoal(index) {
+    const g = goals[index];
+    if (!g) return;
+    const meta = goalTypeMeta[g.goalType] || { name: g.goalType };
+    document.getElementById('goalId').value = g.id ?? '';
+    document.getElementById('goalType').value = g.goalType;
+    document.getElementById('goalTypeName').value = meta.name;
+    document.getElementById('goalModalTitle').innerHTML =
+        '<i class="bi bi-pencil-square" style="color:' + (meta.color || 'var(--teal-700)') + ';"></i> 编辑' + meta.name;
+    document.getElementById('goalTargetValue').value = g.targetValue ?? '';
+    document.getElementById('goalUnit').value = g.unit || 'h';
+    document.getElementById('goalUnitLabel').textContent = g.unit || 'h';
+    document.getElementById('goalPeriod').value = g.period || 'DAILY';
+    document.getElementById('goalActive').checked = g.isActive !== false;
+    hideAlert();
+    openGoalModal();
+}
+// 单位联动 label
+document.getElementById('goalUnit').addEventListener('change', (e) => {
+    document.getElementById('goalUnitLabel').textContent = e.target.value;
+});
+
+async function saveGoal() {
+    const id = document.getElementById('goalId').value;
+    const type = document.getElementById('goalType').value;
+    const targetValue = parseFloat(document.getElementById('goalTargetValue').value);
+    const unit = document.getElementById('goalUnit').value;
+    const period = document.getElementById('goalPeriod').value;
+    const isActive = document.getElementById('goalActive').checked;
+
+    if (isNaN(targetValue) || targetValue <= 0) {
+        showAlert('请输入有效的目标值（>0）', 'alert-danger');
+        return;
+    }
+
+    const body = { goalType: type, targetValue, unit, period, isActive };
+    const origBtnHtml = saveBtn.innerHTML;
+    saveBtn.disabled = true;
+    saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm" aria-hidden="true"></span> 保存中...';
+    hideAlert();
+
+    try {
+        let res;
+        if (id) {
+            // 已存在则更新
+            res = await fetch('/api/goals/' + id, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        } else {
+            // 新建
+            res = await fetch('/api/goals', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+        }
+        const data = await res.json();
+        if (data.code === 200) {
+            showAlert('保存成功！即将刷新页面…', 'alert-success');
+            setTimeout(() => location.reload(), 800);
+        } else {
+            showAlert('保存失败：' + (data.message || '未知错误'), 'alert-danger');
+        }
+    } catch (err) {
+        showAlert('网络错误：' + err.message, 'alert-danger');
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = origBtnHtml;
+    }
 }
 </script>
 </body>

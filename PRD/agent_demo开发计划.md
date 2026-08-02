@@ -37,7 +37,7 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 | **构建工具** | Maven | 3.9+ | Spring 官方推荐，Spring AI BOM 依赖管理成熟 |
 | **语言/运行时** | JDK | 21 (LTS) | Spring Boot 4 最低 17，21 为当前 LTS 推荐 |
 | **框架** | Spring Boot | 4.1.x | Spring AI 2.0 对应；Spring Framework 7.0、Jackson 3 |
-| **Web** | Spring Web (MVC) | 随 Boot | Thymeleaf 服务端渲染依赖 MVC；SSE 用 SseEmitter 实现 |
+| **Web** | Spring Web (MVC) | 随 Boot | 后端仅提供 `/api` REST 接口；SSE 用 SseEmitter 实现 |
 | **AI 框架** | Spring AI | 2.0.0 GA | ChatClient/Advisor/Memory/Tool/RAG 核心；Tool Calling 一等公民 |
 | **AI 模型接入** | spring-ai-starter-model-openai | 随 Spring AI 2.0 | 通过 OpenAI 兼容模式接入通义千问 DashScope |
 | **AI 模型** | 通义千问（DashScope 兼容模式） | qwen-plus / qwen-turbo | 课程指定；DashScope 提供 OpenAI 兼容端点 |
@@ -47,10 +47,14 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 | **文档库** | MongoDB | 7.0+ | 对话记忆 ChatMemory + AI 分析结果 + 会话管理（文档型数据天然适配） |
 | **MongoDB 访问** | Spring Data MongoDB | 随 Boot | MongoRepository + MongoTemplate；与 JPA 并存 |
 | **向量库** | MongoDB Atlas Vector Search | spring-ai-starter-vector-store-mongodb-atlas | Spring AI 原生支持；RAG 知识库向量存储与检索 |
-| **前端模板** | Thymeleaf | 随 Boot | PRD 指定服务端渲染 |
-| **前端 UI** | Bootstrap | 5.3 | 响应式布局，开箱即用组件 |
-| **图表** | ECharts | 5.5 | 趋势分析页数据可视化（折线图/柱状图/雷达图） |
-| **流式输出** | SseEmitter (MVC) | 随 Boot | 与 Thymeleaf/MVC 兼容；前端 EventSource 接收 |
+| **前端框架** | Vue 3 | 3.x | **独立前端仓库 `habit-agent-web`**，前端工程，与后端分离部署 |
+| **前端构建** | Vite | 5.x | 开发服务器（默认 5173）+ `/api` 代理到后端 8080 |
+| **前端状态** | Pinia | 2.x | 全局状态管理（今日记录、会话等） |
+| **前端请求** | Axios | 1.x | 封装统一请求，解析后端 `Result` 响应 |
+| **前端路由** | Vue Router | 4.x | SPA 路由（首页/打卡/历史/趋势/AI建议） |
+| **前端 UI** | Element Plus | 2.x | 响应式组件库，替代 Bootstrap |
+| **图表** | ECharts | 5.5 | 趋势分析页（前端 Vue 组件）数据可视化（折线图/柱状图/雷达图） |
+| **流式输出** | SseEmitter (MVC) | 随 Boot | 后端 SSE 端点；前端 Vue 用 EventSource 接收 |
 
 ### 1.3 数据存储分工（MySQL vs MongoDB）
 
@@ -86,14 +90,10 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 </dependencyManagement>
 
 <dependencies>
-    <!-- Web + Thymeleaf -->
+    <!-- Web（仅提供 /api REST 接口，无页面渲染） -->
     <dependency>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-web</artifactId>
-    </dependency>
-    <dependency>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-thymeleaf</artifactId>
     </dependency>
 
     <!-- JPA + MySQL (关系型业务数据) -->
@@ -193,8 +193,7 @@ habit-agent/
 │   │   ├── VectorStoreConfig.java          # 向量库、EmbeddingModel 配置
 │   │   └── AgentConfig.java                # 多智能体路由配置
 │   │
-│   ├── controller/                         # 控制层（9 个 Controller，48 端点）
-│   │   ├── PageController.java             # 页面路由（Thymeleaf，5 端点）
+│   ├── controller/                         # 控制层（8 个 REST Controller，46 个 /api 端点）
 │   │   ├── HabitController.java            # 习惯记录 CRUD（REST，7 端点）
 │   │   ├── GoalController.java             # 习惯目标管理（REST，6 端点）
 │   │   ├── ChatController.java             # AI 对话（非流式 + SSE 流式 + 停止，3 端点）
@@ -277,13 +276,7 @@ habit-agent/
 │
 ├── src/main/resources/
 │   ├── application.yml
-│   ├── templates/                          # Thymeleaf 模板
-│   │   ├── fragments.html                  # 公共片段（导航栏/Head/脚本）
-│   │   ├── index.html                      # 首页
-│   │   ├── checkin.html                    # 每日打卡页
-│   │   ├── history.html                    # 历史记录页
-│   │   ├── trend.html                      # 趋势分析页（ECharts）
-│   │   └── ai-chat.html                    # AI 建议页（SSE 流式）
+│   ├── static/                             # 静态资源（可选：favicon 等，无页面模板）
 │   ├── prompts/                            # Prompt 模板
 │   │   ├── system-prompt.st
 │   │   ├── analysis-prompt.st
@@ -302,11 +295,12 @@ habit-agent/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  浏览器 (Thymeleaf 渲染页面 + JS EventSource + ECharts)  │
+│  前端独立仓库 habit-agent-web (Vue3+Vite 独立部署)        │
+│  Vue 组件渲染 + Axios 调 /api + EventSource 收 SSE       │
 └───────────────┬──────────────────────────┬──────────────┘
-                │ HTTP (MVC)              │ SSE (流式)
+                │ HTTPS /api (JSON)       │ SSE (流式)
 ┌───────────────▼──────────────────────────▼──────────────┐
-│              Controller 层 (Page/REST/SSE)               │
+│              后端 Controller 层 (纯 REST/SSE)             │
 └───────────────┬──────────────────────────┬──────────────┘
                 │                          │
 ┌───────────────▼──────────┐   ┌───────────▼──────────────┐
@@ -330,6 +324,26 @@ habit-agent/
                                 │  通义千问 (DashScope API)  │
                                 └───────────────────────────┘
 ```
+
+### 2.3 前端独立仓库结构（habit-agent-web）
+
+前端为**独立 git 仓库**，与后端 `habit-agent` 分离部署，通过 HTTPS/JSON 调用 `/api`。
+
+```
+habit-agent-web/
+├── package.json / vite.config.js          # Vue3 + Vite，/api 代理到后端 8080
+├── index.html
+└── src/
+    ├── main.js / App.vue
+    ├── router/index.js                    # 5 路由：首页/打卡/历史/趋势/AI建议
+    ├── stores/                            # Pinia 状态（今日记录/会话等）
+    ├── utils/request.js                   # Axios 封装，统一解析 Result
+    ├── api/                               # 接口封装（habit/chat/analysis/rag...）
+    ├── layouts/MainLayout.vue             # 公共布局（导航栏）
+    └── views/                             # HomeView/CheckinView/HistoryView/TrendView/AiChatView
+```
+
+> **前后端分离要点**：后端只产出 JSON API，不再渲染任何页面；前端负责全部 UI 渲染与路由。开发联调用 Vite 代理规避跨域，生产部署前端可独立托管（Nginx/静态托管）并配置 CORS 或反向代理。
 
 ---
 
@@ -508,7 +522,7 @@ CREATE TABLE IF NOT EXISTS `reminder` (
 | 7 | Advisors 自定义增强 | `agent/advisors/` | 自定义 Logging/Safety/Context Advisor |
 | 8 | Tool Calling 与业务整合 | `agent/tools/` | 工具调用 JPA/Mongo Repository 查询真实数据 |
 | 9 | RAG + 向量检索 | `RagService` + MongoDB Atlas VectorStore | RetrievalAugmentationAdvisor |
-| 10 | Spring AI 集成项目 | 整体 | AI 能力贯穿所有页面 |
+| 10 | Spring AI 集成项目 | 整体 | AI 能力贯穿所有前端页面（Vue 组件） |
 | 11 | 流式输出与停止生成 | `ChatController` + `chat-stream.js` | SseEmitter + Flux + 前端停止按钮 |
 | 12 | 对话记忆管理 | `agent/memory/MongoChatMemoryRepository` | MongoDB 实现 ChatMemoryRepository |
 | 13 | 路由工作流+多智能体 | `agent/router/` | ChatClient + 手动路由 |
@@ -725,7 +739,7 @@ public SseEmitter streamChat(@RequestParam String message,
 **目标**：可运行的空项目 + 数据库就绪 + Git 仓库初始化
 
 - 初始化 Git 仓库，关联远程 `https://github.com/Yu-xingyou/Agent_demo`
-- 用 Spring Initializr 生成项目（JDK 21 + Spring Boot 4.1.x + Web + Thymeleaf + JPA + MySQL + MongoDB）
+- 用 Spring Initializr 生成项目（JDK 21 + Spring Boot 4.1.x + Web + JPA + MySQL + MongoDB），**不引入 Thymeleaf**（前端为独立 Vue 工程）
 - 配置 pom.xml 添加 Spring AI 2.0 BOM 和依赖
 - 申请阿里云百炼 DashScope API Key，配置 application.yml
 - 创建 MySQL 数据库 `habit_agent`，执行建表脚本
@@ -749,21 +763,21 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：通过 API 测试录入和查询习惯记录、创建和管理目标
 - **Git commit + push**
 
-### 阶段三：前端页面（Thymeleaf + Bootstrap）
+### 阶段三：前端独立仓库（Vue 3 + Vite）
 
-**目标**：5 个核心页面可用
+**目标**：5 个核心页面可用（前端独立仓库 `habit-agent-web`）
 
-> 对应 API 文档：PageController（5 端点：首页/打卡/历史/趋势/AI建议）。
+> 对应 API 文档：后端 `/api` REST 接口（前端经 Axios 调用，无 PageController）。
 
-- 创建公共片段 `fragments.html`（Bootstrap 5 导航栏）
-- 首页 `index.html`：欢迎信息 + 快捷统计卡片
-- 每日打卡页 `checkin.html`：表单录入数据
-- 历史记录页 `history.html`：表格展示历史记录
-- 趋势分析页 `trend.html`：预留 ECharts 容器
-- AI 建议页 `ai-chat.html`：对话界面 + 流式输出区域
-- 创建 `PageController` 路由各页面（5 端点）
-- 验证：各页面能正常渲染，打卡表单能提交保存
-- **Git commit + push**
+- 初始化 Vue3 + Vite 工程，配置 `/api` 代理到后端 8080
+- 搭建 `MainLayout.vue`（Element Plus 导航栏）+ Vue Router 5 路由
+- 首页 `HomeView.vue`：欢迎信息 + 快捷统计卡片（调 `/api/habits/today`）
+- 每日打卡页 `CheckinView.vue`：表单录入数据（调 `POST /api/habits`）
+- 历史记录页 `HistoryView.vue`：表格展示历史记录（调 `/api/habits`）
+- 趋势分析页 `TrendView.vue`：预留 ECharts 容器
+- AI 建议页 `AiChatView.vue`：对话界面 + 流式输出区域（EventSource 调 `/api/chat/stream`）
+- 验证：各前端路由页面能正常渲染，打卡表单能提交保存
+- **Git commit + push（前端仓库）**
 
 ### 阶段四：Spring AI 基础对接（技术点 1/2/4/6/10）
 
@@ -836,9 +850,9 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：不同类型问题路由到对应 Agent
 - **Git commit + push**
 
-### 阶段九：趋势分析与图表
+### 阶段九：趋势分析与图表（前端 Vue 组件）
 
-**目标**：ECharts 可视化数据趋势
+**目标**：ECharts 可视化数据趋势（前端独立仓库 Vue 组件渲染）
 
 > 对应 API 文档：AnalysisController（4 端点：趋势数据/达成率/概览统计/雷达图）。
 
@@ -848,7 +862,7 @@ public SseEmitter streamChat(@RequestParam String message,
   - `GET /api/analysis/achievement?period=WEEKLY`：达成率
   - `GET /api/analysis/overview?days=7`：概览统计
   - `GET /api/analysis/radar?period=WEEKLY`：雷达图数据
-- 趋势分析页实现图表：睡眠折线图、运动柱状图、饮水折线图、达标率雷达图
+- 前端 `TrendView.vue` 中通过 ECharts 组件渲染图表：睡眠折线图、运动柱状图、饮水折线图、达标率雷达图（数据经 `/api/analysis/*` 获取）
 - 验证：图表正确渲染历史数据趋势
 - **Git commit + push**
 
@@ -902,7 +916,7 @@ public SseEmitter streamChat(@RequestParam String message,
 |---|---|
 | API Key 泄露 | 环境变量 `${DASHSCOPE_API_KEY}` 注入，不硬编码 |
 | Prompt 注入 | `SafetyFilterAdvisor` 过滤用户输入 |
-| XSS | Thymeleaf 默认 HTML 转义 |
+| XSS | 前端渲染统一转义（Vue 默认文本插值与 v-text 自动转义，v-html 仅用于可信 Markdown） |
 | SQL 注入 | JPA 参数化查询 |
 | MongoDB 注入 | Spring Data MongoDB 参数化查询 |
 | 越权访问 | 所有查询都带 `userId` 条件 |
@@ -931,10 +945,10 @@ public SseEmitter streamChat(@RequestParam String message,
 - [ ] GET 查询历史记录 → 返回列表
 - [ ] 同一天重复录入 → 更新而非报错
 
-**阶段三验证（页面）**：
-- [ ] 5 个页面均可访问渲染
-- [ ] 打卡表单提交后数据入库
-- [ ] 历史记录页正确展示数据
+**阶段三验证（前端页面）**：
+- [ ] 前端 `npm run dev` 启动，`http://localhost:5173/` 5 个路由页面均可访问渲染
+- [ ] 打卡表单提交后数据入库（经 `/api/habits`）
+- [ ] 历史记录页通过 `/api/habits` 正确展示数据
 
 **阶段四验证（AI 基础配置）**：
 - [ ] ChatClient Bean 成功创建
@@ -967,7 +981,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - [ ] `GET /api/analysis/achievement?period=WEEKLY` 返回达成率
 - [ ] `GET /api/analysis/overview?days=7` 返回概览统计
 - [ ] `GET /api/analysis/radar?period=WEEKLY` 返回雷达图数据
-- [ ] 4 个 ECharts 图表正确渲染
+- [ ] 4 个 ECharts 图表（前端 Vue 组件）正确渲染
 
 **阶段十验证（AI分析+提醒+收尾）**：
 - [ ] `POST /api/ai-analysis/trigger` 能触发周期分析
@@ -981,12 +995,13 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ### 7.2 全流程演示验证
 
-1. 打开首页，显示欢迎信息和今日打卡入口
-2. 进入每日打卡页，录入今日数据，提交成功
-3. 进入历史记录页，查看历史打卡记录
-4. 进入趋势分析页，查看趋势图表和达成率
-5. 进入 AI 建议页，与 AI 流式对话
-6. 查看已保存的 AI 建议历史
+1. 启动后端 `mvn spring-boot:run`，启动前端 `npm run dev`（Vite 代理 `/api`）
+2. 打开首页（前端 SPA），显示欢迎信息和今日打卡入口
+3. 进入每日打卡页，录入今日数据，提交成功（调 `/api/habits`）
+4. 进入历史记录页，查看历史打卡记录（调 `/api/habits`）
+5. 进入趋势分析页，查看趋势图表和达成率（ECharts 组件调 `/api/analysis/*`）
+6. 进入 AI 建议页，与 AI 流式对话（EventSource 调 `/api/chat/stream`）
+7. 查看已保存的 AI 建议历史（调 `/api/sessions`）
 
 ---
 
@@ -995,7 +1010,7 @@ public SseEmitter streamChat(@RequestParam String message,
 1. **版本一致性**：Spring AI 2.0.0 GA 必须搭配 Spring Boot 4.1.x + JDK 21
 2. **双库共存**：MySQL 用 JPA，MongoDB 用 Spring Data MongoDB，两者在 Spring Boot 中可无缝共存
 3. **MongoDB Atlas Vector Search**：需要 MongoDB Atlas 账号或本地配置向量索引。本地开发可用 MongoDB Community + 手动向量检索降级
-4. **Thymeleaf + 流式输出**：页面用 Thymeleaf 渲染骨架，AI 对话区域用独立 SSE 端点 + 前端 EventSource
+4. **前后端分离 + 流式输出**：后端仅提供 SSE 端点，前端 Vue 工程用 EventSource 接收流式输出；前端独立仓库通过 Vite 代理或生产 CORS 与后端对接
 5. **开发顺序**：严格按阶段一→十推进，每阶段验证通过且用户批准后进入下一阶段
 6. **Git 管理**：每阶段完成后自动 commit + push 到 `https://github.com/Yu-xingyou/Agent_demo`
 
@@ -1003,31 +1018,30 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ## 九、接口与开发阶段映射表
 
-> 与《API接口文档设计计划.md》保持一致，共 9 个模块、48 个端点。
+> 与《API接口文档设计计划.md》《API接口设计方案.md》保持一致，共 8 个后端 REST 模块、46 个 `/api` 端点（原 PageController 的 5 个页面路由已移除，前端改为 Vue 独立仓库 SPA 路由，不计入后端端点；目标模块含 5 个自定义目标打卡记录扩展接口）。
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
-| 阶段二 | 习惯记录 + 习惯目标 | HabitController + GoalController | 7 + 6 = 13 | 13 |
-| 阶段三 | 页面路由 | PageController | 5 | 18 |
-| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 18 |
-| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 28 |
-| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 28 |
-| 阶段七 | RAG 知识库 | RagController | 5 | 33 |
-| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 33 |
-| 阶段九 | 趋势分析 | AnalysisController | 4 | 37 |
-| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 48 |
+| 阶段二 | 习惯记录 + 习惯目标 | HabitController + GoalController | 7 + 9 = 16 | 16 |
+| 阶段三 | 前端独立仓库（SPA 路由，不占后端端点） | — | 0 | 16 |
+| 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 16 |
+| 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 26 |
+| 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 26 |
+| 阶段七 | RAG 知识库 | RagController | 5 | 31 |
+| 阶段八 | 多智能体路由（无新增端点） | — | 0 | 31 |
+| 阶段九 | 趋势分析 | AnalysisController | 4 | 35 |
+| 阶段十 | AI 分析结果 + 打卡提醒 + 收尾 | AiAnalysisController + ReminderController | 6 + 5 = 11 | 46 |
 
 **端点分布说明**：
 
 | Controller | 路径前缀 | 端点数 | 开发阶段 |
 |---|---|---|---|
 | HabitController | `/api/habits` | 7 | 阶段二 |
-| GoalController | `/api/goals` | 6 | 阶段二 |
-| PageController | `/` `/checkin` `/history` `/trend` `/ai-chat` | 5 | 阶段三 |
+| GoalController | `/api/goals` + `/api/goal-records/records` | 9 | 阶段二 |
 | ChatController | `/api/chat` `/api/chat/stream` `/api/chat/stop` | 3 | 阶段五 |
 | SessionController | `/api/sessions` | 7 | 阶段五 |
 | RagController | `/api/rag` | 5 | 阶段七 |
 | AnalysisController | `/api/analysis` | 4 | 阶段九 |
 | AiAnalysisController | `/api/ai-analysis` | 6 | 阶段十 |
 | ReminderController | `/api/reminders` | 5 | 阶段十 |
-| **合计** | | **48** | |
+| **合计（后端 REST 端点）** | | **46** | |

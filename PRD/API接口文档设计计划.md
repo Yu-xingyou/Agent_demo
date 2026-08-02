@@ -2,7 +2,9 @@
 
 ## 任务概述
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 9 个功能模块、48 个接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。文档替换现有骨架文件 `API接口设计方案.md`。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。
+
+> **前后端分离约定**：后端仅提供 REST API（无页面路由），前端为独立 Vue 3 + Vite 仓库 `habit-agent-web`，通过 `/api` 调用。本文档为纯 API 文档，不再描述 Thymeleaf 页面；文档同时以 OpenAPI 3.0 规范描述，便于 Swagger UI 浏览与前端通过 OpenAPI 生成请求代码。文档替换现有骨架文件 `API接口设计方案.md`。
 
 ## PRD 覆盖评审（本次优化）
 
@@ -80,17 +82,20 @@ GET 请求用 Query 参数表格 + 响应 JSON 示例；DELETE 请求无请求�
 
 ## 文档整体结构
 
-输出路径：`d:\javacode\agent_demo\.trae\documents\API接口设计方案.md`（替换现有骨架）
+输出路径：`d:\javacode\agent_demo\PRD\API接口设计方案.md`（替换现有骨架）
+
+> **文档形态（纯 API）**：除 MD 文档外，后端通过 SpringDoc OpenAPI 自动生成 OpenAPI 3.0 描述，并挂载 Swagger UI（`/swagger-ui.html`）便于在线浏览与调试；前端可基于 OpenAPI 描述用 `openapi-typescript-codegen` 生成 TypeScript 请求客户端，保证前后端契约一致。本文档即是该 OpenAPI 的 Markdown 化呈现。
 
 ```
-## 1. 文档概述（项目背景、技术栈、通用约定）
-## 2. 通用规范（Result<T> JSON 格式、错误码体系、日期时间格式）
-## 3. SSE 流式输出规范（5种事件类型 JSON 格式、时序图、前端对接代码）
-## 4. 接口总览表（48 端点速查矩阵）
-## 5. 各模块接口详细设计（9 个模块，每接口含完整 JSON 请求/响应示例）
-## 6. VO 数据模型清单（22 个 VO 类，每个含字段表格 + JSON 示例）
-## 7. 错误码完整对照表（19 个错误码）
-## 8. 附录（接口与开发阶段映射表、数据存储分层、命名约定）
+## 1. 文档概述（项目背景、前后端分离架构、技术栈、通用约定）
+## 2. 通用规范（Result<T> JSON 格式、CORS、鉴权、API 版本化、错误码体系、日期时间格式）
+## 3. SSE 流式输出规范（5种事件类型 JSON 格式、时序图、前端 EventSource 对接代码）
+## 4. 接口总览表（46 端点速查矩阵）
+## 5. 各模块接口详细设计（8 个后端模块，每接口含完整 JSON 请求/响应示例）
+## 6. VO 数据模型清单（VO 类，每个含字段表格 + JSON 示例）
+## 7. 错误码完整对照表
+## 8. 前端消费方式（Axios 封装、Pinia 状态、Vue Router 与 API 映射、OpenAPI 代码生成）
+## 9. 附录（接口与开发阶段映射表、数据存储分层、命名约定）
 ```
 
 ## 各模块接口 JSON 示例格式
@@ -849,17 +854,19 @@ curl -X POST http://localhost:8080/api/rag/upload \
 
 **端点 4-5**：`GET /api/rag/documents`、`DELETE /api/rag/documents/{id}` — 列表响应同 search 格式但无 score 字段，DELETE 响应为 `{"code":200,"message":"success","data":null}`
 
-### 5.8 页面路由模块（PageController）— 5 端点
+### 5.8 前端页面路由（Vue Router，前端独立仓库）
 
-| 方法 | 路径 | 说明 | 响应类型 | Model 注入属性 |
-|---|---|---|---|---|
-| GET | `/` | 首页 | text/html | `todayRecord`, `recentRecords` |
-| GET | `/checkin` | 每日打卡页 | text/html | `todayRecord` |
-| GET | `/history` | 历史记录页 | text/html | `records`（最近30天） |
-| GET | `/trend` | 趋势分析页 | text/html | 无（前端 JS fetch） |
-| GET | `/ai-chat` | AI 建议页 | text/html | 无（前端 JS fetch） |
+> 后端已无页面路由（PageController 移除）。以下 5 个页面由前端 `habit-agent-web` 的 Vue Router 实现，均为 SPA 客户端路由，调用对应 `/api` 端点获取数据：
 
-页面路由返回 HTML 非 JSON，文档中说明每个页面注入的 Model 属性即可。
+| 前端路由 | 对应页面 | 主要调用的后端接口 |
+|---|---|---|
+| `/` | 首页 HomeView | `GET /api/habits/today`、`GET /api/habits/recent/{days}` |
+| `/checkin` | 每日打卡 CheckinView | `GET /api/habits/today`、`POST /api/habits` |
+| `/history` | 历史记录 HistoryView | `GET /api/habits?startDate=&endDate=` |
+| `/trend` | 趋势分析 TrendView | `GET /api/analysis/*` |
+| `/ai-chat` | AI 建议 AiChatView | `POST /api/chat`、`GET /api/chat/stream`、`POST /api/chat/stop` |
+
+> 前端页面交互细节见《详细模块开发流程.md》阶段三与《agent_demo开发计划.md》2.3。
 
 ### 5.9 打卡提醒模块（ReminderController `/api/reminders`）— 5 端点
 
@@ -1128,13 +1135,15 @@ JSON 示例：
 | 开发阶段 | 模块 | 端点数 |
 |---|---|---|
 | 阶段二 | HabitController + GoalController | 13 |
-| 阶段三 | PageController | 5 |
+| 阶段三 | 前端独立仓库 SPA 路由（不占后端端点） | 0 |
 | 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 |
 | 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 10 |
 | 阶段七 | RagController | 5 |
 | 阶段九 | AnalysisController | 4 |
 | 阶段十 | AiAnalysisController + ReminderController | 11 |
-| **合计** | | **48** |
+| **合计（后端 REST 端点，按实际代码落地）** | | **46** |
+
+> 说明：目标模块含 5 个自定义目标打卡记录扩展接口（`/api/goal-records/records`），故 Controller 实际端点总数为 46。与《API接口设计方案.md》口径一致。
 
 ## 关键设计决策
 
@@ -1152,7 +1161,7 @@ JSON 示例：
 
 1. 编写文档头部与通用规范（第 1-2 章）：Base URL、Result<T> 的 JSON 格式定义、错误码框架、日期时间格式
 2. 编写 SSE 规范章节（第 3 章）：5 种事件类型的完整 JSON data 格式、时序图、前端 EventSource 对接代码示例、停止机制
-3. 编写接口总览表（第 4 章）：48 端点速查矩阵
+3. 编写接口总览表（第 4 章）：46 端点速查矩阵
 4. 逐模块编写接口详情（第 5 章）：每个接口包含：
    - 请求方法 + 路径
    - 请求参数表格（字段名/类型/必填/说明）
@@ -1173,7 +1182,7 @@ JSON 示例：
 5. 22 个 VO 类都有字段表格 + JSON 示例
 6. 19 个错误码都有 JSON 响应示例
 7. 文档覆盖 PRD 所有必做功能（打卡/历史/AI分析/建议）
-8. 48 个端点的 JSON 示例可直接复制到 Postman 测试
+8. 46 个端点的 JSON 示例可直接复制到 Postman 测试
 
 ## 假设与约束
 

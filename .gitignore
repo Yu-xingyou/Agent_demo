@@ -24,3 +24,7 @@ application-local.yml
 # Logs
 logs/
 *.log
+
+# Frontend (Vue, in /frontend)
+frontend/node_modules/
+frontend/dist/

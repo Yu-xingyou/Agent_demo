@@ -116,6 +116,12 @@ async function submit() {
   }
 }
 
+// 安全写入自定义目标输入（避免 customInputs[g.id] 尚未初始化时崩溃）
+function setCustomInput(id, field, val) {
+  if (!customInputs.value[id]) customInputs.value[id] = { value: null, remark: '' }
+  customInputs.value[id][field] = val
+}
+
 onMounted(load)
 </script>
 
@@ -224,7 +230,8 @@ onMounted(load)
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <label class="text-sm text-slate-500">今日数值{{ g.unit ? '（' + g.unit + '）' : '' }}
               <input
-                v-model.number="customInputs[g.id].value"
+                :value="customInputs[g.id]?.value ?? null"
+                @input="setCustomInput(g.id, 'value', $event.target.value === '' ? null : Number($event.target.value))"
                 type="number"
                 :placeholder="'填写 ' + g.displayName"
                 class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand"
@@ -232,7 +239,8 @@ onMounted(load)
             </label>
             <label class="text-sm text-slate-500">备注
               <input
-                v-model="customInputs[g.id].remark"
+                :value="customInputs[g.id]?.remark ?? ''"
+                @input="setCustomInput(g.id, 'remark', $event.target.value)"
                 type="text"
                 placeholder="可选"
                 class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand"

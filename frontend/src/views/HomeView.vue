@@ -13,7 +13,7 @@ import { TooltipComponent, LegendComponent, RadarComponent } from 'echarts/compo
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
 import * as analysisApi from '@/api/analysis'
-import { goalColor, MOOD_LABELS } from '@/constants/theme'
+import { goalColor, MOOD_COLORS, MOOD_LABELS } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 
 use([CanvasRenderer, PieChart, RadarChart, TooltipComponent, LegendComponent, RadarComponent])
@@ -56,7 +56,7 @@ const cards = computed(() => {
 // 本周心情饼图（基于最近 7 天记录）
 const moodOption = computed(() => {
   const counts = {}
-  recent.value.forEach((r) => {
+  ;(recent.value || []).forEach((r) => {
     if (r.mood) counts[r.mood] = (counts[r.mood] || 0) + 1
   })
   const data = Object.keys(MOOD_COLORS).map((k) => ({
@@ -87,8 +87,10 @@ const moodOption = computed(() => {
 
 // 近 7 天多维能力画像雷达图（真实 analysis/radar）
 const radarOption = computed(() => {
-  const ra = radar.value || { dimensions: ['睡眠', '运动', '饮水', '饮食', '心情'], values: [0, 0, 0, 0, 0] }
-  const max = Math.max(...ra.values, 100)
+  const ra = radar.value || {}
+  const dims = ra.dimensions || ['睡眠', '运动', '饮水', '饮食', '心情']
+  const vals = Array.isArray(ra.values) ? ra.values : [0, 0, 0, 0, 0]
+  const max = Math.max(...vals, 100)
   return {
     tooltip: {
       backgroundColor: 'rgba(255,255,255,0.92)',
@@ -98,7 +100,7 @@ const radarOption = computed(() => {
       extraCssText: 'box-shadow:0 10px 30px rgba(31,38,89,0.18);border-radius:12px;',
     },
     radar: {
-      indicator: ra.dimensions.map((name) => ({ name, max })),
+      indicator: dims.map((name) => ({ name, max })),
       radius: '66%',
       center: ['50%', '54%'],
       axisName: { color: '#5b6178', fontSize: 12 },
@@ -113,13 +115,13 @@ const radarOption = computed(() => {
       lineStyle: { color: '#667eea', width: 2.5 },
       itemStyle: { color: '#764ba2' },
       areaStyle: { color: 'rgba(102,126,234,0.28)' },
-      data: [{ value: ra.values, name: '近7天能力画像' }],
+      data: [{ value: vals, name: '近7天能力画像' }],
     }],
   }
 })
 
 // 任务目标进度（基于 HabitGoalVO，按类型配色）
-const goalCards = computed(() => goals.value.map((g) => {
+const goalCards = computed(() => (goals.value || []).map((g) => {
   const c = goalColor(g.goalType)
   const progress = g.targetValue && g.currentValue
     ? Math.min(100, Math.round((Number(g.currentValue) / Number(g.targetValue)) * 100)) : 0

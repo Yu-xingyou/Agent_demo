@@ -117,9 +117,16 @@ const waterOption = computed(() => ({
 
 const radarOption = computed(() => {
   const rd = radar.value || { indicators: [], values: [], targets: [] }
-  const indicators = (rd.indicators || []).map((it) =>
+  const rawIndicators = rd.indicators && rd.indicators.length ? rd.indicators : ['睡眠', '运动', '饮水', '饮食', '心情']
+  const indicators = rawIndicators.map((it) =>
     typeof it === 'string' ? { name: it, max: 100 } : { name: it.name, max: it.max || 100 }
   )
+  const dims = indicators.length
+  const toArr = (arr) => {
+    const a = Array.isArray(arr) ? arr.slice(0, dims) : []
+    while (a.length < dims) a.push(0)
+    return a
+  }
   return {
     tooltip: chartTooltipItem,
     legend: { data: ['实际', '目标'], textStyle: { color: '#5b6178' }, bottom: 0 },
@@ -134,8 +141,8 @@ const radarOption = computed(() => {
     series: [{
       type: 'radar',
       data: [
-        { value: rd.values || [], name: '实际', itemStyle: { color: '#667eea' }, areaStyle: { color: 'rgba(102,126,234,0.28)' }, lineStyle: { width: 2.5, color: '#667eea' } },
-        { value: rd.targets || [], name: '目标', itemStyle: { color: '#ec4899' }, lineStyle: { type: 'dashed', color: '#ec4899' } },
+        { value: toArr(rd.values), name: '实际', itemStyle: { color: '#667eea' }, areaStyle: { color: 'rgba(102,126,234,0.28)' }, lineStyle: { width: 2.5, color: '#667eea' } },
+        { value: toArr(rd.targets), name: '目标', itemStyle: { color: '#ec4899' }, lineStyle: { type: 'dashed', color: '#ec4899' } },
       ],
     }],
   }

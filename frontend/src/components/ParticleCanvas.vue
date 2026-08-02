@@ -15,7 +15,7 @@ let h = 0
 let dpr = 1
 const mouse = { x: -9999, y: -9999 }
 
-const PALETTE = ['#7e88a3', '#6f8a82', '#6f97a0', '#c39b7e', '#8f8196']
+const PALETTE = ['#667eea', '#764ba2', '#22d3ee', '#ec4899', '#34d399']
 
 function config() {
   const heavy = props.density === 'heavy'

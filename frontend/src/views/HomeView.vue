@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   Flower2, Moon, Droplets, Dumbbell, Smile, Sparkles, ArrowRight,
@@ -139,7 +139,6 @@ onMounted(() => {
   timer = setInterval(() => { heroIndex.value = (heroIndex.value + 1) % heroSlides.length }, 4500)
   load()
 })
-import { onBeforeUnmount } from 'vue'
 onBeforeUnmount(() => timer && clearInterval(timer))
 
 // 横向滑动卡片（习惯贴士）

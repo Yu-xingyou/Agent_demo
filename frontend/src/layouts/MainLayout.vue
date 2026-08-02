@@ -1,11 +1,17 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Home, CheckCircle2, History, TrendingUp, Sparkles } from 'lucide-vue-next'
 import ParticleCanvas from '../components/ParticleCanvas.vue'
 
 const route = useRoute()
 const router = useRouter()
+
+// 兜底：任意子页面在渲染/卸载时抛错不再拖垮整个布局与路由
+onErrorCaptured((err) => {
+  console.error('[MainLayout] 子组件错误已捕获:', err)
+  return false
+})
 
 const menus = [
   { path: '/', title: '首页', icon: Home },
@@ -54,7 +60,7 @@ function go(path) {
 
     <main class="pt-16 flex-1 relative z-10">
       <router-view v-slot="{ Component }">
-        <transition name="fade" mode="out-in">
+        <transition name="fade">
           <component :is="Component" />
         </transition>
       </router-view>

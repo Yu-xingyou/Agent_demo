@@ -82,7 +82,7 @@
                     <button class="btn btn-sm btn-outline-teal view-detail-btn"
                             th:data-id="${r.id}"
                             th:data-date="${r.recordDate}"
-                            onclick="openDetail(${r.id})">
+                            th:onclick="|openDetail(${r.id})|">
                         <i class="bi bi-eye"></i> 详情
                     </button>
                 </div>

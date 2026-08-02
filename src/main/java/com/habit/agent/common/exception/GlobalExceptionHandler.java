@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.validation.ConstraintViolationException;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 
 import com.habit.agent.common.constant.AgentConstants;
@@ -56,6 +57,19 @@ public class GlobalExceptionHandler {
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
                 .collect(Collectors.joining("; "));
         log.warn("参数校验失败: {}", errors);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(Result.error(AgentConstants.CODE_PARAM_ERROR, "参数校验失败: " + errors));
+    }
+
+    /**
+     * 方法参数校验失败（@Validated + @NotNull 等注解触发，如 @PathVariable/@RequestParam）
+     */
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<Result<Void>> handleConstraintViolation(ConstraintViolationException ex) {
+        String errors = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath().toString() + ": " + v.getMessage())
+                .collect(Collectors.joining("; "));
+        log.warn("方法参数校验失败: {}", errors);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Result.error(AgentConstants.CODE_PARAM_ERROR, "参数校验失败: " + errors));
     }

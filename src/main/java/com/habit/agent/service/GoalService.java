@@ -116,6 +116,17 @@ public class GoalService {
     }
 
     /**
+     * 按 ID 查询目标
+     */
+    @Transactional(readOnly = true)
+    public HabitGoalVO getGoalById(Long id) {
+        HabitGoal db = habitGoalRepository.findById(id)
+                .orElseThrow(() -> new BusinessException(AgentConstants.CODE_GOAL_NOT_FOUND,
+                        "目标不存在: id=" + id));
+        return toVO(db);
+    }
+
+    /**
      * 更新目标
      */
     @Transactional

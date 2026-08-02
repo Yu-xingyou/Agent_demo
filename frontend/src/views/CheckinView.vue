@@ -1,12 +1,16 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
-import { Moon, Apple, Dumbbell, Droplets, Smile, Save } from 'lucide-vue-next'
+import { Moon, Apple, Dumbbell, Droplets, Save, Target, Plus } from 'lucide-vue-next'
 import * as habitApi from '@/api/habit'
-import { MOOD_COLORS, MOOD_LABELS } from '@/constants/theme'
+import * as goalApi from '@/api/goal'
+import { MOOD_COLORS, MOOD_LABELS, goalColor } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 
 const today = ref(null)
 const submitting = ref(false)
+const customGoals = ref([])
+const customInputs = ref({})
+const customSaving = ref(false)
 
 // 本地时区的今日年月日，避免使用 toISOString() 导致的 UTC 偏移（UTC+8 下午会差一天）
 function localDateStr(d = new Date()) {
@@ -32,6 +36,54 @@ const form = ref({
 
 const isChecked = computed(() => !!today.value)
 
+// 自定义目标：加载激活的 CUSTOM 目标，并回显今日已有记录
+async function loadCustomGoals() {
+  try {
+    const goals = (await goalApi.getActiveWithCustom()).filter((g) => g.goalType === 'CUSTOM')
+    customGoals.value = goals
+    const todayStr = localDateStr()
+    const recs = await goalApi.listRecordsByDate(todayStr).catch(() => [])
+    const byGoal = {}
+    ;(recs || []).forEach((r) => { byGoal[r.goalId] = r })
+    const inputs = {}
+    goals.forEach((g) => {
+      const rec = byGoal[g.id]
+      inputs[g.id] = {
+        value: rec && rec.value != null ? rec.value : null,
+        remark: rec && rec.remark ? rec.remark : '',
+      }
+    })
+    customInputs.value = inputs
+  } catch (e) {
+    /* 忽略 */
+  }
+}
+
+// 保存单个自定义目标打卡（存在则更新）
+async function saveCustom(g) {
+  const inp = customInputs.value[g.id]
+  if (inp.value == null || inp.value === '') {
+    ElMessage.warning('请填写「' + g.displayName + '」的数值')
+    return
+  }
+  customSaving.value = true
+  try {
+    await goalApi.save({
+      goalId: g.id,
+      goalType: 'CUSTOM',
+      recordDate: localDateStr(),
+      value: Number(inp.value),
+      remark: inp.remark || '',
+    })
+    ElMessage.success('「' + g.displayName + '」已记录')
+    await loadCustomGoals()
+  } catch (e) {
+    /* 拦截器已提示 */
+  } finally {
+    customSaving.value = false
+  }
+}
+
 async function load() {
   try {
     const t = await habitApi.getToday().catch(() => null)
@@ -54,6 +106,7 @@ async function load() {
   } catch (e) {
     /* 忽略，视为未打卡 */
   }
+  await loadCustomGoals()
 }
 
 async function submit() {
@@ -81,7 +134,7 @@ onMounted(load)
 
     <div class="space-y-4">
       <!-- 睡眠 -->
-      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #6366f1">
+      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #6f7a99">
         <div class="flex items-center gap-2 mb-4 text-slate-700 font-medium">
           <Moon class="text-indigo-500" /> 睡眠
         </div>
@@ -99,7 +152,7 @@ onMounted(load)
       </div>
 
       <!-- 饮食 -->
-      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #0d9488">
+      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #6f9a8a">
         <div class="flex items-center gap-2 mb-4 text-slate-700 font-medium">
           <Apple class="text-teal-600" /> 饮食
         </div>
@@ -114,7 +167,7 @@ onMounted(load)
       </div>
 
       <!-- 运动 -->
-      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #f59e0b">
+      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #c39b7e">
         <div class="flex items-center gap-2 mb-4 text-slate-700 font-medium">
           <Dumbbell class="text-orange-500" /> 运动
         </div>
@@ -129,7 +182,7 @@ onMounted(load)
       </div>
 
       <!-- 饮水 & 心情 -->
-      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #06b6d4">
+      <div class="glass rounded-card-xl p-5 section-bar" style="border-color: #6f97a0">
         <div class="flex items-center gap-2 mb-4 text-slate-700 font-medium">
           <Droplets class="text-cyan-500" /> 饮水 & 心情
         </div>
@@ -154,6 +207,56 @@ onMounted(load)
         <label class="block text-sm text-slate-500 mt-4">备注
           <textarea v-model="form.remark" rows="2" placeholder="今天的小感想…" class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo resize-none"></textarea>
         </label>
+      </div>
+
+      <!-- 自定义任务目标：新增后自动腾出录入位 -->
+      <div v-if="customGoals.length" class="space-y-4">
+        <div class="flex items-center gap-2 text-slate-700 font-medium px-1">
+          <Target class="text-brand-purple" /> 自定义目标
+        </div>
+        <div
+          v-for="g in customGoals"
+          :key="g.id"
+          class="glass rounded-card-xl p-5 section-bar"
+          :style="{ borderColor: goalColor(g.goalType).from }"
+        >
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2 text-slate-700 font-medium">
+              <span class="h-2.5 w-2.5 rounded-full" :style="{ background: goalColor(g.goalType).from }"></span>
+              {{ g.displayName }}
+            </div>
+            <span class="text-xs text-slate-400">目标 {{ g.targetValue }}{{ g.unit || '' }}</span>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <label class="text-sm text-slate-500">今日数值{{ g.unit ? '（' + g.unit + '）' : '' }}
+              <input
+                v-model.number="customInputs[g.id].value"
+                type="number"
+                :placeholder="'填写 ' + g.displayName"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo"
+              />
+            </label>
+            <label class="text-sm text-slate-500">备注
+              <input
+                v-model="customInputs[g.id].remark"
+                type="text"
+                placeholder="可选"
+                class="mt-1 w-full rounded-lg border border-slate-200 px-3 py-2 outline-none focus:border-brand-indigo"
+              />
+            </label>
+          </div>
+          <button
+            class="btn-grad mt-4 w-full py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 disabled:opacity-60"
+            :disabled="customSaving"
+            @click="saveCustom(g)"
+          >
+            <Save :size="16" /> 记录「{{ g.displayName }}」
+          </button>
+        </div>
+      </div>
+
+      <div v-else class="glass rounded-card-xl p-4 flex items-center gap-2 text-sm text-slate-400 px-5">
+        <Plus :size="16" /> 暂无自定义目标，在 AI 建议页设定后此处会自动出现录入位。
       </div>
 
       <button

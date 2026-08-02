@@ -67,6 +67,18 @@ public class HabitGoalRecordService {
     }
 
     /**
+     * 按用户和精确日期范围查询自定义目标记录（升序，便于前端按日期聚合）
+     */
+    @Transactional(readOnly = true)
+    public List<HabitGoalRecordVO> getByDateRange(Long userId, LocalDate startDate, LocalDate endDate) {
+        if (userId == null) userId = AgentConstants.DEFAULT_USER_ID;
+        if (startDate == null) startDate = LocalDate.now().minusDays(29);
+        if (endDate == null) endDate = LocalDate.now();
+        return repository.findByUserIdAndRecordDateBetweenOrderByRecordDateDesc(userId, startDate, endDate)
+                .stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    /**
      * 查询最近 N 天的自定义目标记录
      */
     @Transactional(readOnly = true)

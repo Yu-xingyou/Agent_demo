@@ -104,12 +104,13 @@ const goalCards = computed(() => goals.value.map((g) => {
 }))
 
 const heroSlides = [
-  { title: '今日打卡', desc: '坚持记录，遇见更好的自己', icon: Flower2, to: '/checkin' },
-  { title: '每日一语', desc: '种一棵树最好的时间是十年前，其次是现在', icon: Sparkles, to: '/ai-chat' },
-  { title: '目标达成', desc: '看看你的任务目标养成进度', icon: Target, to: '/goals' },
+  { title: '今日打卡', desc: '坚持记录，遇见更好的自己', icon: Flower2, to: '/checkin', grad: 'bg-grad-primary' },
+  { title: '每日一语', desc: '种一棵树最好的时间是十年前，其次是现在', icon: Sparkles, to: '/ai-chat', grad: 'bg-grad-mood' },
+  { title: '目标达成', desc: '看看你的任务目标养成进度', icon: Target, to: '/checkin', grad: 'bg-grad-custom' },
 ]
 const heroIndex = ref(0)
 const heroIcon = computed(() => heroSlides[heroIndex.value].icon)
+const heroGrad = computed(() => heroSlides[heroIndex.value].grad)
 let timer = null
 onMounted(() => {
   timer = setInterval(() => { heroIndex.value = (heroIndex.value + 1) % heroSlides.length }, 4500)
@@ -152,13 +153,13 @@ async function load() {
 
 <template>
   <div class="max-w-6xl mx-auto px-5 py-6 relative z-10">
-    <!-- Hero 流动渐变轮播 -->
+    <!-- Hero 流动渐变轮播（背景随轮换切换，无摇摆，仅定时轮换） -->
     <section
-      class="rounded-card-xl gradient-border glass-strong p-7 mb-6 text-white flex items-center gap-5 cursor-pointer transition-all animate-float-slow"
-      style="background: var(--grad-primary-soft)"
+      class="rounded-card-xl gradient-border glass-strong p-7 mb-6 text-white flex items-center gap-5 cursor-pointer transition-all duration-700"
+      :class="heroGrad"
       @click="router.push(heroSlides[heroIndex].to)"
     >
-      <div class="h-14 w-14 rounded-2xl bg-grad-primary flex items-center justify-center shadow-glow">
+      <div class="h-14 w-14 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur">
         <component :is="heroIcon" :size="28" />
       </div>
       <div class="flex-1">
@@ -217,8 +218,8 @@ async function load() {
           </div>
           <h3 class="font-semibold text-slate-700">任务目标</h3>
         </div>
-        <button class="text-brand-indigo text-sm hover:text-brand-purple flex items-center" @click="router.push('/goals')">
-          全部目标 <ChevronRight :size="14" />
+        <button class="text-brand-indigo text-sm hover:text-brand-purple flex items-center" @click="router.push('/checkin')">
+          去打卡设定 <ChevronRight :size="14" />
         </button>
       </div>
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -234,13 +235,13 @@ async function load() {
         </div>
         <div
           class="goal-card p-4 rounded-xl border-2 border-dashed border-indigo-200 flex flex-col items-center justify-center text-indigo-400 cursor-pointer hover:border-indigo-400 hover:text-indigo-600 transition-colors"
-          @click="router.push('/goals')"
+          @click="router.push('/checkin')"
         >
           <Plus :size="22" />
           <span class="text-xs mt-1">设定新目标</span>
         </div>
       </div>
-      <div v-if="!goals.length" class="text-slate-400 text-sm text-center py-4">暂无激活目标，去「任务目标」页设定吧</div>
+      <div v-if="!goals.length" class="text-slate-400 text-sm text-center py-4">暂无激活目标，去「每日打卡」页设定吧</div>
     </section>
 
     <!-- 横向滑动卡片（习惯贴士） -->

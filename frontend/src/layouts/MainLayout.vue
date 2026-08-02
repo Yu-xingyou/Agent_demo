@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Home, CheckCircle2, History, TrendingUp, Sparkles, Target } from 'lucide-vue-next'
+import { Home, CheckCircle2, History, TrendingUp, Sparkles } from 'lucide-vue-next'
 import ParticleCanvas from '../components/ParticleCanvas.vue'
 
 const route = useRoute()
@@ -12,13 +12,12 @@ const menus = [
   { path: '/checkin', title: '每日打卡', icon: CheckCircle2 },
   { path: '/history', title: '历史记录', icon: History },
   { path: '/trend', title: '趋势分析', icon: TrendingUp },
-  { path: '/goals', title: '任务目标', icon: Target },
   { path: '/ai-chat', title: 'AI建议', icon: Sparkles },
 ]
 
-// 任务目标与趋势页使用重粒子效果，其余页面轻量
+// 趋势页使用重粒子效果，其余页面轻量
 const density = computed(() =>
-  route.path === '/goals' || route.path === '/trend' ? 'heavy' : 'low'
+  route.path === '/trend' ? 'heavy' : 'low'
 )
 
 function go(path) {
@@ -65,11 +64,11 @@ function go(path) {
 
 <style scoped>
 .glass-nav {
-  background: linear-gradient(135deg, rgba(15, 118, 110, 0.85), rgba(99, 102, 241, 0.85), rgba(168, 85, 247, 0.85));
+  background: linear-gradient(135deg, rgba(111, 138, 130, 0.82), rgba(126, 136, 163, 0.82), rgba(143, 129, 150, 0.82));
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 6px 24px rgba(99, 102, 241, 0.25);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: 0 6px 24px rgba(126, 136, 163, 0.2);
 }
 .nav-active::after {
   content: '';

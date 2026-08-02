@@ -8,7 +8,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 五维雷达图数据（睡眠/运动/饮水/饮食/心情，0-100 分值）
+ * 雷达图数据（内置五维 + 自定义目标动态维度）
  */
 @Data
 @Builder
@@ -16,12 +16,23 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class RadarDataVO {
 
-    /** 维度名称列表 */
-    private List<String> indicators;
+    /** 维度描述列表（名称 + 最大值） */
+    private List<Indicator> indicators;
 
-    /** 各维度分值（0-100，与 indicators 一一对应） */
-    private List<Integer> values;
+    /** 各维度实际分值（与 indicators 一一对应） */
+    private List<Double> values;
 
-    /** 各维度目标分值（满分为 100，用于参考线） */
-    private List<Integer> targets;
+    /** 各维度目标分值（与 indicators 一一对应，用于参考线） */
+    private List<Double> targets;
+
+    @Data
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class Indicator {
+        /** 维度名称 */
+        private String name;
+        /** 维度最大值 */
+        private Double max;
+    }
 }

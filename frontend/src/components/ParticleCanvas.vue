@@ -15,7 +15,7 @@ let h = 0
 let dpr = 1
 const mouse = { x: -9999, y: -9999 }
 
-const PALETTE = ['#6366f1', '#0f766e', '#a855f7', '#06b6d4', '#ec4899']
+const PALETTE = ['#7e88a3', '#6f8a82', '#6f97a0', '#c39b7e', '#8f8196']
 
 function config() {
   const heavy = props.density === 'heavy'
@@ -25,7 +25,7 @@ function config() {
     speed: heavy ? 0.55 : 0.32,
     link: heavy,
     linkDist: heavy ? 150 : 120,
-    alpha: heavy ? 0.5 : 0.32,
+    alpha: heavy ? 0.34 : 0.22,
   }
 }
 
@@ -87,8 +87,8 @@ function step() {
   }
   // 连线（重粒子模式）
   if (c.link) {
-    ctx.globalAlpha = 0.12
-    ctx.strokeStyle = '#6366f1'
+    ctx.globalAlpha = 0.08
+    ctx.strokeStyle = '#7e88a3'
     for (let i = 0; i < particles.length; i++) {
       for (let j = i + 1; j < particles.length; j++) {
         const a = particles[i]

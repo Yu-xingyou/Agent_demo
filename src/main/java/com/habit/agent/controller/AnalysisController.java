@@ -43,7 +43,7 @@ public class AnalysisController {
 
     @GetMapping("/overview")
     @Operation(summary = "分析概览", description = "返回近 days 天各维度平均值与打卡天数")
-    public Result<AnalysisOverviewVO> overview(
+    public Result<Map<String, Object>> overview(
             @RequestParam(required = false) Long userId,
             @RequestParam(defaultValue = "7") int days) {
         return Result.success(analysisService.getOverview(userId, days));

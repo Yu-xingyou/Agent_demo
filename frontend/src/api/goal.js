@@ -17,3 +17,9 @@ export function listRecordsByDate(date) {
     params: { startDate: date, endDate: date },
   })
 }
+
+export function listRecordsByRange(startDate, endDate) {
+  return request.get('/goal-records/records', {
+    params: { startDate, endDate },
+  })
+}

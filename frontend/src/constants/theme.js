@@ -1,37 +1,37 @@
 // 全局视觉令牌与目标配色映射，集中管理避免散落
-// 流动渐变主色：青绿 → 靛蓝 → 紫
+// 莫兰迪低饱和主色：灰青绿 → 灰靛蓝 → 灰紫
 
 export const GRADIENTS = {
-  primary: 'linear-gradient(135deg, #0f766e 0%, #6366f1 50%, #a855f7 100%)',
-  primarySoft: 'linear-gradient(135deg, rgba(15,118,110,0.18), rgba(168,85,247,0.18))',
-  sleep: 'linear-gradient(135deg, #4f46e5, #6366f1)',
-  water: 'linear-gradient(135deg, #0891b2, #06b6d4)',
-  exercise: 'linear-gradient(135deg, #ea580c, #f59e0b)',
-  diet: 'linear-gradient(135deg, #0d9488, #14b8a6)',
-  mood: 'linear-gradient(135deg, #db2777, #ec4899)',
-  custom: 'linear-gradient(135deg, #7c3aed, #a855f7)',
+  primary: 'linear-gradient(135deg, #6f8a82 0%, #7e88a3 50%, #8f8196 100%)',
+  primarySoft: 'linear-gradient(135deg, rgba(111,138,130,0.14), rgba(143,129,150,0.14))',
+  sleep: 'linear-gradient(135deg, #6f7a99, #7e88a3)',
+  water: 'linear-gradient(135deg, #5f8a92, #6f97a0)',
+  exercise: 'linear-gradient(135deg, #b08a6f, #c39b7e)',
+  diet: 'linear-gradient(135deg, #6f9a8a, #7faa9a)',
+  mood: 'linear-gradient(135deg, #a87f8e, #b88f9e)',
+  custom: 'linear-gradient(135deg, #8a7fa0, #9a8fb0)',
 }
 
-// 目标类型 → 配色（用于任务目标板块预留色彩）
+// 目标类型 → 配色（莫兰迪低饱和，用于任务目标板块预留色彩）
 export const GOAL_COLORS = {
-  SLEEP: { from: '#4f46e5', to: '#6366f1', label: '睡眠目标', unit: 'h' },
-  EXERCISE: { from: '#ea580c', to: '#f59e0b', label: '运动目标', unit: 'min' },
-  WATER: { from: '#0891b2', to: '#06b6d4', label: '饮水目标', unit: 'ml' },
-  DIET: { from: '#0d9488', to: '#14b8a6', label: '饮食目标', unit: '/5' },
-  CUSTOM: { from: '#7c3aed', to: '#a855f7', label: '自定义目标', unit: '' },
+  SLEEP: { from: '#6f7a99', to: '#7e88a3', label: '睡眠目标', unit: 'h' },
+  EXERCISE: { from: '#b08a6f', to: '#c39b7e', label: '运动目标', unit: 'min' },
+  WATER: { from: '#5f8a92', to: '#6f97a0', label: '饮水目标', unit: 'ml' },
+  DIET: { from: '#6f9a8a', to: '#7faa9a', label: '饮食目标', unit: '/5' },
+  CUSTOM: { from: '#8a7fa0', to: '#9a8fb0', label: '自定义目标', unit: '' },
 }
 
 export function goalColor(type) {
   return GOAL_COLORS[type] || GOAL_COLORS.CUSTOM
 }
 
-// 心情配色（1-5）
+// 心情配色（1-5），莫兰迪化
 export const MOOD_COLORS = {
-  1: '#ef4444',
-  2: '#f97316',
-  3: '#eab308',
-  4: '#22c55e',
-  5: '#0d9488',
+  1: '#b88a8a',
+  2: '#c39b7e',
+  3: '#b3a36f',
+  4: '#7faa9a',
+  5: '#6f9a8a',
 }
 export const MOOD_LABELS = {
   1: '很差',
@@ -41,12 +41,12 @@ export const MOOD_LABELS = {
   5: '很棒',
 }
 
-// ECharts 统一主题色板
+// ECharts 统一主题色板（莫兰迪低饱和）
 export const CHART_PALETTE = [
-  '#6366f1',
-  '#0f766e',
-  '#06b6d4',
-  '#f59e0b',
-  '#a855f7',
-  '#ec4899',
+  '#7e88a3',
+  '#6f8a82',
+  '#6f97a0',
+  '#c39b7e',
+  '#8f8196',
+  '#b88f9e',
 ]

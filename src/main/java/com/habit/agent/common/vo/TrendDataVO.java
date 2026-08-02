@@ -31,4 +31,7 @@ public class TrendDataVO {
 
     /** 心情评分（1-5） */
     private List<Integer> mood;
+
+    /** 自定义目标趋势序列（动态维度，按用户实际自定义目标生成） */
+    private java.util.List<CustomGoalSeriesVO> customSeries;
 }

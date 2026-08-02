@@ -6,15 +6,15 @@
 
 @layer base {
   :root {
-    --bg-0: #f8fafc;
-    --bg-1: #eef2ff;
-    --bg-2: #0f172a;
-    --grad-primary: linear-gradient(135deg, #0f766e 0%, #6366f1 50%, #a855f7 100%);
-    --grad-primary-soft: linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(168, 85, 247, 0.16));
-    --glass-bg: rgba(255, 255, 255, 0.55);
-    --glass-border: rgba(255, 255, 255, 0.6);
-    --text-strong: #1e293b;
-    --text-soft: #64748b;
+    --bg-0: #f5f4f2;
+    --bg-1: #ebeae7;
+    --bg-2: #2b2a28;
+    --grad-primary: linear-gradient(135deg, #6f8a82 0%, #7e88a3 50%, #8f8196 100%);
+    --grad-primary-soft: linear-gradient(135deg, rgba(111, 138, 130, 0.14), rgba(143, 129, 150, 0.14));
+    --glass-bg: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.55);
+    --text-strong: #2b2a28;
+    --text-soft: #6b6862;
   }
 
   * {
@@ -25,9 +25,9 @@
     margin: 0;
     color: var(--text-strong);
     background:
-      radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
-      radial-gradient(1000px 500px at 100% 0%, rgba(168, 85, 247, 0.16), transparent 55%),
-      radial-gradient(900px 700px at 50% 120%, rgba(15, 118, 110, 0.14), transparent 60%),
+      radial-gradient(1200px 600px at 10% -10%, rgba(126, 136, 163, 0.1), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(143, 129, 150, 0.09), transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, rgba(111, 138, 130, 0.08), transparent 60%),
       linear-gradient(180deg, var(--bg-0), var(--bg-1));
     background-attachment: fixed;
     min-height: 100vh;
@@ -84,12 +84,12 @@
     color: #fff;
     border: none;
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
-    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+    box-shadow: 0 8px 22px rgba(111, 138, 130, 0.28);
   }
   .btn-grad:hover {
     transform: translateY(-2px);
-    filter: brightness(1.05);
-    box-shadow: 0 12px 32px rgba(168, 85, 247, 0.4);
+    filter: brightness(1.04);
+    box-shadow: 0 12px 30px rgba(143, 129, 150, 0.32);
   }
   .btn-grad:active {
     transform: translateY(0);
@@ -142,7 +142,7 @@
   height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #6366f1, #a855f7);
+  background: linear-gradient(180deg, #7e88a3, #8f8196);
   border-radius: 999px;
 }
 ::-webkit-scrollbar-track {

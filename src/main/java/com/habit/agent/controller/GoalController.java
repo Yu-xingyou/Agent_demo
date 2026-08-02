@@ -139,9 +139,8 @@ public class GoalController {
             @Parameter(description = "结束日期", example = "2026-08-02")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
         if (startDate != null && endDate != null) {
-            // 直接查询指定日期范围
-            return Result.success(goalRecordService.getRecent(null,
-                    (int) (endDate.toEpochDay() - startDate.toEpochDay() + 1)));
+            // 按精确日期范围查询
+            return Result.success(goalRecordService.getByDateRange(null, startDate, endDate));
         }
         return Result.success(goalRecordService.getRecent(null, 30));
     }

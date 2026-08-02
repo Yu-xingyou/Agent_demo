@@ -31,12 +31,6 @@ const routes = [
     component: () => import('@/views/AiChatView.vue'),
     meta: { title: 'AI建议' },
   },
-  {
-    path: '/goals',
-    name: 'goals',
-    component: () => import('@/views/GoalView.vue'),
-    meta: { title: '任务目标' },
-  },
 ]
 
 const router = createRouter({

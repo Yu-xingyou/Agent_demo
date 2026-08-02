@@ -8,10 +8,13 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.thymeleaf.exceptions.TemplateProcessingException;
 
 import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.common.result.Result;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -22,6 +25,25 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // ===== Thymeleaf 模板异常 =====
+
+    /**
+     * Thymeleaf 模板处理异常（如表达式解析失败）
+     * 记录详细错误日志后抛出，交给 Spring 默认错误处理
+     */
+    @ExceptionHandler(TemplateProcessingException.class)
+    public ResponseEntity<Result<Void>> handleTemplate(TemplateProcessingException ex,
+                                                       HttpServletRequest request,
+                                                       HttpServletResponse response) {
+        log.error("Thymeleaf模板异常: {}", ex.getMessage(), ex);
+        if (response.isCommitted()) {
+            log.warn("响应已提交，无法返回错误JSON，交给默认错误处理");
+            throw ex;
+        }
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Result.error(AgentConstants.CODE_SYSTEM_ERROR, "模板渲染错误: " + ex.getMessage()));
+    }
 
     // ===== 400 参数校验异常 =====
 
@@ -91,8 +113,14 @@ public class GlobalExceptionHandler {
      * 兜底：未知系统异常
      */
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Result<Void>> handleSystem(Exception ex) {
+    public ResponseEntity<Result<Void>> handleSystem(Exception ex,
+                                                      HttpServletRequest request,
+                                                      HttpServletResponse response) {
         log.error("系统异常", ex);
+        if (response.isCommitted()) {
+            log.warn("响应已提交，无法返回错误JSON");
+            return null;
+        }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Result.error(AgentConstants.CODE_SYSTEM_ERROR, "系统内部错误: " + ex.getMessage()));
     }

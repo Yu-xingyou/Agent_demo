@@ -264,7 +264,7 @@ public class PageController {
                 };
                 result.add(HabitGoalVO.builder()
                         .goalType(t.name())
-                        .displayName(t.name())
+                        .displayName(BUILTIN_TYPE_NAMES.getOrDefault(t.name(), t.name()))
                         .targetValue(DEFAULT_TARGETS.get(t.name()))
                         .unit(unit)
                         .period(HabitGoal.Period.DAILY.name())

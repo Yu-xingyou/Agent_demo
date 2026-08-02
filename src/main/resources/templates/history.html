@@ -40,7 +40,7 @@
                 <div class="col-2 col-md-2">
                     <div class="d-flex flex-column">
                         <span class="fs-5 fw-bold" style="color:var(--teal-800);"
-                              th:text="${r.recordDate != null} ? ${#strings.abbreviate(r.recordDate, 5)}">08-01</span>
+                              th:text="${r.recordDate != null} ? #strings.abbreviate(r.recordDate, 5) : ''">08-01</span>
                         <span class="text-muted small"
                               th:text="${r.recordDate}">2026-08-01</span>
                     </div>
@@ -52,24 +52,24 @@
                         <div class="metric-item">
                             <i class="bi bi-moon-stars text-indigo"></i>
                             <span class="text-muted">睡眠</span>
-                            <strong th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '—'">—</strong>
+                            <strong th:text="${r.sleepDuration != null} ? r.sleepDuration + 'h' : '—'">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-droplet text-info"></i>
                             <span class="text-muted">饮水</span>
-                            <strong th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '—'">—</strong>
+                            <strong th:text="${r.waterIntake != null} ? r.waterIntake + 'ml' : '—'">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-bicycle text-warning"></i>
                             <span class="text-muted">运动</span>
-                            <strong th:text="${r.exerciseType != null} ? ${r.exerciseType} + ' ' + (r.exerciseDuration != null ? r.exerciseDuration + 'min' : '') : '—'">—</strong>
+                            <strong th:text="${r.exerciseType != null} ? r.exerciseType + ' ' + (r.exerciseDuration != null ? r.exerciseDuration + 'min' : '') : '—'">—</strong>
                         </div>
                         <div class="metric-item">
                             <i class="bi bi-emoji-smile"></i>
                             <span class="text-muted">心情</span>
                             <strong th:if="${r.mood != null}">
                                 <span class="mood-badge"
-                                      th:style="${'background:' + (r.mood == 1 ? '#ef4444' : r.mood == 2 ? '#f97316' : r.mood == 3 ? '#eab308' : r.mood == 4 ? '#22c55e' : '#0d9488')}"
+                                      th:style="${'background:' + ({1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] != null ? {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] : '#ccc')}"
                                       th:text="${r.mood}">5</span>
                             </strong>
                             <span th:unless="${r.mood != null}">—</span>

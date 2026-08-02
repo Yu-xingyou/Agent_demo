@@ -12,7 +12,7 @@
             <div class="carousel-item active" style="background: linear-gradient(135deg, #f0fdfa, #ccfbf1);">
                 <div class="carousel-caption">
                     <h3 class="fw-bold mb-1" th:text="${todayRecord != null} ? '今日已打卡，继续保持！' : '今天还没打卡哦'">今日打卡</h3>
-                    <p class="text-muted mb-0" th:text="${todayRecord != null} ? '睡眠 ' + ${todayRecord.sleepDuration} + 'h · 饮水 ' + ${todayRecord.waterIntake} + 'ml' : '点击下方按钮开始记录今天的习惯数据'">今日摘要</p>
+                    <p class="text-muted mb-0" th:text="${todayRecord != null} ? '睡眠 ' + todayRecord.sleepDuration + 'h · 饮水 ' + todayRecord.waterIntake + 'ml' : '点击下方按钮开始记录今天的习惯数据'">今日摘要</p>
                 </div>
             </div>
             <div class="carousel-item" style="background: linear-gradient(135deg, #fffbeb, #fef3c7);">
@@ -37,12 +37,12 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日睡眠</div>
-                        <div class="stat-value" th:text="${todayRecord?.sleepDuration != null} ? ${todayRecord.sleepDuration} + 'h' : '—'">—</div>
+                        <div class="stat-value" th:text="${todayRecord?.sleepDuration != null} ? todayRecord.sleepDuration + 'h' : '—'">—</div>
                     </div>
                     <i class="bi bi-moon-stars stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.sleepDuration != null} ? (${todayRecord.sleepDuration} * 12.5) : 0) + '%'"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.sleepDuration != null ? todayRecord.sleepDuration * 12.5 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -51,12 +51,12 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日饮水</div>
-                        <div class="stat-value" th:text="${todayRecord?.waterIntake != null} ? ${todayRecord.waterIntake} + 'ml' : '—'">—</div>
+                        <div class="stat-value" th:text="${todayRecord?.waterIntake != null} ? todayRecord.waterIntake + 'ml' : '—'">—</div>
                     </div>
                     <i class="bi bi-droplet-half stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.waterIntake != null} ? (${todayRecord.waterIntake} / 25) : 0) + '%'"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.waterIntake != null ? todayRecord.waterIntake / 25 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -65,12 +65,12 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日运动</div>
-                        <div class="stat-value" th:text="${todayRecord?.exerciseDuration != null} ? ${todayRecord.exerciseDuration} + 'min' : '—'">—</div>
+                        <div class="stat-value" th:text="${todayRecord?.exerciseDuration != null} ? todayRecord.exerciseDuration + 'min' : '—'">—</div>
                     </div>
                     <i class="bi bi-bicycle stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.exerciseDuration != null} ? (${todayRecord.exerciseDuration} * 1.5) : 0) + '%'"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.exerciseDuration != null ? todayRecord.exerciseDuration * 1.5 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -79,12 +79,12 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <div class="stat-label">今日心情</div>
-                        <div class="stat-value" th:text="${todayRecord?.mood != null} ? ${todayRecord.mood} + '/5' : '—'">—</div>
+                        <div class="stat-value" th:text="${todayRecord?.mood != null} ? todayRecord.mood + '/5' : '—'">—</div>
                     </div>
                     <i class="bi bi-emoji-smile stat-icon"></i>
                 </div>
                 <div class="progress mt-2" style="height:5px; background:rgba(255,255,255,0.3);">
-                    <div class="progress-bar bg-light" th:style="'width:' + (${todayRecord?.mood != null} ? (${todayRecord.mood} * 20) : 0) + '%'"></div>
+                    <div class="progress-bar bg-light" th:style="${'width:' + (todayRecord?.mood != null ? todayRecord.mood * 20 : 0) + '%'}"></div>
                 </div>
             </div>
         </div>
@@ -135,12 +135,12 @@
                         <tbody>
                             <tr th:each="r : ${recentRecords}">
                                 <td class="fw-medium" th:text="${#strings.substring(r.recordDate, 5)}">--</td>
-                                <td th:text="${r.sleepDuration != null} ? ${r.sleepDuration} + 'h' : '—'">—</td>
-                                <td th:text="${r.exerciseDuration != null} ? ${r.exerciseDuration} + 'min' : '—'">—</td>
-                                <td th:text="${r.waterIntake != null} ? ${r.waterIntake} + 'ml' : '—'">—</td>
+                                <td th:text="${r.sleepDuration != null} ? r.sleepDuration + 'h' : '—'">—</td>
+                                <td th:text="${r.exerciseDuration != null} ? r.exerciseDuration + 'min' : '—'">—</td>
+                                <td th:text="${r.waterIntake != null} ? r.waterIntake + 'ml' : '—'">—</td>
                                 <td>
                                     <span th:if="${r.mood != null}" class="mood-badge"
-                                          th:style="${'background:' + (r.mood == 1 ? '#ef4444' : r.mood == 2 ? '#f97316' : r.mood == 3 ? '#eab308' : r.mood == 4 ? '#22c55e' : '#0d9488')}"
+                                          th:style="${'background:' + ({1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] != null ? {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] : '#ccc')}"
                                           th:text="${r.mood}">5</span>
                                     <span th:unless="${r.mood != null}">—</span>
                                 </td>
@@ -177,7 +177,7 @@
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <div class="d-flex align-items-center gap-2">
                                     <i class="bi fs-5"
-                                       th:classappend="${g.goalType == 'CUSTOM'} ? 'bi-star text-warning' : (g.goalType == 'SLEEP') ? 'bi-moon-stars text-indigo' : (g.goalType == 'EXERCISE') ? 'bi-bicycle text-warning' : (g.goalType == 'WATER') ? 'bi-droplet-half text-info' : 'bi-cup-hot text-purple'"></i>
+                                       th:classappend="${ {'CUSTOM':'bi-star text-warning','SLEEP':'bi-moon-stars text-indigo','EXERCISE':'bi-bicycle text-warning','WATER':'bi-droplet-half text-info','DIET':'bi-cup-hot text-purple'}[g.goalType] }"></i>
                                     <div>
                                         <div class="fw-bold small" th:text="${g.displayName}">睡眠目标</div>
                                         <div class="text-muted small">

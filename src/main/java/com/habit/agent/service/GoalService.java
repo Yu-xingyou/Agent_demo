@@ -169,7 +169,14 @@ public class GoalService {
         if (entity.getGoalType() == GoalType.CUSTOM && entity.getCustomName() != null) {
             displayName = entity.getCustomName();
         } else {
-            displayName = goalTypeName;
+            displayName = switch (entity.getGoalType()) {
+                case SLEEP -> "睡眠目标";
+                case EXERCISE -> "运动目标";
+                case WATER -> "饮水目标";
+                case DIET -> "饮食目标";
+                case CUSTOM -> entity.getCustomName() != null ? entity.getCustomName() : "自定义目标";
+                default -> goalTypeName;
+            };
         }
         return HabitGoalVO.builder()
                 .id(entity.getId())

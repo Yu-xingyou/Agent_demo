@@ -92,7 +92,7 @@
                                     <select class="form-select" id="mood">
                                         <option value="">请选择</option>
                                         <option th:each="i : ${#numbers.sequence(1,5)}" th:value="${i}"
-                                                th:text="${i == 1} ? '😢 很差' : (${i == 2} ? '😕 一般' : (${i == 3} ? '😐 还行' : (${i == 4} ? '🙂 不错' : '😄 很好')))"
+                                                th:text="${ {1:'😢 很差',2:'😕 一般',3:'😐 还行',4:'🙂 不错',5:'😄 很好'}[i] }"
                                                 th:selected="${todayRecord?.mood == i}">i</option>
                                     </select>
                                 </div>

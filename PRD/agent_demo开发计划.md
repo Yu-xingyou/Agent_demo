@@ -47,7 +47,7 @@ Spring AI 2.0 GA 于 2026 年 6 月 12 日正式发布，基于 Spring Boot 4.1 
 | **文档库** | MongoDB | 7.0+ | 对话记忆 ChatMemory + AI 分析结果 + 会话管理（文档型数据天然适配） |
 | **MongoDB 访问** | Spring Data MongoDB | 随 Boot | MongoRepository + MongoTemplate；与 JPA 并存 |
 | **向量库** | MongoDB Atlas Vector Search | spring-ai-starter-vector-store-mongodb-atlas | Spring AI 原生支持；RAG 知识库向量存储与检索 |
-| **前端框架** | Vue 3 | 3.x | **独立前端仓库 `habit-agent-web`**，前端工程，与后端分离部署 |
+| **前端框架** | Vue 3 | 3.x | **单仓库前端目录 `agent_demo/frontend/`**，前端工程，与后端同仓 |
 | **前端构建** | Vite | 5.x | 开发服务器（默认 5173）+ `/api` 代理到后端 8080 |
 | **前端状态** | Pinia | 2.x | 全局状态管理（今日记录、会话等） |
 | **前端请求** | Axios | 1.x | 封装统一请求，解析后端 `Result` 响应 |
@@ -295,7 +295,7 @@ habit-agent/
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  前端独立仓库 habit-agent-web (Vue3+Vite 独立部署)        │
+│  前端 agent_demo/frontend (Vue3+Vite 单仓库)              │
 │  Vue 组件渲染 + Axios 调 /api + EventSource 收 SSE       │
 └───────────────┬──────────────────────────┬──────────────┘
                 │ HTTPS /api (JSON)       │ SSE (流式)
@@ -325,12 +325,12 @@ habit-agent/
                                 └───────────────────────────┘
 ```
 
-### 2.3 前端独立仓库结构（habit-agent-web）
+### 2.3 前端目录结构（agent_demo/frontend/）
 
-前端为**独立 git 仓库**，与后端 `habit-agent` 分离部署，通过 HTTPS/JSON 调用 `/api`。
+前端为**单仓库内的 `frontend/` 子目录**，与后端 `habit-agent` 同仓管理，通过 HTTPS/JSON 调用 `/api`（Vite 代理转发）。
 
 ```
-habit-agent-web/
+frontend/
 ├── package.json / vite.config.js          # Vue3 + Vite，/api 代理到后端 8080
 ├── index.html
 └── src/
@@ -763,9 +763,9 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：通过 API 测试录入和查询习惯记录、创建和管理目标
 - **Git commit + push**
 
-### 阶段三：前端独立仓库（Vue 3 + Vite）
+### 阶段三：前端工程（Vue 3 + Vite，单仓库 frontend/）
 
-**目标**：5 个核心页面可用（前端独立仓库 `habit-agent-web`）
+**目标**：5 个核心页面可用（单仓库前端目录 `agent_demo/frontend/`）
 
 > 对应 API 文档：后端 `/api` REST 接口（前端经 Axios 调用，无 PageController）。
 
@@ -852,7 +852,7 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ### 阶段九：趋势分析与图表（前端 Vue 组件）
 
-**目标**：ECharts 可视化数据趋势（前端独立仓库 Vue 组件渲染）
+**目标**：ECharts 可视化数据趋势（单仓库前端 Vue 组件渲染）
 
 > 对应 API 文档：AnalysisController（4 端点：趋势数据/达成率/概览统计/雷达图）。
 
@@ -1010,7 +1010,7 @@ public SseEmitter streamChat(@RequestParam String message,
 1. **版本一致性**：Spring AI 2.0.0 GA 必须搭配 Spring Boot 4.1.x + JDK 21
 2. **双库共存**：MySQL 用 JPA，MongoDB 用 Spring Data MongoDB，两者在 Spring Boot 中可无缝共存
 3. **MongoDB Atlas Vector Search**：需要 MongoDB Atlas 账号或本地配置向量索引。本地开发可用 MongoDB Community + 手动向量检索降级
-4. **前后端分离 + 流式输出**：后端仅提供 SSE 端点，前端 Vue 工程用 EventSource 接收流式输出；前端独立仓库通过 Vite 代理或生产 CORS 与后端对接
+4. **前后端分离 + 流式输出**：后端仅提供 SSE 端点，前端 Vue 工程用 EventSource 接收流式输出；单仓库前端通过 Vite 代理或生产 CORS 与后端对接
 5. **开发顺序**：严格按阶段一→十推进，每阶段验证通过且用户批准后进入下一阶段
 6. **Git 管理**：每阶段完成后自动 commit + push 到 `https://github.com/Yu-xingyou/Agent_demo`
 
@@ -1018,12 +1018,12 @@ public SseEmitter streamChat(@RequestParam String message,
 
 ## 九、接口与开发阶段映射表
 
-> 与《API接口文档设计计划.md》《API接口设计方案.md》保持一致，共 8 个后端 REST 模块、46 个 `/api` 端点（原 PageController 的 5 个页面路由已移除，前端改为 Vue 独立仓库 SPA 路由，不计入后端端点；目标模块含 5 个自定义目标打卡记录扩展接口）。
+> 与《API接口文档设计计划.md》《API接口设计方案.md》保持一致，共 8 个后端 REST 模块、46 个 `/api` 端点（原 PageController 的 5 个页面路由已移除，前端改为单仓库 Vue SPA 路由，不计入后端端点；目标模块含 5 个自定义目标打卡记录扩展接口）。
 
 | 开发阶段 | 模块 | Controller | 端点数 | 累计 |
 |---|---|---|---|---|
 | 阶段二 | 习惯记录 + 习惯目标 | HabitController + GoalController | 7 + 9 = 16 | 16 |
-| 阶段三 | 前端独立仓库（SPA 路由，不占后端端点） | — | 0 | 16 |
+| 阶段三 | 前端工程（单仓库 SPA 路由，不占后端端点） | — | 0 | 16 |
 | 阶段四 | Spring AI 配置（无对外端点） | — | 0 | 16 |
 | 阶段五 | AI 对话 + 会话管理 | ChatController + SessionController | 3 + 7 = 10 | 26 |
 | 阶段六 | Tool Calling + Advisor（无对外端点） | — | 0 | 26 |

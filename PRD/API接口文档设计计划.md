@@ -4,7 +4,7 @@
 
 基于《agent_demo开发计划.md》和《详细模块开发流程.md》，创建一份完整的、可执行的 API 接口文档（MD 格式），覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点。**每个接口必须包含完整的 JSON 请求示例和 JSON 响应示例**，将所有参数字段用实际值写出，而非仅用表格列 VO 类名。
 
-> **前后端分离约定**：后端仅提供 REST API（无页面路由），前端为独立 Vue 3 + Vite 仓库 `habit-agent-web`，通过 `/api` 调用。本文档为纯 API 文档，不再描述 Thymeleaf 页面；文档同时以 OpenAPI 3.0 规范描述，便于 Swagger UI 浏览与前端通过 OpenAPI 生成请求代码。文档替换现有骨架文件 `API接口设计方案.md`。
+> **前后端分离约定**：后端仅提供 REST API（无页面路由），前端为单仓库 Vue 3 + Vite 工程 `agent_demo/frontend/`，通过 `/api` 调用。本文档为纯 API 文档，不再描述 Thymeleaf 页面；文档同时以 OpenAPI 3.0 规范描述，便于 Swagger UI 浏览与前端通过 OpenAPI 生成请求代码。文档替换现有骨架文件 `API接口设计方案.md`。
 
 ## PRD 覆盖评审（本次优化）
 
@@ -854,9 +854,9 @@ curl -X POST http://localhost:8080/api/rag/upload \
 
 **端点 4-5**：`GET /api/rag/documents`、`DELETE /api/rag/documents/{id}` — 列表响应同 search 格式但无 score 字段，DELETE 响应为 `{"code":200,"message":"success","data":null}`
 
-### 5.8 前端页面路由（Vue Router，前端独立仓库）
+### 5.8 前端页面路由（Vue Router，单仓库 frontend/）
 
-> 后端已无页面路由（PageController 移除）。以下 5 个页面由前端 `habit-agent-web` 的 Vue Router 实现，均为 SPA 客户端路由，调用对应 `/api` 端点获取数据：
+> 后端已无页面路由（PageController 移除）。以下 5 个页面由单仓库前端 `agent_demo/frontend/` 的 Vue Router 实现，均为 SPA 客户端路由，调用对应 `/api` 端点获取数据：
 
 | 前端路由 | 对应页面 | 主要调用的后端接口 |
 |---|---|---|
@@ -1135,7 +1135,7 @@ JSON 示例：
 | 开发阶段 | 模块 | 端点数 |
 |---|---|---|
 | 阶段二 | HabitController + GoalController | 13 |
-| 阶段三 | 前端独立仓库 SPA 路由（不占后端端点） | 0 |
+| 阶段三 | 前端工程 SPA 路由（单仓库，不占后端端点） | 0 |
 | 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 |
 | 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 10 |
 | 阶段七 | RagController | 5 |

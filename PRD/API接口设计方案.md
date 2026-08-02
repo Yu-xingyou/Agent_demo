@@ -2,7 +2,7 @@
 
 ## Summary
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点的完整 REST API 接口文档。包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为独立 Vue 3 + Vite 仓库（`habit-agent-web`），通过 HTTPS/JSON 调用本 API。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计覆盖全部 8 个后端功能模块、46 个 `/api` 接口端点的完整 REST API 接口文档。包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
 
 > 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录）均已标注；超出原接口设计的「自定义目标打卡记录」5 个接口已整合进目标模块；尚未实现的 7 个 Controller 模块已标注「未实现，待模块化开发」。
 
@@ -15,7 +15,7 @@
   - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点，含超出原接口设计的「自定义目标打卡记录」5 个接口，见下文"目标模块扩展接口"）
 - 尚未实现（待模块化开发）的 Controller（6 个）：ChatController / SessionController / AnalysisController / AiAnalysisController / RagController / ReminderController。
 
-> **架构说明**：后端仅提供 REST API，**不含任何页面路由**（原 PageController 的 Thymeleaf 页面已移除）。前端页面由独立 Vue 仓库 `habit-agent-web` 实现，通过 `/api` 调用本接口。
+> **架构说明**：后端仅提供 REST API，**不含任何页面路由**（原 PageController 的 Thymeleaf 页面已移除）。前端页面由单仓库 Vue 工程 `agent_demo/frontend/` 实现，通过 `/api` 调用本接口。
 
 ## 接口实现状态总览
 
@@ -169,7 +169,7 @@ POST /api/goal-records/records
 
 ### 2. 八大后端模块接口（共 46 个端点）
 
-> 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由独立 Vue 仓库 `habit-agent-web` 实现。以下为按**实际代码落地**统计的 8 个后端 REST 模块，共 46 个 `/api` 端点（目标模块含 5 个自定义目标打卡记录扩展接口）。
+> 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由单仓库 Vue 工程 `agent_demo/frontend/` 实现。以下为按**实际代码落地**统计的 8 个后端 REST 模块，共 46 个 `/api` 端点（目标模块含 5 个自定义目标打卡记录扩展接口）。
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
@@ -196,7 +196,7 @@ POST /api/goal-records/records
 ### 5. 接口总览表 + 实施依赖说明
 
 ## Assumptions & Decisions
-- **前后端分离**：后端仅产出 JSON API，不渲染页面；前端为独立 Vue 仓库 `habit-agent-web`，经 `/api` 调用（见《agent_demo开发计划.md》2.3）
+- **前后端分离**：后端仅产出 JSON API，不渲染页面；前端为单仓库 Vue 工程 `agent_demo/frontend/`，经 `/api` 调用（见《agent_demo开发计划.md》2.3）
 - **SSE 用 GET**（EventSource 原生仅支持 GET）；开发联调经 Vite 代理 `/api` 转发
 - 采用非流式 + SSE 流式双模式对话（对标 OpenAI/Anthropic/DashScope 企业标准，stream 参数切换两种模式）
 - 非流式 `POST /api/chat` 用于后端任务调用和测试调试，流式 `GET /api/chat/stream` 用于前端交互

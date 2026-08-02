@@ -71,7 +71,6 @@ CREATE TABLE IF NOT EXISTS `habit_goal` (
     `is_active`     TINYINT      NOT NULL DEFAULT 1      COMMENT '是否启用: 0=否 1=是',
     `create_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     `update_time`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-    UNIQUE KEY `uk_user_type`   (`user_id`, `goal_type`)  COMMENT '同用户同类型目标唯一',
     INDEX `idx_user_active` (`user_id`, `is_active`) COMMENT '查询用户启用的目标'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   COMMENT='习惯目标表(达成率统计基准)';
@@ -146,3 +145,11 @@ ON DUPLICATE KEY UPDATE
 -- SELECT * FROM habit_goal WHERE user_id = 1;
 -- SELECT * FROM habit_record WHERE user_id = 1 ORDER BY record_date DESC;
 -- SELECT * FROM reminder WHERE user_id = 1 AND is_active = 1;
+
+-- ============================================================================
+-- 增量变更记录（已建库环境请按需执行，避免重复运行建表语句）
+-- ============================================================================
+
+-- [2026-08-02] 移除 habit_goal 表的 uk_user_type 唯一约束
+-- 允许同用户同类型存在多条目标记录
+ALTER TABLE habit_goal DROP INDEX uk_user_type;

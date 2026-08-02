@@ -73,7 +73,7 @@
                             <span class="text-muted">心情</span>
                             <strong th:if="${r.mood != null}">
                                 <span class="mood-badge"
-                                      th:style="${'background:' + ({1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] != null ? {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] : '#ccc')}"
+                                      th:data-mood="${r.mood}"
                                       th:text="${r.mood}">5</span>
                             </strong>
                             <span th:unless="${r.mood != null}">—</span>
@@ -87,13 +87,11 @@
                                 <i class="bi bi-star"></i>
                                 <span th:text="${cg.displayName}">自定义</span>
                                 <strong>
-                                    <span th:with="${dayRecs = customRecordByDate[r.recordDate.toString()]}">
-                                        <span th:if="${dayRecs != null and dayRecs.get(cg.id) != null}"
-                                              th:text="${dayRecs.get(cg.id).value}">—</span>
-                                        <span th:unless="${dayRecs != null and dayRecs.get(cg.id) != null}">—</span>
-                                        <span th:if="${dayRecs != null and dayRecs.get(cg.id) != null and cg.unit != null}"
-                                              th:text="${' ' + cg.unit}"></span>
-                                    </span>
+                                    <span th:if="${customRecordByDate.containsKey(r.recordDate.toString()) and customRecordByDate[r.recordDate.toString()].containsKey(cg.id)}"
+                                          th:text="${customRecordByDate[r.recordDate.toString()][cg.id].value}">—</span>
+                                    <span th:unless="${customRecordByDate.containsKey(r.recordDate.toString()) and customRecordByDate[r.recordDate.toString()].containsKey(cg.id)}">—</span>
+                                    <span th:if="${customRecordByDate.containsKey(r.recordDate.toString()) and customRecordByDate[r.recordDate.toString()].containsKey(cg.id) and cg.unit != null}"
+                                          th:text="${' ' + cg.unit}"></span>
                                 </strong>
                             </div>
                         </th:block>
@@ -174,6 +172,13 @@
 const records = /*[[${records}]]*/ [];
 const customGoals = /*[[${customGoals}]]*/ [];
 
+// 心情 badge 颜色映射
+const moodColors = {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'};
+document.querySelectorAll('.mood-badge').forEach(el => {
+    const m = parseInt(el.dataset.mood);
+    if (m && moodColors[m]) el.style.background = moodColors[m];
+});
+
 // 自定义目标动态着色
 document.querySelectorAll('.custom-goal-metric').forEach(el => {
     const goalId = el.dataset.goalId;
@@ -186,9 +191,12 @@ document.querySelectorAll('.custom-goal-metric').forEach(el => {
 
 // 图表数据（按日期升序）
 const sorted = [...records].reverse();
-const labels = sorted.map(r => r.recordDate ? r.recordDate.substring(5) : '');
-const sleepData = sorted.map(r => r.sleepDuration || 0);
-const waterData = sorted.map(r => r.waterIntake || 0);
+const labels = sorted.map(r => {
+    const d = normalizeDate(r.recordDate);
+    return d.length > 5 ? d.substring(5) : d;
+});
+const sleepData = sorted.map(r => r.sleepDuration != null ? r.sleepDuration : 0);
+const waterData = sorted.map(r => r.waterIntake != null ? r.waterIntake : 0);
 
 // 睡眠趋势折线图
 const sleepCtx = document.getElementById('sleepChart');
@@ -237,18 +245,32 @@ document.addEventListener('keydown', (e) => {
 });
 
 /**
+ * 将 LocalDate 数组或字符串格式统一转换为字符串 "YYYY-MM-DD"
+ */
+function normalizeDate(d) {
+    if (d == null) return '';
+    if (Array.isArray(d)) {
+        return d.map((v, i) => i > 0 ? String(v).padStart(2, '0') : String(v)).join('-');
+    }
+    return String(d);
+}
+
+/**
  * 打开详情弹窗
  */
 function openDetail(id) {
-    const rec = records.find(r => r.id == id);
+    const rec = records.find(r => String(r.id) === String(id));
     if (!rec) return;
+
+    // 防止重复点击
+    if (modal.classList.contains('show')) return;
 
     // 显示加载中
     modalLoading.style.display = '';
     modalContent.style.display = 'none';
-    modalDate.textContent = rec.recordDate || '';
+    modalDate.textContent = normalizeDate(rec.recordDate);
 
-    // 如果数据已在页面中（30天），直接渲染；否则从API获取
+    // 如果数据已在页面中，直接渲染；否则从API获取
     if (rec.recordDate) {
         renderDetail(rec);
     } else {
@@ -299,16 +321,18 @@ function renderDetail(r) {
         return html + ' <span class="text-muted small">(' + q + '/5)</span>';
     };
 
+    const hasUpdate = r.updateTime != null && r.createTime != null && r.updateTime !== r.createTime;
+
     modalContent.innerHTML = `
         <div class="row g-0">
             <!-- 基本信息 -->
             <div class="col-12 mb-3">
                 <div class="detail-section">
                     <h6><i class="bi bi-info-circle text-teal" style="color:var(--teal-700);"></i> 基本信息</h6>
-                    <div class="detail-row"><span class="label">记录日期</span><span class="value">${fmt(r.recordDate)}</span></div>
+                    <div class="detail-row"><span class="label">记录日期</span><span class="value">${fmt(normalizeDate(r.recordDate))}</span></div>
                     <div class="detail-row"><span class="label">记录ID</span><span class="value text-muted">#${r.id}</span></div>
                     <div class="detail-row"><span class="label">创建时间</span><span class="value small">${fmt(r.createTime)}</span></div>
-                    ${r.updateTime && r.updateTime !== r.createTime ? `<div class="detail-row"><span class="label">最后更新</span><span class="value small">${fmt(r.updateTime)}</span></div>` : ''}
+                    ${hasUpdate ? `<div class="detail-row"><span class="label">最后更新</span><span class="value small">${fmt(r.updateTime)}</span></div>` : ''}
                 </div>
             </div>
 
@@ -318,7 +342,7 @@ function renderDetail(r) {
                     <h6><i class="bi bi-moon-stars text-indigo"></i> 睡眠</h6>
                     <div class="detail-row"><span class="label">入睡时间</span><span class="value">${fmt(r.sleepTime)}</span></div>
                     <div class="detail-row"><span class="label">起床时间</span><span class="value">${fmt(r.wakeTime)}</span></div>
-                    <div class="detail-row"><span class="label">睡眠时长</span><span class="value fw-bold" style="color:#4f46e5;">${r.sleepDuration ? r.sleepDuration + ' h' : '未记录'}</span></div>
+                    <div class="detail-row"><span class="label">睡眠时长</span><span class="value fw-bold" style="color:#4f46e5;">${r.sleepDuration != null ? r.sleepDuration + ' h' : '未记录'}</span></div>
                     <div class="detail-row"><span class="label">睡眠质量</span><span class="value">${qualityStars(r.sleepQuality)}</span></div>
                 </div>
             </div>
@@ -328,7 +352,7 @@ function renderDetail(r) {
                 <div class="detail-section">
                     <h6><i class="bi bi-bicycle text-warning"></i> 运动</h6>
                     <div class="detail-row"><span class="label">运动类型</span><span class="value">${fmt(r.exerciseType)}</span></div>
-                    <div class="detail-row"><span class="label">运动时长</span><span class="value">${r.exerciseDuration ? r.exerciseDuration + ' 分钟' : '未记录'}</span></div>
+                    <div class="detail-row"><span class="label">运动时长</span><span class="value">${r.exerciseDuration != null ? r.exerciseDuration + ' 分钟' : '未记录'}</span></div>
                 </div>
             </div>
 
@@ -336,7 +360,7 @@ function renderDetail(r) {
             <div class="col-md-6">
                 <div class="detail-section">
                     <h6><i class="bi bi-droplet text-info"></i> 饮水</h6>
-                    <div class="detail-row"><span class="label">饮水量</span><span class="value" style="color:#06b6d4;">${r.waterIntake ? r.waterIntake + ' ml' : '未记录'}</span></div>
+                    <div class="detail-row"><span class="label">饮水量</span><span class="value" style="color:#06b6d4;">${r.waterIntake != null ? r.waterIntake + ' ml' : '未记录'}</span></div>
                 </div>
             </div>
 
@@ -344,7 +368,7 @@ function renderDetail(r) {
             <div class="col-md-6">
                 <div class="detail-section">
                     <h6><i class="bi bi-cup-hot text-success"></i> 饮食</h6>
-                    <div class="detail-row"><span class="label">健康评分</span><span class="value">${r.dietScore ? r.dietScore + ' / 5' : '未记录'}</span></div>
+                    <div class="detail-row"><span class="label">健康评分</span><span class="value">${r.dietScore != null ? r.dietScore + ' / 5' : '未记录'}</span></div>
                     <div class="detail-row"><span class="label">饮食描述</span><span class="value small">${fmt(r.dietDesc)}</span></div>
                 </div>
             </div>

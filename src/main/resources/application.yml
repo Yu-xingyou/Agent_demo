@@ -7,6 +7,11 @@ spring:
   profiles:
     active: local              # 默认激活本地配置（application-local.yml 存放真实凭据，已 gitignore）
 
+  # ===== Jackson 序列化配置 =====
+  jackson:
+    date-format: yyyy-MM-dd
+    time-zone: Asia/Shanghai
+
   # ===== MySQL 数据源（子模块 1-2）=====
   datasource:
     url: jdbc:mysql://localhost:3306/habit_agent?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true

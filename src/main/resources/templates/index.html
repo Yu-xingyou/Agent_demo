@@ -145,12 +145,21 @@
                         <tbody>
                             <tr th:each="r : ${recentRecords}">
                                 <td class="fw-medium" th:text="${#strings.substring(r.recordDate, 5)}">--</td>
-                                <td th:text="${r.sleepDuration != null} ? r.sleepDuration + 'h' : '—'">—</td>
-                                <td th:text="${r.exerciseDuration != null} ? r.exerciseDuration + 'min' : '—'">—</td>
-                                <td th:text="${r.waterIntake != null} ? r.waterIntake + 'ml' : '—'">—</td>
+                                <td>
+                                    <span th:if="${r.sleepDuration != null}" th:text="${r.sleepDuration + 'h'}">—</span>
+                                    <span th:unless="${r.sleepDuration != null}">—</span>
+                                </td>
+                                <td>
+                                    <span th:if="${r.exerciseDuration != null}" th:text="${r.exerciseDuration + 'min'}">—</span>
+                                    <span th:unless="${r.exerciseDuration != null}">—</span>
+                                </td>
+                                <td>
+                                    <span th:if="${r.waterIntake != null}" th:text="${r.waterIntake + 'ml'}">—</span>
+                                    <span th:unless="${r.waterIntake != null}">—</span>
+                                </td>
                                 <td>
                                     <span th:if="${r.mood != null}" class="mood-badge"
-                                          th:style="${'background:' + ({1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] != null ? {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'}[r.mood] : '#ccc')}"
+                                          th:data-mood="${r.mood}"
                                           th:text="${r.mood}">5</span>
                                     <span th:unless="${r.mood != null}">—</span>
                                 </td>
@@ -338,6 +347,12 @@
 
 <div th:replace="~{fragments :: scripts}"></div>
 <script th:inline="javascript">
+// 心情 badge 颜色映射
+const moodColors = {1:'#ef4444',2:'#f97316',3:'#eab308',4:'#22c55e',5:'#0d9488'};
+document.querySelectorAll('.mood-badge').forEach(el => {
+    const m = parseInt(el.dataset.mood);
+    if (m && moodColors[m]) el.style.background = moodColors[m];
+});
 // ========== 心情分布饼状图 ==========
 const recentRecords = /*[[${recentRecords}]]*/ [];
 const moodCounts = {0:0, 1:0, 2:0, 3:0, 4:0, 5:0};

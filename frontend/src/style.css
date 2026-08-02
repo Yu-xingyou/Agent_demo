@@ -1,119 +1,150 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --teal-700: #0f766e;
-  --teal-800: #115e59;
-  --teal-900: #134e4a;
-  --amber-500: #f59e0b;
-  --warm-bg: #f9f8f6;
+@layer base {
+  :root {
+    --bg-0: #f8fafc;
+    --bg-1: #eef2ff;
+    --bg-2: #0f172a;
+    --grad-primary: linear-gradient(135deg, #0f766e 0%, #6366f1 50%, #a855f7 100%);
+    --grad-primary-soft: linear-gradient(135deg, rgba(15, 118, 110, 0.16), rgba(168, 85, 247, 0.16));
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --text-strong: #1e293b;
+    --text-soft: #64748b;
+  }
+
+  * {
+    font-family: 'Noto Sans SC', system-ui, -apple-system, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    color: var(--text-strong);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(99, 102, 241, 0.18), transparent 60%),
+      radial-gradient(1000px 500px at 100% 0%, rgba(168, 85, 247, 0.16), transparent 55%),
+      radial-gradient(900px 700px at 50% 120%, rgba(15, 118, 110, 0.14), transparent 60%),
+      linear-gradient(180deg, var(--bg-0), var(--bg-1));
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
 }
 
-html,
-body {
-  margin: 0;
-  padding: 0;
-  font-family: 'Noto Sans SC', system-ui, sans-serif;
-  background: var(--warm-bg);
-  color: #1e293b;
+@layer components {
+  .glass {
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    backdrop-filter: blur(18px) saturate(160%);
+    -webkit-backdrop-filter: blur(18px) saturate(160%);
+    box-shadow: 0 8px 30px rgba(15, 23, 42, 0.08);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    box-shadow: 0 12px 40px rgba(15, 23, 42, 0.12);
+  }
+
+  .gradient-text {
+    background: var(--grad-primary);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .gradient-border {
+    position: relative;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    background: var(--grad-primary);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.5;
+    transition: opacity 0.3s ease;
+  }
+  .gradient-border:hover::before {
+    opacity: 1;
+  }
+
+  .btn-grad {
+    background: var(--grad-primary);
+    color: #fff;
+    border: none;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
+    box-shadow: 0 8px 24px rgba(99, 102, 241, 0.35);
+  }
+  .btn-grad:hover {
+    transform: translateY(-2px);
+    filter: brightness(1.05);
+    box-shadow: 0 12px 32px rgba(168, 85, 247, 0.4);
+  }
+  .btn-grad:active {
+    transform: translateY(0);
+  }
 }
 
-#app {
-  min-height: 100vh;
+@layer utilities {
+  .animate-float {
+    animation: float 8s ease-in-out infinite;
+  }
+  .animate-float-slow {
+    animation: float 14s ease-in-out infinite;
+  }
+  .animate-rise {
+    animation: rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .animate-shimmer {
+    background-size: 200% 100%;
+    animation: shimmer 3.5s linear infinite;
+  }
 }
 
-/* 通用统计卡：还原原模板渐变 + 柔和阴影 */
-.stat-card {
-  border: none;
-  border-radius: 16px;
-  color: #fff;
-  min-height: 120px;
-  padding: 20px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-14px) rotate(2deg); }
 }
-.stat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.18);
+@keyframes rise {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: translateY(0); }
 }
-.stat-sleep {
-  background: linear-gradient(135deg, #4f46e5, #6366f1);
-}
-.stat-water {
-  background: linear-gradient(135deg, #0891b2, #06b6d4);
-}
-.stat-exercise {
-  background: linear-gradient(135deg, #ea580c, #f59e0b);
-}
-.stat-mood {
-  background: linear-gradient(135deg, #db2777, #ec4899);
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
-/* 通用白卡片 */
-.panel-card {
-  background: #fff;
-  border: none;
-  border-radius: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
+/* 滚动进入动画 */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
 }
-.panel-card:hover {
-  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.12);
-}
-
-/* 心情徽章 */
-.mood-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  color: #fff;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* 目标卡 */
-.goal-card {
-  position: relative;
-  overflow: hidden;
-  border: none;
-  border-radius: 16px;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06), 0 4px 12px rgba(0, 0, 0, 0.05);
-  transition: transform 0.25s ease, box-shadow 0.25s ease;
-}
-.goal-card::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 4px;
-  background: var(--goal-color, #0f766e);
-  transition: width 0.25s ease;
-}
-.goal-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(15, 118, 110, 0.18);
-}
-.goal-card:hover::before {
-  width: 8px;
-}
-
-/* 打卡区块左侧竖条 */
-.section-bar {
-  border-left: 3px solid;
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.7s ease, transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* 自定义滚动条 */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 10px;
+  height: 10px;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 4px;
+  background: linear-gradient(180deg, #6366f1, #a855f7);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -9,7 +9,8 @@ const request = axios.create({
 request.interceptors.response.use(
   (resp) => {
     const body = resp.data
-    if (body && typeof body.code === 'number' && body.code !== 0) {
+    // 后端 Result.success 返回 code=200，失败为业务 code；统一以 0/200 视为成功
+    if (body && typeof body.code === 'number' && body.code !== 0 && body.code !== 200) {
       ElMessage.error(body.message || '请求失败')
       return Promise.reject(new Error(body.message || 'Error'))
     }

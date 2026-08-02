@@ -56,7 +56,8 @@ public class GoalService {
     }
 
     /**
-     * 查询用户所有启用目标（含内置默认 + 用户自定义）
+     * 查询用户所有启用目标（内置默认 + 自定义，均默认 isActive=TRUE，故一并返回）。
+     * 与 getActiveGoals 语义一致，保留此方法以兼容前端"含自定义目标"的调用约定。
      */
     @Transactional(readOnly = true)
     public List<HabitGoalVO> getActiveGoalsWithCustom(Long userId) {

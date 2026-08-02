@@ -13,5 +13,7 @@ export function save(record) {
 }
 
 export function listRecordsByDate(date) {
-  return request.get('/goal-records/records/date', { params: { date } })
+  return request.get('/goal-records/records', {
+    params: { startDate: date, endDate: date },
+  })
 }

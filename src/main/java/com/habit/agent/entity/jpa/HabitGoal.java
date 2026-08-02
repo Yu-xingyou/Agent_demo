@@ -15,7 +15,6 @@ import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
-import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -33,7 +32,6 @@ import lombok.ToString;
 @Entity
 @Table(
     name = "habit_goal",
-    uniqueConstraints = @UniqueConstraint(name = "uk_user_type", columnNames = {"user_id", "goal_type"}),
     indexes = @Index(name = "idx_user_active", columnList = "user_id, is_active")
 )
 @Getter

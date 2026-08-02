@@ -8,6 +8,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.dao.DataIntegrityViolationException;
 import jakarta.validation.ConstraintViolationException;
 import org.thymeleaf.exceptions.TemplateProcessingException;
 
@@ -82,6 +83,23 @@ public class GlobalExceptionHandler {
         log.warn("枚举值异常: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(Result.error(AgentConstants.CODE_ENUM_ERROR, "枚举值不合法: " + ex.getMessage()));
+    }
+
+    /**
+     * 数据库完整性约束冲突（如唯一键重复、外键约束等）
+     * 兜底处理，避免遗漏的约束异常暴露为 500 系统异常。
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<Result<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        String msg = ex.getMessage() == null ? "" : ex.getMessage();
+        log.warn("数据完整性冲突: {}", msg);
+        // 重复键冲突优先映射为"重复目标"业务错误，便于前端友好提示
+        if (msg.contains("Duplicate") || msg.contains("duplicate") || msg.contains("UNIQUE")) {
+            return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body(Result.error(AgentConstants.CODE_DUPLICATE_GOAL, "数据重复，请检查是否已存在相同记录"));
+        }
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(Result.error(AgentConstants.CODE_DB_ERROR, "数据冲突，请检查输入是否合法"));
     }
 
     // ===== 业务异常（400/404/409） =====

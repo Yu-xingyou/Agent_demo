@@ -1,7 +1,6 @@
 package com.habit.agent.service;
 
 import java.util.List;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Service;
@@ -80,16 +79,29 @@ public class GoalService {
             goal.setUserId(AgentConstants.DEFAULT_USER_ID);
         }
 
-        // 内置类型检查重复
+        // 内置类型检查重复（同一类型只允许一个）
         if (goal.getGoalType() != null && goal.getGoalType() != GoalType.CUSTOM) {
-            Optional<HabitGoal> existing = habitGoalRepository
+            boolean duplicate = habitGoalRepository
                     .findByUserId(goal.getUserId())
                     .stream()
-                    .filter(g -> g.getGoalType() == goal.getGoalType())
-                    .findFirst();
-            if (existing.isPresent()) {
+                    .anyMatch(g -> g.getGoalType() == goal.getGoalType());
+            if (duplicate) {
                 throw new BusinessException(AgentConstants.CODE_DUPLICATE_GOAL,
                         "该目标类型已存在: " + goal.getGoalType());
+            }
+        }
+
+        // 自定义类型检查重复（按 goalType + customName 判重，不同 customName 可共存多个）
+        if (goal.getGoalType() == GoalType.CUSTOM) {
+            String normalizedCustomName = normalizeCustomName(goal.getCustomName());
+            boolean duplicate = habitGoalRepository
+                    .findByUserId(goal.getUserId())
+                    .stream()
+                    .filter(g -> g.getGoalType() == GoalType.CUSTOM)
+                    .anyMatch(g -> normalizeCustomName(g.getCustomName()).equals(normalizedCustomName));
+            if (duplicate) {
+                throw new BusinessException(AgentConstants.CODE_DUPLICATE_GOAL,
+                        "该自定义目标已存在: " + (normalizedCustomName.isEmpty() ? "默认自定义" : normalizedCustomName));
             }
         }
 
@@ -174,6 +186,13 @@ public class GoalService {
     /**
      * Entity → VO 转换（含 displayName 计算）
      */
+    /**
+     * 归一化自定义目标名称：去空格，null/空串统一为空字符串，便于判重比较。
+     */
+    private String normalizeCustomName(String customName) {
+        return customName == null ? "" : customName.trim();
+    }
+
     private HabitGoalVO toVO(HabitGoal entity) {
         String goalTypeName = entity.getGoalType() != null ? entity.getGoalType().name() : null;
         String displayName;

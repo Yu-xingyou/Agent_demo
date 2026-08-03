@@ -9,16 +9,17 @@ export function sendMessage(message, conversationId) {
 
 /**
  * 流式对话（SSE）。通过 fetch + ReadableStream 解析后端事件：
- *   meta  -> { conversationId, timestamp, model }
- *   chunk  -> { content, index }
- *   done   -> { conversationId, totalTokens, duration }
- *   error  -> { errorCode, message, conversationId }
+ *   meta      -> { conversationId, timestamp, model }
+ *   tool_call -> { status, message }     （工具调用降级轮次，前端可显示过渡提示）
+ *   chunk     -> { content, index }
+ *   done      -> { conversationId, totalTokens, duration, streaming_mode }
+ *   error     -> { errorCode, message, conversationId }
  *
- * @param {{message:string, conversationId?:string, onMeta?:Function, onChunk?:Function, onDone?:Function, onError?:Function}} opts
+ * @param {{message:string, conversationId?:string, onMeta?:Function, onToolCall?:Function, onChunk?:Function, onDone?:Function, onError?:Function}} opts
  * @returns {Promise<AbortController>} 返回 AbortController，便于调用方在超时/主动停止时中断
  */
 export function streamMessage(opts) {
-  const { message, conversationId, onMeta, onChunk, onDone, onError } = opts
+  const { message, conversationId, onMeta, onToolCall, onChunk, onDone, onError } = opts
   const controller = new AbortController()
 
   const params = new URLSearchParams({ message })
@@ -49,6 +50,7 @@ export function streamMessage(opts) {
             const evt = parseSseEvent(raw)
             if (!evt) continue
             if (evt.event === 'meta') onMeta && onMeta(evt.data)
+            else if (evt.event === 'tool_call') onToolCall && onToolCall(evt.data)
             else if (evt.event === 'chunk') onChunk && onChunk(evt.data)
             else if (evt.event === 'done') onDone && onDone(evt.data)
             else if (evt.event === 'error') onError && onError(evt.data)

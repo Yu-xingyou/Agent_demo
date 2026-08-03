@@ -30,8 +30,17 @@ import reactor.core.publisher.Flux;
  *
  * <ul>
  *   <li>POST /api/chat — 非流式对话；</li>
- *   <li>GET /api/chat/stream — SSE 流式对话；</li>
- *   <li>POST /api/chat/stop — 停止生成（阶段五基础版：清除会话记忆窗口，标记中断）。</li>
+ *   <li>GET /api/chat/stream — SSE 流式对话（5 种事件：meta/chunk/tool_call/done/error）；</li>
+ *   <li>POST /api/chat/stop — 停止生成。</li>
+ * </ul>
+ *
+ * <p>SSE 协议对齐 PRD《API接口文档设计计划.md》规范：
+ * <ul>
+ *   <li><b>meta</b>：流开始，携带 conversationId、timestamp、model</li>
+ *   <li><b>tool_call</b>：ChatService 以 {@code __TC__} 前缀标记工具调用轮次，Controller 检测后发送</li>
+ *   <li><b>chunk</b>：逐 token（真流式）或分片（模拟流式）文本</li>
+ *   <li><b>done</b>：流结束，含 streaming_mode 标识 native/simulated</li>
+ *   <li><b>error</b>：流出错</li>
  * </ul>
  */
 @Slf4j
@@ -43,7 +52,7 @@ public class ChatController {
 
     private final ChatService chatService;
 
-    /** 停止信号：conversationId -> true 表示请求中断。基础版仅做标记位，流式循环检测。 */
+    /** 停止信号：conversationId -> true 表示请求中断。 */
     private final ConcurrentHashMap<String, Boolean> stopFlags = new ConcurrentHashMap<>();
 
     @Operation(summary = "非流式对话")
@@ -88,12 +97,24 @@ public class ChatController {
         Flux<String> flux = chatService.stream(message, cid);
         StringBuilder full = new StringBuilder();
         final int[] index = {0};
+        final boolean[] hadToolCall = {false};   // 标记本轮是否触发工具调用
 
         flux.subscribe(
                 chunk -> {
                     if (Boolean.TRUE.equals(stopFlags.get(cid))) {
-                        sendDone(emitter, cid, 0, 0);
+                        sendDone(emitter, cid, 0, 0, hadToolCall[0]);
                         emitter.complete();
+                        return;
+                    }
+                    // 检测 __TC__ 工具调用标记：发送 tool_call SSE 事件而非 chunk 事件
+                    if (chunk.startsWith("__TC__")) {
+                        hadToolCall[0] = true;
+                        String json = chunk.substring(6); // 去掉 "__TC__" 前缀
+                        try {
+                            emitter.send(SseEmitter.event().name("tool_call").data(json));
+                        } catch (Exception e) {
+                            emitter.completeWithError(e);
+                        }
                         return;
                     }
                     full.append(chunk);
@@ -116,7 +137,7 @@ public class ChatController {
                     emitter.complete();
                 },
                 () -> {
-                    sendDone(emitter, cid, full.length(), 0);
+                    sendDone(emitter, cid, full.length(), 0, hadToolCall[0]);
                     emitter.complete();
                 });
 
@@ -131,11 +152,13 @@ public class ChatController {
         return Result.success();
     }
 
-    private void sendDone(SseEmitter emitter, String conversationId, int len, long duration) {
+    private void sendDone(SseEmitter emitter, String conversationId, int len, long duration, boolean hadToolCall) {
+        String streamingMode = hadToolCall ? "simulated" : "native";
         try {
             emitter.send(SseEmitter.event().name("done")
                     .data("{\"conversationId\":\"" + conversationId
-                            + "\",\"totalTokens\":0,\"duration\":" + duration + "}"));
+                            + "\",\"totalTokens\":0,\"duration\":" + duration
+                            + ",\"streaming_mode\":\"" + streamingMode + "\"}"));
         } catch (Exception ignored) {
             // ignore
         }

@@ -1,6 +1,8 @@
 package com.habit.agent.service.impl;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -18,13 +20,29 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 
 /**
- * 阶段五（对话记忆与流式输出）ChatService 实现
+ * 阶段五（对话记忆与流式输出）ChatService 实现。
+ *
+ * <p>Spring AI 2.0.0 流式策略：
+ * <ul>
+ *   <li><b>纯文本轮次</b>：`.stream().content()` 真逐字输出（SSE chunk 事件逐 token 推送）。</li>
+ *   <li><b>工具调用轮次</b>：ChunkMerger 因 DashScope 流式 tool_calls 缺 index 字段崩溃
+ *       → onErrorResume 捕获 → 降级为 .call() 非流式获取完整回复
+ *       → 以分片 Flux 模拟流式 + 前置 {@code __TC__} 标记通知 Controller 发送 tool_call SSE 事件。</li>
+ * </ul>
+ *
+ * <p>ChunkMerger bug 根因：Spring AI 2.0.0 的 {@code OpenAiChatModel$ChunkMerger} 对流式
+ * tool_calls 分片的 Optional 直接 .get() 未检查 isPresent()。通义千问 DashScope 的流式响应
+ * 不总是返回 index 字段，导致 NoSuchElementException。该缺陷需等 Spring AI 2.0.1 修复。
+ * 全网截至 2026-08 无兼容 DashScope 流式工具调用的完整攻略。
  */
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
+
+    /** 工具调用降级信号前缀：Controller 检测此前缀发送 tool_call SSE 事件而非 chunk 事件。 */
+    static final String TC_MARKER = "__TC__";
 
     private final ChatClient chatClient;
     private final ChatSessionRepository chatSessionRepository;
@@ -38,17 +56,6 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Flux<String> stream(String userMessage, String conversationId) {
         final String cid = ensureSession(userMessage, conversationId);
-        // 流式优先：纯文本轮次走 .stream().content() 真逐字输出。
-        //
-        // 背景：Spring AI 2.0.0 的 OpenAiChatModel.ChunkMerger 在流式合并"工具调用 chunk"时，
-        // 对通义千问（OpenAI 兼容）返回格式不健壮——其流式 tool_calls 缺 index 字段，会在 Flux
-        // 数据流内部（onComplete 阶段）抛 NoSuchElementException。该异常发生在 Reactor 流内部，
-        // 外层 try/catch 无法捕获，且 .content() 与 .chatClientResponse() 共用同一底层 ChunkMerger，
-        // 故只要本轮模型发起工具调用，走 .stream() 必崩（该缺陷需 Spring AI 2.0.1 才修复）。
-        //
-        // 策略：纯文本轮次正常真流式；一旦 ChunkMerger 崩溃（即本轮涉及工具调用），onErrorResume
-        // 在订阅层面拦截，降级为非流式 .call() 一次性返回完整文本（不触发 ChunkMerger），保证接口
-        // 不崩、工具能力不丢。工具调用轮次以整段形式返回（非逐字）。
         return chatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, cid))
@@ -57,22 +64,40 @@ public class ChatServiceImpl implements ChatService {
                 .content()
                 .onErrorResume(t -> {
                     if (isChunkMergeFailure(t)) {
-                        log.warn("[流式降级非流式] conversationId={}，本轮触发工具调用，降级为整段返回，原因：{}",
+                        log.warn("[流式降级] conversationId={}，触发工具调用，降级为分片模拟流式，原因：{}",
                                 cid, t.getMessage());
-                        return Flux.just(chatOnce(userMessage, cid));
+                        String full = chatOnce(userMessage, cid);
+                        return Flux.concat(
+                                Flux.just(TC_MARKER + "{\"status\":\"executing\",\"message\":\"正在查询你的数据…\"}"),
+                                chunkedFlux(full)
+                        );
                     }
                     return Flux.error(t);
                 });
     }
 
     private String chatOnce(String userMessage, String conversationId) {
-        // 兜底：调用处再次关闭并行工具调用，防止全局 defaultOptions 被局部覆盖而失效。
         return chatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
                 .options(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .call()
                 .content();
+    }
+
+    /**
+     * 将完整响应文本按每 3 字符一组切分，通过 Flux.fromIterable 逐片发射，
+     * 在工具调用轮次中模拟流式逐字输出体验。
+     */
+    private Flux<String> chunkedFlux(String text) {
+        if (text == null || text.isEmpty()) {
+            return Flux.empty();
+        }
+        List<String> chunks = new ArrayList<>();
+        for (int i = 0; i < text.length(); i += 3) {
+            chunks.add(text.substring(i, Math.min(i + 3, text.length())));
+        }
+        return Flux.fromIterable(chunks);
     }
 
     /**

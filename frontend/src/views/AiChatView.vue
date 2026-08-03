@@ -18,6 +18,7 @@ const suggestions = [
 const input = ref('')
 const sending = ref(false)
 const conversationId = ref('')
+const toolStatus = ref('')    // 工具调用过渡提示文本（空字符串表示无工具调用）
 let abortController = null
 
 const scrollBox = ref(null)
@@ -45,15 +46,23 @@ function send(text) {
     onMeta: (meta) => {
       if (meta && meta.conversationId) conversationId.value = meta.conversationId
     },
+    onToolCall: (tc) => {
+      // 工具调用降级信号：显示过渡提示
+      if (tc && tc.message) toolStatus.value = tc.message
+    },
     onChunk: (chunk) => {
+      // 收到第一个文本 chunk 时清除工具调用状态
+      if (toolStatus.value) toolStatus.value = ''
       aiMsg.text += chunk.content
       scrollToBottom()
     },
     onDone: () => {
+      toolStatus.value = ''
       sending.value = false
       abortController = null
     },
     onError: (err) => {
+      toolStatus.value = ''
       sending.value = false
       abortController = null
       aiMsg.text = (aiMsg.text || '') + '\n\n⚠️ ' + ((err && err.message) || '助手暂时无法回应，请稍后再试')
@@ -122,10 +131,16 @@ function resetChat() {
               : 'bg-brand/10 text-slate-700'"
           >
             <span v-if="m.text">{{ m.text }}</span>
-            <span v-else-if="sending && m === messages[messages.length - 1]" class="inline-flex gap-1">
-              <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" />
-              <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.15s" />
-              <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.3s" />
+            <span v-else-if="sending && m === messages[messages.length - 1]" class="inline-flex gap-1 items-center">
+              <template v-if="toolStatus">
+                <span class="text-xs text-brand-soft">{{ toolStatus }}</span>
+                <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-pulse" />
+              </template>
+              <template v-else>
+                <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" />
+                <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.15s" />
+                <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.3s" />
+              </template>
             </span>
           </div>
         </div>

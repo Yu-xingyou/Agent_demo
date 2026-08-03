@@ -45,6 +45,7 @@ spring:
         options:
           model: qwen-plus          # 对话模型
           temperature: 0.7          # 生成温度
+          parallel-tool-calls: false # 关闭并行工具调用（Spring AI 2.0.0 ChunkMerger 对 DashScope 兼容性限制）
       embedding:
         options:
           model: text-embedding-v3  # 向量嵌入模型

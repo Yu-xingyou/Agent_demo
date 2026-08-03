@@ -21,4 +21,6 @@ public interface ChatSessionRepository extends MongoRepository<ChatSession, Stri
     List<ChatSession> findByUserIdAndStatus(Long userId, String status);
 
     Optional<ChatSession> findByConversationId(String conversationId);
+
+    boolean existsByConversationId(String conversationId);
 }

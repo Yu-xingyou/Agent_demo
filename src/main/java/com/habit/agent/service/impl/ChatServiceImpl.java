@@ -91,7 +91,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public List<Map<String, String>> getMessages(String conversationId) {
         List<org.springframework.ai.chat.messages.Message> msgs =
-                chatMemory.get(conversationId, Integer.MAX_VALUE);
+                chatMemory.get(conversationId);
         List<Map<String, String>> result = new ArrayList<>();
         for (org.springframework.ai.chat.messages.Message m : msgs) {
             // 跳过 SystemMessage，只返回用户和助手的消息
@@ -118,7 +118,7 @@ public class ChatServiceImpl implements ChatService {
         try {
             String title = chatClient.prompt()
                     .user("用不超过15个字总结这段对话的主题：" + userMessage)
-                    .options(OpenAiChatOptions.builder().temperature(0.3).build())
+                    .options(OpenAiChatOptions.builder().temperature(0.3))
                     .call()
                     .content();
             if (title == null || title.isBlank() || title.length() > 30) {
@@ -170,18 +170,35 @@ public class ChatServiceImpl implements ChatService {
     }
 
     private String ensureSession(String userMessage, String conversationId) {
-        if (conversationId != null && !conversationId.isBlank()) {
-            return conversationId;
+        String cid = (conversationId == null || conversationId.isBlank())
+                ? java.util.UUID.randomUUID().toString()
+                : conversationId;
+        // 会话已存在则直接复用（保留已有标题/时间）
+        if (chatSessionRepository.existsByConversationId(cid)) {
+            touchSession(cid);
+            return cid;
         }
-        // 暂无会话时自动创建，并记录首条消息用于标题
-        String cid = java.util.UUID.randomUUID().toString();
+        // 首次进入该会话时持久化元数据，供历史会话侧边栏展示
         ChatSession session = new ChatSession();
+        LocalDateTime now = LocalDateTime.now();
         session.setConversationId(cid);
         session.setUserId(AgentConstants.DEFAULT_USER_ID);
         session.setTitle(userMessage.length() > 20 ? userMessage.substring(0, 20) : userMessage);
         session.setStatus("ACTIVE");
-        session.setExpireAt(LocalDateTime.now().plusDays(30));
+        session.setMessageCount(1);
+        session.setCreateTime(now);
+        session.setLastMessageTime(now);
+        session.setExpireAt(now.plusDays(30));
         chatSessionRepository.save(session);
         return cid;
+    }
+
+    /** 更新会话的最后消息时间与消息条数。 */
+    private void touchSession(String conversationId) {
+        chatSessionRepository.findByConversationId(conversationId).ifPresent(s -> {
+            s.setLastMessageTime(LocalDateTime.now());
+            s.setMessageCount(s.getMessageCount() + 1);
+            chatSessionRepository.save(s);
+        });
     }
 }

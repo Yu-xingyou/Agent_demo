@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
@@ -45,8 +44,11 @@ public class SessionServiceImpl implements SessionService {
         ChatSession s = new ChatSession();
         s.setUserId(AgentConstants.DEFAULT_USER_ID);
         s.setTitle(title != null && !title.isBlank() ? title : "新会话");
+        LocalDateTime now = LocalDateTime.now();
         s.setStatus("ACTIVE");
-        s.setExpireAt(LocalDateTime.now().plusDays(30));
+        s.setCreateTime(now);
+        s.setLastMessageTime(now);
+        s.setExpireAt(now.plusDays(30));
         ChatSession saved = sessionRepository.save(s);
         log.info("创建会话: id={}, title={}", saved.getConversationId(), saved.getTitle());
         return toVO(saved);
@@ -110,7 +112,6 @@ public class SessionServiceImpl implements SessionService {
         vo.setTitle(s.getTitle());
         vo.setStatus(s.getStatus());
         vo.setCreateTime(s.getCreateTime());
-        vo.setLastMessageTime(s.getLastMessageTime());
         vo.setLastMessageTime(s.getLastMessageTime());
         vo.setExpireAt(s.getExpireAt());
         return vo;

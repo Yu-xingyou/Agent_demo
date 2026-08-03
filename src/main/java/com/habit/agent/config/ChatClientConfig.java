@@ -4,10 +4,16 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.method.MethodToolCallback;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
+
+import com.habit.agent.agent.tools.GoalTools;
+import com.habit.agent.agent.tools.HabitQueryTools;
+import com.habit.agent.agent.tools.HabitStatTools;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -21,8 +27,8 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>启动时对通义千问做一次轻量连通性 ping，验证 API Key 与模型可用。</li>
  * </ol>
  *
- * <p>阶段四仅搭建基础能力，不接入对话记忆 / 工具 / 多智能体路由
- * （分别属于阶段五 / 阶段六 / 阶段九），后续阶段将向该 ChatClient 追加 Advisor。
+ * <p>阶段四搭建基础能力；阶段五接入对话记忆 Advisor；阶段六注册业务 Tool，
+ * 使 AI 助手能调用真实习惯数据作答。
  */
 @Slf4j
 @Configuration
@@ -33,13 +39,24 @@ public class ChatClientConfig {
     private Resource systemPromptResource;
 
     @Bean
-    public ChatClient chatClient(ChatClient.Builder builder, MessageChatMemoryAdvisor memoryAdvisor) {
+    public ChatClient chatClient(ChatClient.Builder builder,
+                                 MessageChatMemoryAdvisor memoryAdvisor,
+                                 HabitQueryTools habitQueryTools,
+                                 HabitStatTools habitStatTools,
+                                 GoalTools goalTools) {
         // model / temperature 已在 application.yml 的 spring.ai.openai.chat.options 配置，
-        // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词与对话记忆 Advisor。
+        // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词、对话记忆 Advisor 与业务工具。
         // 记忆按 conversationId 隔离：调用方通过 advisorParams(ChatMemory.CONVERSATION_ID, id) 传入。
+        // 阶段六：将习惯查询 / 统计 / 目标管理工具注册到 ChatClient，使 AI 能调用真实业务数据。
+        ToolCallback[] toolCallbacks = new ToolCallback[] {
+                MethodToolCallback.builder().toolObject(habitQueryTools).build(),
+                MethodToolCallback.builder().toolObject(habitStatTools).build(),
+                MethodToolCallback.builder().toolObject(goalTools).build(),
+        };
         return builder
                 .defaultSystem(systemPromptResource)
                 .defaultAdvisors(memoryAdvisor)
+                .defaultTools(toolCallbacks)
                 .build();
     }
 

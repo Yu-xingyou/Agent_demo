@@ -94,3 +94,13 @@ function parseSseEvent(raw) {
 export function stopChat(conversationId) {
   return request.post('/chat/stop', null, { params: { conversationId } })
 }
+
+/** 获取指定会话的历史消息列表 */
+export function getChatHistory(conversationId) {
+  return request.get('/chat/history', { params: { conversationId } })
+}
+
+/** AI 生成会话标题 */
+export function generateTitle(message) {
+  return request.post('/chat/title', null, { params: { message } })
+}

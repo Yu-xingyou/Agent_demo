@@ -1,6 +1,8 @@
 package com.habit.agent.controller;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -150,6 +152,18 @@ public class ChatController {
     public Result<Void> stop(@RequestParam String conversationId) {
         stopFlags.put(conversationId, true);
         return Result.success();
+    }
+
+    @Operation(summary = "获取会话历史消息")
+    @GetMapping("/history")
+    public Result<List<Map<String, String>>> getHistory(@RequestParam String conversationId) {
+        return Result.success(chatService.getMessages(conversationId));
+    }
+
+    @Operation(summary = "AI 生成会话标题")
+    @PostMapping("/title")
+    public Result<String> generateTitle(@RequestParam String message) {
+        return Result.success(chatService.generateTitle(message));
     }
 
     private void sendDone(SseEmitter emitter, String conversationId, int len, long duration, boolean hadToolCall) {

@@ -1,5 +1,6 @@
 package com.habit.agent.service.impl;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -134,6 +135,8 @@ public class ChatServiceImpl implements ChatService {
     /**
      * 将完整响应文本按每 3 字符一组切分，通过 Flux.fromIterable 逐片发射，
      * 在工具调用轮次中模拟流式逐字输出体验。
+     * 追加 delayElements(20ms) 让分片异步间隔发射，形成平滑打字机效果，
+     * 避免同步发射导致分片在同一 tick 内全部 send、前端仍表现为一次性出现。
      */
     private Flux<String> chunkedFlux(String text) {
         if (text == null || text.isEmpty()) {
@@ -143,7 +146,7 @@ public class ChatServiceImpl implements ChatService {
         for (int i = 0; i < text.length(); i += 3) {
             chunks.add(text.substring(i, Math.min(i + 3, text.length())));
         }
-        return Flux.fromIterable(chunks);
+        return Flux.fromIterable(chunks).delayElements(Duration.ofMillis(20));
     }
 
     /**

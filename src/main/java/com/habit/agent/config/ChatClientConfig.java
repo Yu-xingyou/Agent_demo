@@ -4,6 +4,7 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
@@ -56,10 +57,15 @@ public class ChatClientConfig {
         ToolCallbackProvider toolProvider = MethodToolCallbackProvider.builder()
                 .toolObjects(habitQueryTools, habitStatTools, goalTools, habitActionTools)
                 .build();
+        // 关闭并行工具调用：Spring AI 2.0.0 的流式 chunk 合并器（OpenAiChatModel.ChunkMerger）
+        // 不支持一条 assistant 消息包含多个 tool call。通义千问 qwen-plus 默认允许并行工具调用，
+        // 复杂意图下会一次返回多个 tool call，导致流式聚合抛出
+        // "no more than one tool call per message currently supported"。此处从模型侧全局禁用并行调用。
         return builder
                 .defaultSystem(systemPromptResource)
                 .defaultAdvisors(memoryAdvisor)
                 .defaultTools(toolProvider)
+                .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .build();
     }
 

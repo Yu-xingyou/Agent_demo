@@ -105,6 +105,7 @@ public class ChatController {
                     }
                 },
                 error -> {
+                    log.error("[流式对话异常] conversationId={}", cid, error);
                     try {
                         emitter.send(SseEmitter.event().name("error")
                                 .data("{\"errorCode\":\"AI_TIMEOUT\",\"message\":\"AI 响应异常\","

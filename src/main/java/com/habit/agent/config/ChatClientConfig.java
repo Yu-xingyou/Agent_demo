@@ -4,8 +4,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.ai.tool.ToolCallback;
-import org.springframework.ai.tool.method.MethodToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
+import org.springframework.ai.tool.method.MethodToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -48,15 +48,16 @@ public class ChatClientConfig {
         // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词、对话记忆 Advisor 与业务工具。
         // 记忆按 conversationId 隔离：调用方通过 advisorParams(ChatMemory.CONVERSATION_ID, id) 传入。
         // 阶段六：将习惯查询 / 统计 / 目标管理工具注册到 ChatClient，使 AI 能调用真实业务数据。
-        ToolCallback[] toolCallbacks = new ToolCallback[] {
-                MethodToolCallback.builder().toolObject(habitQueryTools).build(),
-                MethodToolCallback.builder().toolObject(habitStatTools).build(),
-                MethodToolCallback.builder().toolObject(goalTools).build(),
-        };
+        // 阶段六：将习惯查询 / 统计 / 目标管理工具注册到 ChatClient，使 AI 能调用真实业务数据。
+        // 使用 MethodToolCallbackProvider 自动扫描各 bean 上所有 @Tool 注解方法，
+        // 避免逐方法指定 toolName 导致 build() 报 "ToolDefinition is required"。
+        ToolCallbackProvider toolProvider = MethodToolCallbackProvider.builder()
+                .toolObjects(habitQueryTools, habitStatTools, goalTools)
+                .build();
         return builder
                 .defaultSystem(systemPromptResource)
                 .defaultAdvisors(memoryAdvisor)
-                .defaultTools(toolCallbacks)
+                .defaultTools(toolProvider)
                 .build();
     }
 

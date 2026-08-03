@@ -1,8 +1,6 @@
 package com.habit.agent.service.impl;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.stream.IntStream;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -49,8 +47,8 @@ public class ChatServiceImpl implements ChatService {
         // 故只要本轮模型发起工具调用，走 .stream() 必崩（该缺陷需 Spring AI 2.0.1 才修复）。
         //
         // 策略：纯文本轮次正常真流式；一旦 ChunkMerger 崩溃（即本轮涉及工具调用），onErrorResume
-        // 在订阅层面拦截，降级为非流式 .call() 一次性拿到完整文本（不触发 ChunkMerger），再把整段
-        // 文本切片为逐字 Flux 延迟推送，使工具轮次同样呈现打字机效果——全程不崩、体验一致。
+        // 在订阅层面拦截，降级为非流式 .call() 一次性返回完整文本（不触发 ChunkMerger），保证接口
+        // 不崩、工具能力不丢。工具调用轮次以整段形式返回（非逐字）。
         return chatClient.prompt()
                 .user(userMessage)
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, cid))
@@ -59,24 +57,12 @@ public class ChatServiceImpl implements ChatService {
                 .content()
                 .onErrorResume(t -> {
                     if (isChunkMergeFailure(t)) {
-                        log.warn("[流式降级伪流式] conversationId={}，本轮触发工具调用，降级为整段切片推送，原因：{}",
+                        log.warn("[流式降级非流式] conversationId={}，本轮触发工具调用，降级为整段返回，原因：{}",
                                 cid, t.getMessage());
-                        return toCharStream(chatOnce(userMessage, cid));
+                        return Flux.just(chatOnce(userMessage, cid));
                     }
                     return Flux.error(t);
                 });
-    }
-
-    /**
-     * 把完整文本切片为逐字 Flux 并加微小延迟，模拟打字机流式效果。
-     * 用于工具调用轮次的降级输出（该轮次无法用 .stream() 安全输出）。
-     */
-    private Flux<String> toCharStream(String full) {
-        if (full == null || full.isEmpty()) {
-            return Flux.empty();
-        }
-        return Flux.fromStream(IntStream.range(0, full.length()).mapToObj(full::substring))
-                .delayElements(Duration.ofMillis(12));
     }
 
     private String chatOnce(String userMessage, String conversationId) {

@@ -52,7 +52,7 @@ public class GoalController {
 
     @Operation(summary = "创建目标", description = "支持内置类型与自定义类型")
     @PostMapping
-    public Result<HabitGoalVO> create(@Valid @RequestBody HabitGoal goal) {
+    public Result<HabitGoalVO> create(@Valid @RequestBody HabitGoalVO goal) {
         log.info("创建目标: type={}, customName={}", goal.getGoalType(), goal.getCustomName());
         return Result.success(goalService.saveGoal(goal));
     }
@@ -94,7 +94,7 @@ public class GoalController {
     @PutMapping("/{id}")
     public Result<HabitGoalVO> update(
             @Parameter(description = "目标ID", example = "1") @NotNull @PathVariable Long id,
-            @Valid @RequestBody HabitGoal goalUpdate) {
+            @Valid @RequestBody HabitGoalVO goalUpdate) {
         log.info("更新目标: id={}", id);
         return Result.success(goalService.updateGoal(id, goalUpdate));
     }

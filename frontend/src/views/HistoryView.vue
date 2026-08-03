@@ -189,7 +189,7 @@ function customVal(date, goalId) {
         <el-table-column prop="remark" label="备注" min-width="140" show-overflow-tooltip />
         <el-table-column label="操作" width="80" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" link size="small" @click="$router.push('/checkin')">编辑</el-button>
+            <el-button type="primary" link size="small" @click="$router.push('/checkin?date=' + row.recordDate)">编辑</el-button>
           </template>
         </el-table-column>
       </el-table>

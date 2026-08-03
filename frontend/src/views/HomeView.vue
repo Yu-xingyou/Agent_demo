@@ -208,7 +208,9 @@ async function confirmAddGoal() {
     addGoalForm.value = { customName: '', targetValue: null, unit: '' }
     await load() // 重新加载，雷达图随自定义目标增减自动更新
   } catch (e) {
-    ElMessage.error('添加目标失败')
+    // 透传后端具体错误（如 CODE_DUPLICATE_GOAL: 该自定义目标已存在）
+    const msg = e?.response?.data?.message || e?.message || '添加目标失败'
+    ElMessage.error(msg)
   } finally {
     adding.value = false
   }

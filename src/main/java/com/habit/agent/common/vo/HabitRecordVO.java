@@ -1,7 +1,6 @@
 package com.habit.agent.common.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotNull;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -31,8 +30,8 @@ public class HabitRecordVO {
     @Schema(description = "记录ID", example = "1")
     private Long id;
 
-    @NotNull(message = "用户ID不能为空")
-    @Schema(description = "用户ID", example = "1")
+    // 用户ID 非必填：后端统一兜底为 DEFAULT_USER_ID，前端可不传
+    @Schema(description = "用户ID（可选，不传则使用默认用户）", example = "1")
     private Long userId;
 
     @Schema(description = "记录日期", example = "2026-08-02")

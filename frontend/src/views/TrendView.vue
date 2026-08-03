@@ -70,7 +70,9 @@ function dynamicYAxis(data, target) {
   })
   const valid = cleaned.filter((v) => v != null)
   const peak = valid.length ? Math.max(...valid) : 0
-  const max = Math.max(target ? target * 1.5 : 10, peak * 1.2)
+  // 基准以上限贴近目标值为优先：目标值的 2 倍，仅当峰值超过时才放大
+  const base = target ? target * 2 : (peak > 0 ? peak * 1.5 : 10)
+  const max = Math.max(base, peak * 1.05)
   return {
     type: 'value',
     min: 0,

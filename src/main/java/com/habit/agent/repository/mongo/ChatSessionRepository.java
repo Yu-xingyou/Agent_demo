@@ -1,6 +1,7 @@
 package com.habit.agent.repository.mongo;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.mongodb.repository.MongoRepository;
 
@@ -18,4 +19,6 @@ public interface ChatSessionRepository extends MongoRepository<ChatSession, Stri
     List<ChatSession> findByUserIdOrderByLastMessageTimeDesc(Long userId);
 
     List<ChatSession> findByUserIdAndStatus(Long userId, String status);
+
+    Optional<ChatSession> findByConversationId(String conversationId);
 }

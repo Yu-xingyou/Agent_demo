@@ -26,8 +26,8 @@ public class ChatResponseVO {
     private String content;
 
     /** 元信息（tokensUsed / model / duration）。 */
-    private Metadata metadata;
-
+    private Metadata metadata
+;
     /** 创建时间。 */
     private LocalDateTime createTime;
 

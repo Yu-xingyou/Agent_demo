@@ -2,7 +2,6 @@ package com.habit.agent.common.vo;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -30,8 +29,8 @@ public class HabitGoalVO {
     @Schema(description = "目标ID", example = "1")
     private Long id;
 
-    @NotNull(message = "用户ID不能为空")
-    @Schema(description = "用户ID", example = "1")
+    // 用户ID 非必填：后端统一兜底为 DEFAULT_USER_ID，前端可不传
+    @Schema(description = "用户ID（可选，不传则使用默认用户）", example = "1")
     private Long userId;
 
     @NotBlank(message = "目标类型不能为空")
@@ -61,4 +60,10 @@ public class HabitGoalVO {
 
     @Schema(description = "更新时间")
     private LocalDateTime updateTime;
+
+    @Schema(description = "本周当前累计值(内置按近7天聚合，自定义按本周打卡均值)", example = "25.00")
+    private BigDecimal currentValue;
+
+    @Schema(description = "本周完成度百分比(0-100+)", example = "83.3")
+    private BigDecimal weeklyAchievement;
 }

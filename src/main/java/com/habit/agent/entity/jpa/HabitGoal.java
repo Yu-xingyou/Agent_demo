@@ -53,7 +53,31 @@ public class HabitGoal {
      * 目标周期枚举
      */
     public enum Period {
-        DAILY, WEEKLY, MONTHLY
+        DAILY, WEEKLY, MONTHLY;
+
+        /**
+         * VO 字符串(DAY/WEEK/MONTH) → 枚举。前端用简写，库内用完整名。
+         */
+        public static Period fromVo(String vo) {
+            if (vo == null) return null;
+            return switch (vo.trim().toUpperCase()) {
+                case "DAY", "DAILY" -> DAILY;
+                case "WEEK", "WEEKLY" -> WEEKLY;
+                case "MONTH", "MONTHLY" -> MONTHLY;
+                default -> throw new IllegalArgumentException("不支持的目标周期: " + vo);
+            };
+        }
+
+        /**
+         * 枚举 → VO 字符串(返回简写 DAY/WEEK/MONTH)
+         */
+        public String toVo() {
+            return switch (this) {
+                case DAILY -> "DAY";
+                case WEEKLY -> "WEEK";
+                case MONTHLY -> "MONTH";
+            };
+        }
     }
 
     @Id
@@ -100,11 +124,25 @@ public class HabitGoal {
     void onCreate() {
         this.createTime = LocalDateTime.now();
         this.updateTime = this.createTime;
+        // 兜底默认值：JSON 反序列化（无 builder）不会触发 @Builder.Default，
+        // 若不补默认值，period/isActive 可能为 null 导致非空列插入失败。
+        if (this.period == null) {
+            this.period = Period.DAILY;
+        }
+        if (this.isActive == null) {
+            this.isActive = Boolean.TRUE;
+        }
     }
 
     @PreUpdate
     void onUpdate() {
         this.updateTime = LocalDateTime.now();
+        if (this.period == null) {
+            this.period = Period.DAILY;
+        }
+        if (this.isActive == null) {
+            this.isActive = Boolean.TRUE;
+        }
     }
 
     /**

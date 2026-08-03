@@ -1,11 +1,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { Moon, Apple, Dumbbell, Droplets, Save, Target, Plus } from 'lucide-vue-next'
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
 import { MOOD_LABELS, MOOD_EMOJIS, goalColor } from '@/constants/theme'
 import { ElMessage } from 'element-plus'
 
+const route = useRoute()
 const today = ref(null)
 const submitting = ref(false)
 const customGoals = ref([])
@@ -19,8 +21,11 @@ function localDateStr(d = new Date()) {
   return `${y}-${m}-${day}`
 }
 
+// 编辑历史记录时通过 ?date=YYYY-MM-DD 传入目标日期；不传则默认今天
+const targetDate = ref(route.query.date ? String(route.query.date) : localDateStr())
+
 const form = ref({
-  recordDate: localDateStr(),
+  recordDate: targetDate.value,
   sleepTime: '',
   wakeTime: '',
   sleepQuality: null,
@@ -34,14 +39,14 @@ const form = ref({
 })
 
 const isChecked = computed(() => !!today.value)
+const isHistoryEdit = computed(() => targetDate.value !== localDateStr())
 
-// 自定义目标：加载激活的 CUSTOM 目标，并回显今日已有记录
+// 自定义目标：加载激活的 CUSTOM 目标，并回显目标日期已有记录
 async function loadCustomGoals() {
   try {
     const goals = (await goalApi.getActiveWithCustom()).filter((g) => g.goalType === 'CUSTOM')
     customGoals.value = goals
-    const todayStr = localDateStr()
-    const recs = await goalApi.listRecordsByDate(todayStr).catch(() => [])
+    const recs = await goalApi.listRecordsByDate(targetDate.value).catch(() => [])
     const byGoal = {}
     ;(recs || []).forEach((r) => { byGoal[r.goalId] = r })
     const inputs = {}
@@ -60,8 +65,12 @@ async function loadCustomGoals() {
 
 async function load() {
   try {
-    const t = await habitApi.getToday().catch(() => null)
+    // 按目标日期查询（不局限于今天），支持编辑历史记录
+    const list = await habitApi.listByRange(targetDate.value, targetDate.value).catch(() => [])
+    const t = (list && list.length) ? list[0] : null
     today.value = t
+    // 始终以目标日期为准（无论是否已有记录），保存时落到该天
+    form.value.recordDate = targetDate.value
     if (t) {
       Object.assign(form.value, {
         recordDate: t.recordDate,
@@ -96,7 +105,7 @@ async function submit() {
         await goalApi.save({
           goalId: g.id,
           goalType: 'CUSTOM',
-          recordDate: localDateStr(),
+          recordDate: form.value.recordDate,
           value: Number(inp.value),
           remark: inp.remark || '',
         })
@@ -129,7 +138,8 @@ onMounted(load)
   <div class="max-w-3xl mx-auto px-5 py-6 relative z-10">
     <h1 class="text-2xl font-semibold text-slate-800 mb-1">每日打卡</h1>
     <p class="text-sm text-slate-500 mb-6">
-      {{ isChecked ? '今天已打卡，可更新你的记录' : '记录今天的睡眠、饮食、运动与心情' }}
+      <template v-if="isHistoryEdit">正在编辑 {{ targetDate }} 的记录</template>
+      <template v-else>{{ isChecked ? '今天已打卡，可更新你的记录' : '记录今天的睡眠、饮食、运动与心情' }}</template>
     </p>
 
     <div class="space-y-4">

@@ -807,7 +807,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - 实现非流式对话：`ChatController` 的 `POST /api/chat`（企业标准，用于后端任务调用和测试调试）
 - 实现 SSE 流式输出：`ChatController` 的 `GET /api/chat/stream`（SSE 事件 meta/chunk/done/error）
 - 实现停止生成：`POST /api/chat/stop`（基础版：标记位中断 + 清除会话记忆窗口）
-- 前端 `chat-stream.js`（EventSource + 停止按钮）待联调（前端单仓库工程）
+- 前端 `AiChatView.vue` 通过 `fetch` + `ReadableStream` 解析 SSE 事件（meta/chunk/tool_call/done/error），已实现流式对话、停止、续聊、工具调用过渡提示（前端单仓库工程）
 - 验证：多轮对话有记忆（MongoDB `ai_chat_memory` 可见）；流式输出逐字显示；停止按钮能中断；`GET /api/sessions` 正确展示
 - **Git commit + push**
 
@@ -815,16 +815,20 @@ public SseEmitter streamChat(@RequestParam String message,
 
 **目标**：AI 能查询真实数据、执行操作
 
-- 实现 `HabitQueryTools`（查询历史记录、最近记录，查 MySQL）
-- 实现 `HabitStatTools`（达成率计算、趋势统计）
-- 实现 `SuggestionTools`（保存 AI 建议到 MongoDB）
-- 将工具注册到 ChatClient
-- 实现自定义 `LoggingAdvisor`（记录请求/响应/Token）
-- 实现自定义 `SafetyFilterAdvisor`（基础输入过滤）
+> 6-1 业务工具注册已落地（✅）；6-2 自定义 Advisor 待开发（❌）。
+
+- ✅ 实现 `HabitQueryTools`（5 个 @Tool：今日记录/最近打卡/范围查询/按目标查询/会话列表）
+- ✅ 实现 `HabitStatTools`（4 个 @Tool：概览统计/达成率/趋势/雷达图数据）
+- ✅ 实现 `GoalTools`（3 个 @Tool：列出目标/创建自定义目标/切换启用状态）
+- ✅ 实现 `HabitActionTools`（2 个 @Tool：内置维度打卡/自定义目标打卡）
+- ✅ 通过 `MethodToolCallbackProvider` 将 4 个工具 Bean（共 14 个 @Tool 方法）注册到 ChatClient
+- ✅ `system-prompt.st` 增加工具调用指引（提示 AI 优先调用工具查询真实数据）
+- ❌ 实现自定义 `LoggingAdvisor`（记录请求/响应/Token）
+- ❌ 实现自定义 `SafetyFilterAdvisor`（基础输入过滤）
 - 验证：问"我最近一周睡眠怎么样"，AI 调用工具查询并分析
 - **Git commit + push**
 
-### 阶段七：RAG 知识库（技术点 9）
+### 阶段七：RAG 知识库（技术点 9）❌ 待开发
 
 **目标**：AI 回答有专业知识支撑
 
@@ -838,7 +842,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：问"每天应该睡多久"，AI 基于知识库文档回答
 - **Git commit + push**
 
-### 阶段八：多智能体路由（技术点 13）
+### 阶段八：多智能体路由（技术点 13）❌ 待开发
 
 **目标**：不同意图路由到不同子 Agent
 
@@ -854,6 +858,8 @@ public SseEmitter streamChat(@RequestParam String message,
 
 **目标**：ECharts 可视化数据趋势（单仓库前端 Vue 组件渲染）
 
+> 趋势统计后端已落地（✅）；ECharts 可视化待完善（❌）。
+
 > 对应 API 文档：AnalysisController（4 端点：趋势数据/达成率/概览统计/雷达图）。
 
 - 实现 `AnalysisService`（统计计算：趋势数据/达成率/概览/雷达图）
@@ -866,7 +872,7 @@ public SseEmitter streamChat(@RequestParam String message,
 - 验证：图表正确渲染历史数据趋势
 - **Git commit + push**
 
-### 阶段十：AI 分析结果、打卡提醒与收尾（技术点 14）
+### 阶段十：AI 分析结果、打卡提醒与收尾（技术点 14）❌ 待开发
 
 **目标**：技术点全覆盖 + 边界完善 + 交付
 
@@ -1000,7 +1006,7 @@ public SseEmitter streamChat(@RequestParam String message,
 3. 进入每日打卡页，录入今日数据，提交成功（调 `/api/habits`）
 4. 进入历史记录页，查看历史打卡记录（调 `/api/habits`）
 5. 进入趋势分析页，查看趋势图表和达成率（ECharts 组件调 `/api/analysis/*`）
-6. 进入 AI 建议页，与 AI 流式对话（EventSource 调 `/api/chat/stream`）
+6. 进入 AI 建议页，与 AI 流式对话（`AiChatView.vue` 通过 `fetch` + `ReadableStream` 解析 SSE 事件，调 `/api/chat/stream`）
 7. 查看已保存的 AI 建议历史（调 `/api/sessions`）
 
 ---

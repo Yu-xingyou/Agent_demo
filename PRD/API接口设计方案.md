@@ -4,15 +4,17 @@
 
 基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 5 个后端功能模块、35 个 `/api` 端点（Habit 7 + Goal 14 + Chat 3 + Session 7 + Analysis 4）；另有 3 个模块（16 个端点）规划中尚未实现。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
 
-> 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录、AnalysisController）均已标注；「自定义目标打卡记录」6 个接口已整合进目标模块并提升为正式功能；尚未实现的 5 个 Controller 模块已标注「未实现，待模块化开发」。
+> 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录、ChatController、SessionController、AnalysisController）均已标注；「自定义目标打卡记录」6 个接口已整合进目标模块并提升为正式功能；尚未实现的 3 个 Controller 模块已标注「未实现，待模块化开发」。
 
 ## Current State Analysis
 
-- 项目已有部分 Java 代码落地：已实现 `HabitController`（习惯记录）、`GoalController`（习惯目标 + 自定义目标打卡记录）、`AnalysisController`（趋势分析）三大模块。
+- 项目已有 Java 代码落地：已实现 `HabitController`（习惯记录）、`GoalController`（习惯目标 + 自定义目标打卡记录）、`ChatController`（AI 对话 3 端点）、`SessionController`（会话管理 7 端点）、`AnalysisController`（趋势分析）五大模块。
 - 数据存储采用 MongoDB + MySQL 双库架构。
-- 已实现 Controller（3 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
+- 已实现 Controller（5 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
   - `HabitController`（`/api/habits`，7 端点）
   - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点：目标 CRUD 8 + 自定义目标打卡记录 6，见下文"目标模块扩展接口"）
+  - `ChatController`（`/api/chat` + `/api/chat/stream` + `/api/chat/stop`，3 端点：非流式对话 + SSE 流式 + 停止）
+  - `SessionController`（`/api/sessions`，7 端点：会话 CRUD + 清理过期）
   - `AnalysisController`（`/api/analysis`，4 端点：趋势/达成率/概览/雷达）
 - 尚未实现（待模块化开发）的 Controller（3 个）：AiAnalysisController / RagController / ReminderController。
 

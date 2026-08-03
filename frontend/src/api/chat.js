@@ -4,7 +4,7 @@ import request from '@/utils/request'
 // 阶段六：ChatClient 已注册业务 Tool，AI 可在对话中调用真实习惯数据。
 
 export function sendMessage(message, conversationId) {
-  return request.post('/api/chat', { message, conversationId })
+  return request.post('/chat', { message, conversationId })
 }
 
 /**
@@ -92,5 +92,5 @@ function parseSseEvent(raw) {
 }
 
 export function stopChat(conversationId) {
-  return request.post('/api/chat/stop', null, { params: { conversationId } })
+  return request.post('/chat/stop', null, { params: { conversationId } })
 }

@@ -1185,7 +1185,7 @@ JSON 示例：
 | 阶段三 | 前端工程 SPA 路由（单仓库，不占后端端点） | 0 | ✅ 已落地 |
 | 阶段四 | Spring AI 配置（ChatClient + SystemPrompt，无对外端点） | 0 | ✅ 已落地 |
 | 阶段五 | ChatController 非流式+SSE+停止 + SessionController | 3 + 7 = 10 | ✅ 已落地 |
-| 阶段六 | Tool Calling + Advisor（无对外端点） | 0 | ❌ 待开发 |
+| 阶段六 | Tool Calling 业务工具注册（无对外端点） | 0 | ✅ 已落地 |
 | 阶段七 | RagController | 5 | ❌ 待开发 |
 | 阶段八 | 多智能体路由（无新增端点） | 0 | ❌ 待开发 |
 | 阶段九 | AnalysisController | 4 | ✅ 已落地 |

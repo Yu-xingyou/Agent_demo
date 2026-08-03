@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
 import com.habit.agent.agent.tools.GoalTools;
+import com.habit.agent.agent.tools.HabitActionTools;
 import com.habit.agent.agent.tools.HabitQueryTools;
 import com.habit.agent.agent.tools.HabitStatTools;
 
@@ -43,7 +44,8 @@ public class ChatClientConfig {
                                  MessageChatMemoryAdvisor memoryAdvisor,
                                  HabitQueryTools habitQueryTools,
                                  HabitStatTools habitStatTools,
-                                 GoalTools goalTools) {
+                                 GoalTools goalTools,
+                                 HabitActionTools habitActionTools) {
         // model / temperature 已在 application.yml 的 spring.ai.openai.chat.options 配置，
         // ChatClient.Builder 自动读取，此处不再重复设置；仅注入系统提示词、对话记忆 Advisor 与业务工具。
         // 记忆按 conversationId 隔离：调用方通过 advisorParams(ChatMemory.CONVERSATION_ID, id) 传入。
@@ -52,7 +54,7 @@ public class ChatClientConfig {
         // 使用 MethodToolCallbackProvider 自动扫描各 bean 上所有 @Tool 注解方法，
         // 避免逐方法指定 toolName 导致 build() 报 "ToolDefinition is required"。
         ToolCallbackProvider toolProvider = MethodToolCallbackProvider.builder()
-                .toolObjects(habitQueryTools, habitStatTools, goalTools)
+                .toolObjects(habitQueryTools, habitStatTools, goalTools, habitActionTools)
                 .build();
         return builder
                 .defaultSystem(systemPromptResource)

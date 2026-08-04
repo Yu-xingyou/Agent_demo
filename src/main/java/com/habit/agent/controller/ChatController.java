@@ -6,7 +6,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,11 +38,13 @@ import reactor.core.publisher.Flux;
  * <p>SSE 协议对齐 PRD《API接口文档设计计划.md》规范：
  * <ul>
  *   <li><b>meta</b>：流开始，携带 conversationId、timestamp、model</li>
- *   <li><b>tool_call</b>：ChatService 以 {@code __TC__} 前缀标记工具调用轮次，Controller 检测后发送</li>
- *   <li><b>chunk</b>：逐 token（真流式）或分片（模拟流式）文本</li>
- *   <li><b>done</b>：流结束，含 streaming_mode 标识 native/simulated</li>
+ *   <li><b>chunk</b>：文本片段；方案 B（退回非流式）下为整段文本的单条 chunk</li>
+ *   <li><b>done</b>：流结束，含 streaming_mode 标识（one_shot = 服务端一次性输出）</li>
  *   <li><b>error</b>：流出错</li>
  * </ul>
+ *
+ * <p>2026-08 升级：依验证结论落地《方案 B》——真流式在 DashScope 工具调用场景崩溃，
+ * 故 stream 端点保留形态但服务端一次性输出完整文本（不再伪流式分片）。</p>
  */
 @Slf4j
 @RestController
@@ -99,26 +100,15 @@ public class ChatController {
         Flux<String> flux = chatService.stream(message, cid);
         StringBuilder full = new StringBuilder();
         final int[] index = {0};
-        final boolean[] hadToolCall = {false};   // 标记本轮是否触发工具调用
 
         flux.subscribe(
                 chunk -> {
                     if (Boolean.TRUE.equals(stopFlags.get(cid))) {
-                        sendDone(emitter, cid, 0, 0, hadToolCall[0]);
+                        sendDone(emitter, cid, 0, 0);
                         emitter.complete();
                         return;
                     }
-                    // 检测 __TC__ 工具调用标记：发送 tool_call SSE 事件而非 chunk 事件
-                    if (chunk.startsWith("__TC__")) {
-                        hadToolCall[0] = true;
-                        String json = chunk.substring(6); // 去掉 "__TC__" 前缀
-                        try {
-                            emitter.send(SseEmitter.event().name("tool_call").data(json));
-                        } catch (Exception e) {
-                            emitter.completeWithError(e);
-                        }
-                        return;
-                    }
+                    // 方案 B：服务端一次性输出完整文本，单条 chunk 事件推送（不做伪流式分片）。
                     full.append(chunk);
                     try {
                         emitter.send(SseEmitter.event().name("chunk")
@@ -139,7 +129,7 @@ public class ChatController {
                     emitter.complete();
                 },
                 () -> {
-                    sendDone(emitter, cid, full.length(), 0, hadToolCall[0]);
+                    sendDone(emitter, cid, full.length(), 0);
                     emitter.complete();
                 });
 
@@ -166,8 +156,9 @@ public class ChatController {
         return Result.success(chatService.generateTitle(message));
     }
 
-    private void sendDone(SseEmitter emitter, String conversationId, int len, long duration, boolean hadToolCall) {
-        String streamingMode = hadToolCall ? "simulated" : "native";
+    private void sendDone(SseEmitter emitter, String conversationId, int len, long duration) {
+        // 方案 B：服务端一次性输出完整文本
+        String streamingMode = "one_shot";
         try {
             emitter.send(SseEmitter.event().name("done")
                     .data("{\"conversationId\":\"" + conversationId

@@ -41,6 +41,14 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
+        <!-- WebFlux：Spring AI 2.0 流式输出（.stream()）依赖 Reactive 栈 / WebClient。
+             官方 Implementation Notes 要求命令式应用显式引入；web+webflux 共存时仍以 Tomcat(Servlet) 启动，
+             SseEmitter / @RestController 不受影响。 -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
         <!-- JPA + MySQL (业务数据层) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -100,6 +108,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Reactor Test：流式验证探针（StepVerifier） -->
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

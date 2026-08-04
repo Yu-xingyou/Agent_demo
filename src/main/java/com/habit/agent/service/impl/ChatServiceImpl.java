@@ -1,6 +1,5 @@
 package com.habit.agent.service.impl;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -25,27 +24,23 @@ import reactor.core.publisher.Flux;
 /**
  * 阶段五（对话记忆与流式输出）ChatService 实现。
  *
- * <p>Spring AI 2.0.0 流式策略：
+ * <p>流式策略结论（2026-08 验证）：
+ * 经 {@code StreamingProbeTest} 实测，DashScope 在 Spring AI 2.0.0 下，纯文本轮次真流式稳定，
+ * 但一旦触发工具调用（业务对话必然命中 HabitQueryTools 等）即因
+ * {@code OpenAiChatModel$ChunkMerger} 缺陷崩溃（NoSuchElementException）。
+ * 依需求「流式跑不通则退回非流式、删除伪流式代码」，《方案 B》落地：
  * <ul>
- *   <li><b>纯文本轮次</b>：`.stream().content()` 真逐字输出（SSE chunk 事件逐 token 推送）。</li>
- *   <li><b>工具调用轮次</b>：ChunkMerger 因 DashScope 流式 tool_calls 缺 index 字段崩溃
- *       → onErrorResume 捕获 → 降级为 .call() 非流式获取完整回复
- *       → 以分片 Flux 模拟流式 + 前置 {@code __TC__} 标记通知 Controller 发送 tool_call SSE 事件。</li>
+ *   <li>SSE 端点 {@code GET /api/chat/stream} 形态保留，符合 PRD 契约与前端解析逻辑。</li>
+ *   <li>{@code stream()} 改以 {@code chatOnce()} 一次性取得完整文本，再用 {@code Flux.just} 单元素发射，
+ *       由 Controller 以单条 chunk + done 事件推送——一次性输出，不做伪流式分片。</li>
+ *   <li>原 __TC__ 伪流式降级（onErrorResume + 分片模拟）已彻底删除。</li>
  * </ul>
- *
- * <p>ChunkMerger bug 根因：Spring AI 2.0.0 的 {@code OpenAiChatModel$ChunkMerger} 对流式
- * tool_calls 分片的 Optional 直接 .get() 未检查 isPresent()。通义千问 DashScope 的流式响应
- * 不总是返回 index 字段，导致 NoSuchElementException。该缺陷需等 Spring AI 2.0.1 修复。
- * 全网截至 2026-08 无兼容 DashScope 流式工具调用的完整攻略。
  */
 @Service
 @RequiredArgsConstructor
 public class ChatServiceImpl implements ChatService {
 
     private static final Logger log = LoggerFactory.getLogger(ChatServiceImpl.class);
-
-    /** 工具调用降级信号前缀：Controller 检测此前缀发送 tool_call SSE 事件而非 chunk 事件。 */
-    static final String TC_MARKER = "__TC__";
 
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
@@ -60,24 +55,9 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Flux<String> stream(String userMessage, String conversationId) {
         final String cid = ensureSession(userMessage, conversationId);
-        return chatClient.prompt()
-                .user(userMessage)
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, cid))
-                .options(OpenAiChatOptions.builder().parallelToolCalls(false))
-                .stream()
-                .content()
-                .onErrorResume(t -> {
-                    if (isChunkMergeFailure(t)) {
-                        log.warn("[流式降级] conversationId={}，触发工具调用，降级为分片模拟流式，原因：{}",
-                                cid, t.getMessage());
-                        String full = chatOnce(userMessage, cid);
-                        return Flux.concat(
-                                Flux.just(TC_MARKER + "{\"status\":\"executing\",\"message\":\"正在查询你的数据…\"}"),
-                                chunkedFlux(full)
-                        );
-                    }
-                    return Flux.error(t);
-                });
+        // 方案 B：退回非流式——一次性取完整文本，经 SSE 端点单条 chunk 推送（不做伪流式分片）。
+        String full = chatOnce(userMessage, cid);
+        return Flux.just(full);
     }
 
     private String chatOnce(String userMessage, String conversationId) {
@@ -130,46 +110,6 @@ public class ChatServiceImpl implements ChatService {
             log.warn("[标题生成失败] 降级为截断首条消息", e);
             return userMessage.length() > 15 ? userMessage.substring(0, 15) + "…" : userMessage;
         }
-    }
-
-    /**
-     * 将完整响应文本按每 3 字符一组切分，通过 Flux.fromIterable 逐片发射，
-     * 在工具调用轮次中模拟流式逐字输出体验。
-     * 追加 delayElements(20ms) 让分片异步间隔发射，形成平滑打字机效果，
-     * 避免同步发射导致分片在同一 tick 内全部 send、前端仍表现为一次性出现。
-     */
-    private Flux<String> chunkedFlux(String text) {
-        if (text == null || text.isEmpty()) {
-            return Flux.empty();
-        }
-        List<String> chunks = new ArrayList<>();
-        for (int i = 0; i < text.length(); i += 3) {
-            chunks.add(text.substring(i, Math.min(i + 3, text.length())));
-        }
-        return Flux.fromIterable(chunks).delayElements(Duration.ofMillis(20));
-    }
-
-    /**
-     * 判断异常是否来自 Spring AI 流式 chunk 合并器（ChunkMerger）对工具调用 chunk 的不兼容缺陷。
-     * 沿 cause 链遍历，匹配 ChunkMerger 类名、NoSuchElementException，或
-     * IllegalArgumentException 且消息含 "tool call"。
-     */
-    private boolean isChunkMergeFailure(Throwable t) {
-        Throwable cause = t;
-        while (cause != null) {
-            String className = cause.getClass().getName();
-            if (className.contains("OpenAiChatModel$ChunkMerger")
-                    || cause instanceof java.util.NoSuchElementException) {
-                return true;
-            }
-            if (cause instanceof IllegalArgumentException
-                    && cause.getMessage() != null
-                    && cause.getMessage().contains("tool call")) {
-                return true;
-            }
-            cause = cause.getCause();
-        }
-        return false;
     }
 
     private String ensureSession(String userMessage, String conversationId) {

@@ -36,7 +36,7 @@ const activeTab = ref('chat')
 <style scoped>
 .ai-advice {
   background: linear-gradient(135deg, #eff6ff 0%, #eef2ff 100%);
-  min-height: calc(100vh - 64px);
+  min-height: 100%;
   border-radius: 0 0 24px 24px;
 }
 </style>

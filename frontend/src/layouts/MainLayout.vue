@@ -44,7 +44,7 @@ function go(path) {
 </script>
 
 <template>
-  <div class="relative min-h-screen flex flex-col">
+  <div class="relative h-screen overflow-hidden flex flex-col">
     <ParticleCanvas :density="density" />
 
     <!-- 顶部流动渐变导航栏 -->
@@ -70,7 +70,7 @@ function go(path) {
       </nav>
     </header>
 
-    <main class="pt-16 flex-1 relative z-10">
+    <main class="pt-16 flex-1 relative z-10 h-[calc(100vh-64px)] overflow-y-auto">
       <router-view v-slot="{ Component }">
         <transition name="fade">
           <component :is="Component" />

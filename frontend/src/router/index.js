@@ -26,22 +26,27 @@ const routes = [
     meta: { title: '趋势分析' },
   },
   {
+    path: '/ai-advice',
+    name: 'ai-advice',
+    component: () => import('@/views/AiAdviceView.vue'),
+    meta: { title: 'AI建议' },
+  },
+  {
+    path: '/ai-chat',
+    name: 'ai-chat',
+    component: () => import('@/views/AiAdviceView.vue'),
+    meta: { title: 'AI建议' },
+  },
+  // 分析报告已整合进「AI 建议」页，旧路由重定向至整合页
+  {
     path: '/ai-analysis',
-    name: 'ai-analysis',
-    component: () => import('@/views/AiAnalysisView.vue'),
-    meta: { title: 'AI分析' },
+    redirect: '/ai-advice',
   },
   {
     path: '/reminder',
     name: 'reminder',
     component: () => import('@/views/ReminderView.vue'),
     meta: { title: '打卡提醒' },
-  },
-  {
-    path: '/ai-chat',
-    name: 'ai-chat',
-    component: () => import('@/views/AiChatView.vue'),
-    meta: { title: 'AI建议' },
   },
   {
     path: '/:pathMatch(.*)*',

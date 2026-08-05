@@ -21,15 +21,22 @@ const menus = [
   { path: '/checkin', title: '每日打卡', icon: CheckCircle2 },
   { path: '/history', title: '历史记录', icon: History },
   { path: '/trend', title: '趋势分析', icon: TrendingUp },
-  { path: '/ai-analysis', title: 'AI分析', icon: BrainCircuit },
+  { path: '/ai-advice', title: 'AI建议', icon: Sparkles },
   { path: '/reminder', title: '打卡提醒', icon: Bell },
-  { path: '/ai-chat', title: 'AI建议', icon: Sparkles },
 ]
+
+// AI分析/AI建议合并为单一入口：导航高亮需要覆盖整合页与旧重定向路由
+const aiPaths = ['/ai-advice', '/ai-chat', '/ai-analysis']
 
 // 趋势页使用重粒子效果，其余页面轻量
 const density = computed(() =>
   route.path === '/trend' ? 'heavy' : 'low'
 )
+
+function isActive(m) {
+  if (m.path === '/ai-advice') return aiPaths.includes(route.path)
+  return route.path === m.path
+}
 
 function go(path) {
   router.push(path)
@@ -54,7 +61,7 @@ function go(path) {
           v-for="m in menus"
           :key="m.path"
           class="relative flex items-center gap-1.5 px-3.5 py-2 rounded-lg text-sm transition-all duration-300 whitespace-nowrap"
-          :class="route.path === m.path ? 'font-semibold text-white bg-white/15 nav-active' : 'text-white/75 hover:text-white hover:bg-white/10'"
+          :class="isActive(m) ? 'font-semibold text-white bg-white/15 nav-active' : 'text-white/75 hover:text-white hover:bg-white/10'"
           @click="go(m.path)"
         >
           <component :is="m.icon" :size="16" />

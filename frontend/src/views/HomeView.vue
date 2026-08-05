@@ -13,6 +13,7 @@ import { TooltipComponent, LegendComponent, RadarComponent } from 'echarts/compo
 import * as habitApi from '@/api/habit'
 import * as goalApi from '@/api/goal'
 import * as analysisApi from '@/api/analysis'
+import ReminderWidget from '@/components/ReminderWidget.vue'
 import { goalColor, MOOD_COLORS, MOOD_LABELS } from '@/constants/theme'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -275,6 +276,11 @@ async function removeGoal(g) {
           <div class="text-xs text-slate-400 mt-1">{{ c.sub }}</div>
         </div>
       </div>
+    </section>
+
+    <!-- 打卡提醒小窗格（轻量、不抢视觉） -->
+    <section class="mb-6">
+      <ReminderWidget />
     </section>
 
     <!-- 饼图 + 折线趋势 -->

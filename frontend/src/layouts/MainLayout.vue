@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Home, CheckCircle2, History, TrendingUp, Sparkles } from 'lucide-vue-next'
+import { Home, CheckCircle2, History, TrendingUp, Sparkles, BrainCircuit, Bell } from 'lucide-vue-next'
 import ParticleCanvas from '../components/ParticleCanvas.vue'
 
 const route = useRoute()
@@ -18,6 +18,8 @@ const menus = [
   { path: '/checkin', title: '每日打卡', icon: CheckCircle2 },
   { path: '/history', title: '历史记录', icon: History },
   { path: '/trend', title: '趋势分析', icon: TrendingUp },
+  { path: '/ai-analysis', title: 'AI分析', icon: BrainCircuit },
+  { path: '/reminder', title: '打卡提醒', icon: Bell },
   { path: '/ai-chat', title: 'AI建议', icon: Sparkles },
 ]
 

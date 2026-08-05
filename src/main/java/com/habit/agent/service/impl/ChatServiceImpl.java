@@ -13,6 +13,11 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.stereotype.Service;
 
+import com.habit.agent.agent.router.ChatAgent;
+import com.habit.agent.agent.router.DataAnalysisAgent;
+import com.habit.agent.agent.router.IntentRouter;
+import com.habit.agent.agent.router.SubAgent;
+import com.habit.agent.agent.router.SuggestionAgent;
 import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.entity.mongo.ChatSession;
 import com.habit.agent.repository.mongo.ChatSessionRepository;
@@ -22,7 +27,11 @@ import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Flux;
 
 /**
- * 阶段五（对话记忆与流式输出）ChatService 实现。
+ * 阶段五（对话记忆与流式输出）+ 阶段九（多智能体路由）ChatService 实现。
+ *
+ * <p>阶段九：引入 {@link IntentRouter} 作为 Director 协调者，将用户消息按意图分发到三个子 Agent
+ * （{@link DataAnalysisAgent} / {@link SuggestionAgent} / {@link ChatAgent}）。各子 Agent 持有
+ * 独立的 system 提示词以固化角色边界，共享全局 {@code ChatClient} 与对话记忆。
  *
  * <p>流式策略结论（2026-08 验证）：
  * 经 {@code StreamingProbeTest} 实测，DashScope 在 Spring AI 2.0.0 下，纯文本轮次真流式稳定，
@@ -45,6 +54,9 @@ public class ChatServiceImpl implements ChatService {
     private final ChatClient chatClient;
     private final ChatMemory chatMemory;
     private final ChatSessionRepository chatSessionRepository;
+    private final DataAnalysisAgent dataAnalysisAgent;
+    private final SuggestionAgent suggestionAgent;
+    private final ChatAgent chatAgent;
 
     @Override
     public String chat(String userMessage, String conversationId) {
@@ -60,13 +72,16 @@ public class ChatServiceImpl implements ChatService {
         return Flux.just(full);
     }
 
+    /** 阶段九：先路由意图，再交由对应子 Agent 处理（子 Agent 内部维护记忆隔离）。 */
     private String chatOnce(String userMessage, String conversationId) {
-        return chatClient.prompt()
-                .user(userMessage)
-                .advisors(a -> a.param(ChatMemory.CONVERSATION_ID, conversationId))
-                .options(OpenAiChatOptions.builder().parallelToolCalls(false))
-                .call()
-                .content();
+        IntentRouter.Intent intent = IntentRouter.route(userMessage);
+        SubAgent agent = switch (intent) {
+            case DATA_ANALYSIS -> dataAnalysisAgent;
+            case SUGGESTION -> suggestionAgent;
+            default -> chatAgent;
+        };
+        log.debug("[多智能体路由] 意图={} 分发至={}", intent, agent.roleName());
+        return agent.handle(userMessage, conversationId);
     }
 
     @Override

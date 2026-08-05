@@ -26,6 +26,18 @@ const routes = [
     meta: { title: '趋势分析' },
   },
   {
+    path: '/ai-analysis',
+    name: 'ai-analysis',
+    component: () => import('@/views/AiAnalysisView.vue'),
+    meta: { title: 'AI智能分析' },
+  },
+  {
+    path: '/reminder',
+    name: 'reminder',
+    component: () => import('@/views/ReminderView.vue'),
+    meta: { title: '打卡提醒' },
+  },
+  {
     path: '/ai-chat',
     name: 'ai-chat',
     component: () => import('@/views/AiChatView.vue'),

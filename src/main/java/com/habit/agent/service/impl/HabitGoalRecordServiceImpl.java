@@ -5,7 +5,6 @@ import com.habit.agent.common.vo.HabitGoalRecordVO;
 import com.habit.agent.entity.jpa.HabitGoalRecord;
 import com.habit.agent.repository.jpa.HabitGoalRecordRepository;
 import com.habit.agent.service.HabitGoalRecordService;
-import com.habit.agent.service.HabitGoalRecordService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

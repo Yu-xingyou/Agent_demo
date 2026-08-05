@@ -32,8 +32,8 @@
 | 趋势分析 | AnalysisController | 4 | ✅ 已实现 | `/api/analysis` 趋势/达成率/概览/雷达 |
 | AI 对话 | ChatController | 3 | ✅ 已实现 | 非流式 + SSE 流式 + 停止 |
 | 会话管理 | SessionController | 7 | ✅ 已实现 | 会话元数据 CRUD + 清理过期 |
+| RAG 知识库 | RagController | 5 | ✅ 已实现 | MongoDB Atlas Vector Search + 5 端点（导入/上传/检索/列表/删除） |
 | AI 分析结果 | AiAnalysisController | 6 | ❌ 未实现 | 待模块化开发 |
-| RAG 知识库 | RagController | 5 | ❌ 未实现 | 待模块化开发 |
 | 打卡提醒 | ReminderController | 5 | ❌ 未实现 | 待模块化开发（对应 PRD 可选功能「打卡提醒」） |
 
 ## 目标模块扩展接口（自定义目标打卡记录，正式功能）
@@ -185,18 +185,18 @@ POST /api/goal-records/records
 | AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
 | 会话管理 | SessionController | 7 | 会话 CRUD + 清理过期 |
 | 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 `/api/analysis` |
-| **小计** | | **35** | |
+| RAG 知识库 | RagController | 5 | 导入/上传/检索/列表/删除 `/api/rag` |
+| **小计** | | **40** | |
 
-**待开发（3 模块，16 端点）**：
+**待开发（2 模块，11 端点）**：
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
 | AI 分析结果 | AiAnalysisController | 6 | 列表/详情/触发/删除/每日评价 |
-| RAG 知识库 | RagController | 5 | 导入/检索/列表/删除/上传 |
 | 打卡提醒 | ReminderController | 5 | CRUD + 启用/禁用切换 |
-| **小计** | | **16** | |
+| **小计** | | **11** | |
 
-> 合计（最终实现全量）：35 + 16 = 51 个后端 REST 端点。
+> 合计（最终实现全量）：40 + 11 = 51 个后端 REST 端点。
 
 ### 3. SSE 特殊响应格式（仅 `GET /api/chat/stream` 流式端点使用）
 - 非流式端点 `POST /api/chat` 返回标准 `Result<ChatResponseVO>` JSON 响应

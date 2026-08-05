@@ -34,8 +34,17 @@ public class ChatMemoryConfig {
                 .build();
     }
 
+    /**
+     * 自定义对话记忆（MongoDB 持久化 + 20 条消息窗口）。
+     *
+     * <p>方法名刻意不叫 {@code chatMemory}：Spring AI 的 {@code ChatMemoryAutoConfiguration}
+     * 会注册同名 {@code chatMemory} Bean，虽带 {@code @ConditionalOnMissingBean}，
+     * 但该条件按<b>类型</b>匹配、注册时仍按<b>名称</b>校验，当自动配置先于本类加载时
+     * 会触发 "bean already defined & overriding is disabled" 启动失败。
+     * 改名后自动配置能正确按类型退让，避免名称冲突。
+     */
     @Bean
-    public ChatMemory chatMemory(MongoChatMemoryRepository repository) {
+    public ChatMemory mongoWindowChatMemory(MongoChatMemoryRepository repository) {
         return MessageWindowChatMemory.builder()
                 .chatMemoryRepository(repository)
                 .maxMessages(MEMORY_WINDOW_SIZE)

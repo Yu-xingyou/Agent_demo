@@ -84,6 +84,15 @@
             <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
         </dependency>
 
+        <!-- Spring AI RAG 模块 (阶段八：RetrievalAugmentationAdvisor / VectorStoreDocumentRetriever /
+             ContextualQueryAugmenter，位于 org.springframework.ai.rag.* 包)。
+             注意：Spring AI 2.0.0 中该能力由 spring-ai-rag 提供，且不会被 vector-store starter 传递引入，
+             需显式声明；版本由上方 spring-ai-bom 统一管理。 -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-rag</artifactId>
+        </dependency>
+
         <!-- 参数校验 (Jakarta Bean Validation / Hibernate Validator) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

@@ -12,6 +12,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
+import com.habit.agent.agent.advisor.ContextInjectionAdvisor;
+import com.habit.agent.agent.advisor.LoggingAdvisor;
+import com.habit.agent.agent.advisor.SafeRetrievalAdvisor;
+import com.habit.agent.agent.advisor.SafetyFilterAdvisor;
 import com.habit.agent.agent.tools.GoalTools;
 import com.habit.agent.agent.tools.HabitActionTools;
 import com.habit.agent.agent.tools.HabitQueryTools;
@@ -42,6 +46,22 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>{@code parallelToolCalls} 设为 {@code false}：规避 DashScope 流式工具调用分片
  *       缺 index 字段导致 ChunkMerger 断言失败（单 tool call 时通过 ChunkMerger 合并更稳定）。</li>
  * </ul>
+ *
+ * <p><b>Advisor 链执行顺序</b>（order 越小越先执行，阶段六/八装配）：
+ * <table border="1">
+ *   <caption>Advisor 顺序表</caption>
+ *   <tr><th>order</th><th>Advisor</th><th>职责</th></tr>
+ *   <tr><td>HIGHEST+10</td><td>{@link SafetyFilterAdvisor}</td>
+ *       <td>敏感词/超长输入前置拦截，命中即短路，不消耗 Token</td></tr>
+ *   <tr><td>HIGHEST+20</td><td>{@link LoggingAdvisor}</td>
+ *       <td>包裹下游全链路，记录耗时与 Token 用量</td></tr>
+ *   <tr><td>HIGHEST+100</td><td>{@link ContextInjectionAdvisor}</td>
+ *       <td>注入日期与今日打卡概况，须在记忆之前以便改写后的消息入库</td></tr>
+ *   <tr><td>HIGHEST+200</td><td>{@code MessageChatMemoryAdvisor}</td>
+ *       <td>多轮对话记忆（现有，{@code DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}）</td></tr>
+ *   <tr><td>HIGHEST+300</td><td>{@link SafeRetrievalAdvisor}</td>
+ *       <td>RAG 知识检索增强，带失败降级；置于记忆之后避免知识片段污染记忆窗口</td></tr>
+ * </table>
  */
 @Slf4j
 @Configuration
@@ -54,20 +74,26 @@ public class ChatClientConfig {
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder,
                                  MessageChatMemoryAdvisor memoryAdvisor,
+                                 SafetyFilterAdvisor safetyFilterAdvisor,
+                                 LoggingAdvisor loggingAdvisor,
+                                 ContextInjectionAdvisor contextInjectionAdvisor,
+                                 SafeRetrievalAdvisor safeRetrievalAdvisor,
                                  HabitQueryTools habitQueryTools,
                                  HabitStatTools habitStatTools,
                                  GoalTools goalTools,
                                  HabitActionTools habitActionTools) {
         // model / temperature 在 application.yml 的 spring.ai.openai.chat.options 中配置，
-        // ChatClient.Builder 自动读取；此处仅注入 system prompt、记忆 Advisor、业务工具。
+        // ChatClient.Builder 自动读取；此处仅注入 system prompt、Advisor 链、业务工具。
         // 记忆按 conversationId 隔离：调用方通过 advisorParams(ChatMemory.CONVERSATION_ID, id) 传入。
         // 工具通过 MethodToolCallbackProvider 自动扫描各 bean 上所有 @Tool 注解方法注册。
         ToolCallbackProvider toolProvider = MethodToolCallbackProvider.builder()
                 .toolObjects(habitQueryTools, habitStatTools, goalTools, habitActionTools)
                 .build();
+        // Advisor 传入顺序不影响实际执行顺序，最终由各自 getOrder() 排序（见类注释顺序表）
         return builder
                 .defaultSystem(systemPromptResource)
-                .defaultAdvisors(memoryAdvisor)
+                .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor, contextInjectionAdvisor,
+                        memoryAdvisor, safeRetrievalAdvisor)
                 .defaultTools(toolProvider)
                 .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .build();

@@ -1,9 +1,13 @@
 <script setup>
 import { ref, nextTick, onMounted } from 'vue'
-import { Sparkles, Send, Square, Bot, User, RotateCcw, Plus, Trash2, PanelLeftClose, PanelLeftOpen, MessageSquare } from 'lucide-vue-next'
+import { Sparkles, Send, Square, Bot, User, RotateCcw, Plus, Trash2, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { streamMessage, stopChat, getChatHistory, generateTitle } from '@/api/chat'
 import { listSessions, deleteSession } from '@/api/session'
+import KnowledgeDrawer from '@/components/KnowledgeDrawer.vue'
+
+// 阶段八：知识库管理抽屉（内嵌于本页，不新增路由）
+const knowledgeOpen = ref(false)
 
 // ---- 会话列表 ----
 const sessions = ref([])
@@ -265,6 +269,11 @@ onMounted(() => {
         </div>
         <button
           class="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 border border-slate-200 hover:text-brand-soft transition-colors"
+          title="知识库"
+          @click="knowledgeOpen = true"
+        ><BookOpen :size="16" /></button>
+        <button
+          class="w-9 h-9 rounded-full flex items-center justify-center text-slate-500 border border-slate-200 hover:text-brand-soft transition-colors"
           title="开启新对话"
           @click="resetChat"
         ><RotateCcw :size="16" /></button>
@@ -341,6 +350,9 @@ onMounted(() => {
         </div>
       </div>
     </div>
+
+    <!-- 阶段八：知识库管理抽屉 -->
+    <KnowledgeDrawer v-model="knowledgeOpen" />
   </div>
 </template>
 

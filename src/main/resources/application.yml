@@ -31,10 +31,19 @@ spring:
         auto_quote_keyword: true # 自动为保留字表名/列名加引号（如 user 表）
 
   # ===== MongoDB 数据源（子模块 1-3）=====
+  # 阶段八起使用 MongoDB Atlas（向量检索 $vectorSearch 为 Atlas 专有能力，本地社区版不支持）。
+  # 真实 Atlas 连接串请通过环境变量 MONGODB_URI 或已 gitignore 的 application-local.yml 注入，
+  # 严禁将账号密码写入受版本控制的文件。
   data:
     mongodb:
-      uri: mongodb://localhost:27017/habit_agent
+      uri: ${MONGODB_URI:mongodb://localhost:27017/habit_agent}
       auto-index-creation: true             # 自动创建 @Indexed 索引
+
+  # ===== 文件上传（阶段八：RAG 知识库文档上传 /api/rag/upload）=====
+  servlet:
+    multipart:
+      max-file-size: 2MB
+      max-request-size: 2MB
 
   # ===== Spring AI — 通义千问 DashScope（OpenAI 兼容模式）（子模块 1-3）=====
   ai:
@@ -50,15 +59,23 @@ spring:
         options:
           model: text-embedding-v3  # 向量嵌入模型
 
-  # ===== MongoDB Atlas 向量存储（RAG 知识库，子模块 1-3 配置，子模块 7-2 使用）=====
+  # ===== MongoDB Atlas 向量存储（RAG 知识库，阶段八）=====
+  # 前置条件：需在 Atlas 控制台为 habit_knowledge 集合手动创建名为 habit_vector_index 的
+  # Vector Search 索引（type=vector, path=embedding, numDimensions=1024, similarity=cosine，
+  # 并将 metadata.doc_type / metadata.source 声明为 filter 字段）。
+  # 因索引需人工创建，此处 initialize-schema 保持 false；启动时由 VectorStoreProbe 做连通性提示。
     vectorstore:
       mongodb:
         collection-name: habit_knowledge
         index-name: habit_vector_index
+        path-name: embedding                  # 向量字段名，须与 Atlas 索引 path 一致
+        initialize-schema: false              # 索引由 Atlas 控制台人工创建，不由应用自动初始化
+        metadata-fields-to-filter: doc_type,source   # 允许作为检索过滤条件的元数据字段
 
 # ===== 日志配置（子模块 1-3）=====
 logging:
   level:
     org.springframework.ai: INFO             # Spring AI 日志级别
     org.mongodb.driver: INFO                 # MongoDB 驱动日志
+    com.habit.agent.agent.advisor: INFO      # 阶段六自定义 Advisor（日志/安全/上下文/RAG降级）
 

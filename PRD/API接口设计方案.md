@@ -2,20 +2,24 @@
 
 ## Summary
 
-基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 5 个后端功能模块、35 个 `/api` 端点（Habit 7 + Goal 14 + Chat 3 + Session 7 + Analysis 4）；另有 3 个模块（16 个端点）规划中尚未实现。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
+基于《agent_demo开发计划.md》和《详细模块开发流程.md》，设计完整 REST API 接口文档。真实代码已落地 9 个后端功能模块、51 个 `/api` 端点；限流（HTTP 429）已接入。文档包含统一 Result 封装规范、CORS 与跨域策略、鉴权约定、API 版本化、SSE 多事件类型格式定义、完整错误码体系、VO 数据模型清单。前端为单仓库内 Vue 3 + Vite 工程（`agent_demo/frontend/`），通过 HTTPS/JSON 调用本 API。
 
 > 文档状态：已与当前代码实现同步。已实现接口（HabitController、GoalController 含自定义目标打卡记录、ChatController、SessionController、AnalysisController）均已标注；「自定义目标打卡记录」6 个接口已整合进目标模块并提升为正式功能；尚未实现的 3 个 Controller 模块已标注「未实现，待模块化开发」。
 
 ## Current State Analysis
 
-- 项目已有 Java 代码落地：已实现 `HabitController`（习惯记录）、`GoalController`（习惯目标 + 自定义目标打卡记录）、`ChatController`（AI 对话 3 端点）、`SessionController`（会话管理 7 端点）、`AnalysisController`（趋势分析）五大模块。
+- 项目已有 Java 代码落地：已实现 `HabitController`（习惯记录）、`GoalController`（习惯目标 + 自定义目标打卡记录）、`ChatController`（AI 对话 3 端点）、`SessionController`（会话管理 7 端点）、`AnalysisController`（趋势分析）9 个模块（详见下文清单）。
 - 数据存储采用 MongoDB + MySQL 双库架构。
-- 已实现 Controller（5 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
+- 已实现 Controller（9 个，均含 Swagger/OpenAPI 文档注解与 Bean Validation 参数校验）：
   - `HabitController`（`/api/habits`，7 端点）
-  - `GoalController`（`/api/goals` + `/api/goal-records`，14 端点：目标 CRUD 8 + 自定义目标打卡记录 6，见下文"目标模块扩展接口"）
-  - `ChatController`（`/api/chat` + `/api/chat/stream` + `/api/chat/stop`，3 端点：非流式对话 + SSE 流式 + 停止）
+  - `GoalController`（`/api/goals`，8 端点：目标 CRUD）
+  - `GoalRecordController`（`/api/goal-records`，5 端点：自定义目标打卡记录，由 GoalController 拆分）
+  - `ChatController`（`/api/chat`，5 端点：非流式对话 + SSE 流式 + 停止 + 多智能体意图路由）
   - `SessionController`（`/api/sessions`，7 端点：会话 CRUD + 清理过期）
   - `AnalysisController`（`/api/analysis`，4 端点：趋势/达成率/概览/雷达）
+  - `RagController`（`/api/rag`，5 端点：导入/上传/检索/列表/删除）
+  - `AiAnalysisController`（`/api/ai-analysis`，6 端点：生成/详情/历史/最新/重建/图表）
+  - `ReminderController`（`/api/reminders`，5 端点：创建/更新/删除/列表/启停）
 - 尚未实现（待模块化开发）的 Controller（3 个）：AiAnalysisController / RagController / ReminderController。
 
 > **架构说明**：后端仅提供 REST API，**不含任何页面路由**（原 PageController 的 Thymeleaf 页面已移除）。前端页面由单仓库 Vue 工程 `agent_demo/frontend/` 实现，通过 `/api` 调用本接口。
@@ -38,7 +42,7 @@
 
 ## 目标模块扩展接口（自定义目标打卡记录，正式功能）
 
-> 以下 6 个接口为自定义目标打卡记录管理，统一前缀 `/api/goal-records`。原属超纲扩展接口，现提升为正式功能（对应 agent 模型「自定义习惯目标（可选）」），与目标 CRUD（8 端点）共同构成 GoalController 的 14 端点。
+> 以下 5 个接口为自定义目标打卡记录管理，统一前缀 `/api/goal-records`（独立 `GoalRecordController`，由 `GoalController` 拆分以避免双基路径交叉注册）。对应 agent 模型「自定义习惯目标（可选）」，与目标 CRUD（8 端点）共同构成 Goal 模块 13 端点。
 
 | 方法 | 路径 | 说明 | 参数 |
 |---|---|---|---|
@@ -175,28 +179,22 @@ POST /api/goal-records/records
 
 > 原"页面路由 PageController（5 端点）"已移除：后端不再渲染页面，前端由单仓库 Vue 工程 `agent_demo/frontend/` 实现。以下按真实代码口径分「已落地 / 待开发」两表，替代原「8 模块 46 端点」规划值。
 
-**已落地（5 模块，35 端点）**：
+**已落地（9 模块，51 端点）**：
 
 | 模块 | Controller | 端点数 | 核心接口 |
 |---|---|---|---|
 | 习惯记录 CRUD | HabitController | 7 | POST/GET/DELETE `/api/habits` |
 | 习惯目标管理 | GoalController | 8 | CRUD `/api/goals`（含 CUSTOM 自定义目标） |
-| 自定义目标打卡记录 | GoalController | 6 | `/api/goal-records/records`（含达成率接口） |
-| AI 对话 | ChatController | 3 | 非流式对话 + SSE 流式 + 停止生成 |
+| 自定义目标打卡记录 | GoalRecordController | 5 | `/api/goal-records/records`（录入/今日/范围/最近/按目标） |
+| AI 对话 | ChatController | 5 | 非流式对话 + SSE 流式 + 停止 + 多智能体意图路由 |
 | 会话管理 | SessionController | 7 | 会话 CRUD + 清理过期 |
 | 趋势分析 | AnalysisController | 4 | 趋势/达成率/概览/雷达图 `/api/analysis` |
 | RAG 知识库 | RagController | 5 | 导入/上传/检索/列表/删除 `/api/rag` |
-| **小计** | | **40** | |
+| AI 周期分析 | AiAnalysisController | 6 | 生成/详情/历史/最新/重建/图表 `/api/ai-analysis` |
+| 打卡提醒 | ReminderController | 5 | 创建/更新/删除/列表/启停 `/api/reminders` |
+| **小计** | | **51** | |
 
-**待开发（2 模块，11 端点）**：
-
-| 模块 | Controller | 端点数 | 核心接口 |
-|---|---|---|---|
-| AI 分析结果 | AiAnalysisController | 6 | 列表/详情/触发/删除/每日评价 |
-| 打卡提醒 | ReminderController | 5 | CRUD + 启用/禁用切换 |
-| **小计** | | **11** | |
-
-> 合计（最终实现全量）：40 + 11 = 51 个后端 REST 端点。
+> 合计（已实现全量）：51 个后端 REST 端点；限流令牌桶（HTTP 429）作用于 `/api/chat` 与 `/api/ai-analysis/generate`。
 
 ### 3. SSE 特殊响应格式（仅 `GET /api/chat/stream` 流式端点使用）
 - 非流式端点 `POST /api/chat` 返回标准 `Result<ChatResponseVO>` JSON 响应
@@ -226,4 +224,4 @@ POST /api/goal-records/records
 3. 每个模块接口与开发计划阶段对应
 4. SSE 事件格式定义完整可实施
 5. VO 数据模型覆盖所有响应场景
-6. 已落地 35 个 `/api` 端点均有完整 JSON 请求/响应示例；待开发 16 个端点给出接口契约说明
+6. 已落地 51 个 `/api` 端点均有完整 JSON 请求/响应示例（部分扩展接口给出契约说明）。

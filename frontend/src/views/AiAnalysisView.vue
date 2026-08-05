@@ -119,6 +119,11 @@ const statusText = computed(() => {
   return { PENDING: '排队中', RUNNING: '生成中', COMPLETED: '已完成', FAILED: '失败' }[s] || s || '-'
 })
 
+const suggestionList = computed(() => {
+  const s = task.value?.suggestion || ''
+  return s.split('\n').map((x) => x.trim()).filter(Boolean)
+})
+
 onMounted(reloadHistory)
 onBeforeUnmount(stopPolling)
 </script>
@@ -181,6 +186,50 @@ onBeforeUnmount(stopPolling)
 
     <div v-if="task && task.tags?.length" class="flex flex-wrap gap-2 mb-6">
       <span v-for="t in task.tags" :key="t" class="text-xs px-2.5 py-1 rounded-full bg-indigo-50 text-indigo-600">{{ t }}</span>
+    </div>
+
+    <!-- 结构化结论 -->
+    <div
+      v-if="task && (task.score != null || task.dailyEvaluation || task.trendSummary || task.riskWarning || task.suggestion)"
+      class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6"
+    >
+      <div class="glass rounded-card-xl p-5 flex items-center gap-4" v-if="task.score != null">
+        <div class="relative w-16 h-16 shrink-0">
+          <svg viewBox="0 0 36 36" class="w-16 h-16 -rotate-90">
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#e2e8f0" stroke-width="3" />
+            <circle cx="18" cy="18" r="15.5" fill="none" stroke="#6366f1" stroke-width="3"
+              :stroke-dasharray="(task.score / 100 * 97.4).toFixed(1) + ' 97.4'" stroke-linecap="round" />
+          </svg>
+          <span class="absolute inset-0 flex items-center justify-center text-lg font-semibold text-slate-800">{{ task.score }}</span>
+        </div>
+        <div>
+          <div class="text-xs text-slate-400">综合评分</div>
+          <div class="text-sm text-slate-600">满分 100，越高代表习惯越健康</div>
+        </div>
+      </div>
+      <div class="glass rounded-card-xl p-5" v-if="task.dailyEvaluation">
+        <div class="text-sm font-medium text-slate-700 mb-1">每日评价</div>
+        <p class="text-sm text-slate-600 leading-relaxed">{{ task.dailyEvaluation }}</p>
+      </div>
+      <div class="glass rounded-card-xl p-5" v-if="task.trendSummary">
+        <div class="text-sm font-medium text-slate-700 mb-1">周期趋势总结</div>
+        <p class="text-sm text-slate-600 leading-relaxed">{{ task.trendSummary }}</p>
+      </div>
+      <div class="glass rounded-card-xl p-5" v-if="task.riskWarning">
+        <div class="text-sm font-medium text-rose-600 mb-1">生活习惯风险提示</div>
+        <p class="text-sm text-slate-600 leading-relaxed">{{ task.riskWarning }}</p>
+      </div>
+    </div>
+
+    <!-- 改进建议 -->
+    <div v-if="task && suggestionList.length" class="glass rounded-card-xl p-6 mb-6">
+      <div class="flex items-center gap-2 mb-3 text-slate-700 font-medium"><FileText class="text-brand" /> 改进建议</div>
+      <ul class="space-y-2">
+        <li v-for="(s, i) in suggestionList" :key="i" class="flex items-start gap-2 text-sm text-slate-700">
+          <span class="mt-2 w-1.5 h-1.5 rounded-full bg-indigo-400 shrink-0"></span>
+          <span>{{ s }}</span>
+        </li>
+      </ul>
     </div>
 
     <div v-if="task && task.report" class="glass rounded-card-xl p-6 mb-6 prose prose-slate max-w-none">

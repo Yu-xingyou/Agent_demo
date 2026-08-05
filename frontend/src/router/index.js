@@ -29,7 +29,7 @@ const routes = [
     path: '/ai-analysis',
     name: 'ai-analysis',
     component: () => import('@/views/AiAnalysisView.vue'),
-    meta: { title: 'AI智能分析' },
+    meta: { title: 'AI分析' },
   },
   {
     path: '/reminder',
@@ -43,11 +43,23 @@ const routes = [
     component: () => import('@/views/AiChatView.vue'),
     meta: { title: 'AI建议' },
   },
+  {
+    path: '/:pathMatch(.*)*',
+    name: 'not-found',
+    component: () => import('@/views/NotFoundView.vue'),
+    meta: { title: '页面不存在' },
+  },
 ]
 
 const router = createRouter({
   history: createWebHistory(),
   routes,
+})
+
+// 同步文档标题，提升标签页体验与可访问性
+router.afterEach((to) => {
+  const base = '生活习惯助手'
+  document.title = to.meta?.title ? `${to.meta.title} · ${base}` : base
 })
 
 export default router

@@ -1,5 +1,6 @@
 package com.habit.agent.controller;
 
+import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.common.result.Result;
 import com.habit.agent.common.vo.HabitRecordVO;
 import com.habit.agent.entity.jpa.HabitRecord;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -39,7 +41,13 @@ public class HabitController {
      */
     @Operation(summary = "录入/更新打卡", description = "同一天重复打卡为更新（uk_user_date 唯一约束）")
     @PostMapping
-    public Result<HabitRecordVO> saveOrUpdate(@Valid @RequestBody HabitRecord record) {
+    public Result<HabitRecordVO> saveOrUpdate(@Valid @RequestBody HabitRecordVO vo) {
+        HabitRecord record = new HabitRecord();
+        BeanUtils.copyProperties(vo, record);
+        if (record.getUserId() == null) {
+            record.setUserId(AgentConstants.DEFAULT_USER_ID);
+        }
+        record.calculateSleepDuration();
         log.info("录入打卡: date={}, sleepTime={}", record.getRecordDate(), record.getSleepTime());
         return Result.success(habitService.saveOrUpdate(record));
     }

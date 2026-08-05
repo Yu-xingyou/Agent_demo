@@ -59,6 +59,26 @@ public class AiAnalysisTask {
     @Field("tags")
     private List<String> tags;
 
+    /** 每日/总体评价（结构化输出） */
+    @Field("dailyEvaluation")
+    private String dailyEvaluation;
+
+    /** 周期趋势总结（结构化输出） */
+    @Field("trendSummary")
+    private String trendSummary;
+
+    /** 生活习惯风险提示（结构化输出） */
+    @Field("riskWarning")
+    private String riskWarning;
+
+    /** 改进建议，多条以换行分隔（结构化输出） */
+    @Field("suggestion")
+    private String suggestion;
+
+    /** 综合评分 0-100（结构化输出） */
+    @Field("score")
+    private Integer score;
+
     /** 失败原因（status=FAILED 时填充） */
     @Field("error")
     private String error;

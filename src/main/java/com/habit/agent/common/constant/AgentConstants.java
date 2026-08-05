@@ -66,6 +66,9 @@ public final class AgentConstants {
     /** 知识库检索/写入失败（向量库不可用） */
     public static final int CODE_RAG_SEARCH_ERROR = 50304;
 
+    /** 请求过于频繁（限流拦截，HTTP 429） */
+    public static final int CODE_RATE_LIMITED = 42901;
+
     // ===== RAG 知识库参数（阶段八） =====
     /** 预设知识库文档所在 classpath 目录 */
     public static final String RAG_PRESET_DOCS_PATTERN = "classpath:rag-docs/*.md";

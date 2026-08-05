@@ -2,14 +2,17 @@
 import { computed, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Home, CheckCircle2, History, TrendingUp, Sparkles, BrainCircuit, Bell } from 'lucide-vue-next'
+import { ElMessage } from 'element-plus'
 import ParticleCanvas from '../components/ParticleCanvas.vue'
 
 const route = useRoute()
 const router = useRouter()
 
-// 兜底：任意子页面在渲染/卸载时抛错不再拖垮整个布局与路由
+// 兜底：任意子页面在渲染/卸载时抛错时，记录并提示用户，避免静默白屏
 onErrorCaptured((err) => {
   console.error('[MainLayout] 子组件错误已捕获:', err)
+  const msg = err?.message || (typeof err === 'string' ? err : '未知错误')
+  ElMessage.error('页面发生错误：' + msg)
   return false
 })
 

@@ -75,10 +75,8 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
             charts.put("radar", analysisService.getRadar(task.getUserId(), days));
             task.setCharts(charts);
 
-            // 2. 生成报告
-            String report = generateReport(task, charts);
-            task.setReport(report);
-            task.setTags(extractTags(report));
+            // 2. 生成结构化分析报告（每日评价/趋势总结/风险提示/建议/评分 + Markdown 正文）
+            generateStructured(task, charts);
             task.setStatus(AiAnalysisTask.statusCompleted());
             task.setFinishTime(LocalDateTime.now());
             taskRepository.save(task);
@@ -119,7 +117,64 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         return submit(userId, days);
     }
 
-    private String generateReport(AiAnalysisTask task, Map<String, Object> charts) {
+    /**
+     * 生成结构化分析报告：让 LLM 直接返回 JSON（每日评价/趋势总结/风险提示/建议/评分/正文），
+     * 解析失败时降级为纯 Markdown。所有结论以结构化字段存储，满足「输出数据」要求。
+     */
+    private void generateStructured(AiAnalysisTask task, Map<String, Object> charts) {
+        String overviewJson = String.valueOf(charts.get("overview"));
+        String achievementJson = String.valueOf(charts.get("achievement"));
+        String prompt = String.format(
+                "你是生活习惯助手的数据分析师。基于以下近 %d 天的真实分析数据生成中文分析。\n"
+                        + "概览：%s\n达成率：%s\n"
+                        + "请只返回一个 JSON 对象，不要使用 markdown 代码块、不要包含任何额外说明文字。JSON 字段：\n"
+                        + "dailyEvaluation: 一句话总体/每日评价\n"
+                        + "trendSummary: 周期趋势总结（2-3 句）\n"
+                        + "riskWarning: 生活习惯风险提示（2-3 句，若无风险写「暂无明显风险」）\n"
+                        + "suggestion: 3 条具体可执行的改进建议（用换行 \\n 分隔）\n"
+                        + "score: 0-100 的整数综合评分\n"
+                        + "report: 完整 Markdown 报告正文（含「## 各维度解读」「## 改进建议」标题）",
+                task.getDays(), overviewJson, achievementJson);
+        try {
+            AnalysisResult r = chatClient.prompt()
+                    .system("你是严谨的数据分析师，只依据给定数据输出 JSON，不要编造数据。必须返回纯 JSON，"
+                            + "字段为 dailyEvaluation/trendSummary/riskWarning/suggestion/score(整数0-100)/report。")
+                    .user(prompt)
+                    .call()
+                    .entity(AnalysisResult.class);
+            if (r != null) {
+                task.setDailyEvaluation(r.dailyEvaluation());
+                task.setTrendSummary(r.trendSummary());
+                task.setRiskWarning(r.riskWarning());
+                task.setSuggestion(r.suggestion());
+                task.setScore(r.score());
+                String md = (r.report() != null && !r.report().isBlank()) ? r.report() : buildFallbackReport(r);
+                task.setReport(md);
+                task.setTags(extractTags(md));
+                return;
+            }
+        } catch (Exception e) {
+            log.warn("[AiAnalysis] 结构化解析失败，降级为 Markdown", e);
+        }
+        String md = generateMarkdownReport(task, charts);
+        task.setReport(md);
+        task.setTags(extractTags(md));
+    }
+
+    private String buildFallbackReport(AnalysisResult r) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("## 总体评价\n\n").append(orEmpty(r.dailyEvaluation())).append("\n\n");
+        sb.append("## 周期趋势总结\n\n").append(orEmpty(r.trendSummary())).append("\n\n");
+        sb.append("## 生活习惯风险提示\n\n").append(orEmpty(r.riskWarning())).append("\n\n");
+        sb.append("## 改进建议\n\n").append(orEmpty(r.suggestion())).append("\n");
+        return sb.toString();
+    }
+
+    private static String orEmpty(String s) {
+        return s == null ? "" : s;
+    }
+
+    private String generateMarkdownReport(AiAnalysisTask task, Map<String, Object> charts) {
         String overviewJson = String.valueOf(charts.get("overview"));
         String achievementJson = String.valueOf(charts.get("achievement"));
         String prompt = String.format(
@@ -139,6 +194,18 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
             log.warn("[AiAnalysis] 报告 LLM 调用失败，降级", e);
             return "本次报告生成失败，但图表数据已就绪，可查看上方可视化图表。";
         }
+    }
+
+    /**
+     * LLM 结构化输出映射（仅用于 {@code .entity()} 反序列化）。
+     */
+    private record AnalysisResult(
+            String dailyEvaluation,
+            String trendSummary,
+            String riskWarning,
+            String suggestion,
+            Integer score,
+            String report) {
     }
 
     private List<String> extractTags(String report) {

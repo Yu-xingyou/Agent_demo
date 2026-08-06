@@ -127,11 +127,13 @@ public class ChatClientConfig {
                                          SafetyFilterAdvisor safetyFilterAdvisor,
                                          LoggingAdvisor loggingAdvisor) {
         return builder
-                .defaultSystem("你是一个意图分类路由器。根据用户消息判断其意图，只输出 JSON："
-                        + "{\"intent\":\"DATA_ANALYSIS\"|\"SUGGESTION\"|\"CHAT\",\"reason\":\"简短依据\"}。"
+                .defaultSystem("你是一个意图分类路由器。根据用户消息判断其意图，"
+                        + "只返回如下 JSON 对象，不要输出任何 Markdown 围栏或多余文字："
+                        + "{\"intent\":\"DATA_ANALYSIS\",\"reason\":\"简短依据\"}。"
+                        + "intent 取值只能为 DATA_ANALYSIS、SUGGESTION 或 CHAT。"
                         + "DATA_ANALYSIS=数据分析/趋势/报告/达标率/统计；"
                         + "SUGGESTION=改善建议/怎么做/计划/方案；"
-                        + "CHAT=闲聊/通用问答/问候。不要输出多余内容。")
+                        + "CHAT=闲聊/通用问答/问候。")
                 .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor)
                 .defaultOptions(OpenAiChatOptions.builder()
                         .temperature(0.0)

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +32,7 @@ import lombok.extern.slf4j.Slf4j;
 public class IntentRouter {
 
     private final ChatClient directorChatClient;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public IntentRouter(ChatClient directorChatClient) {
         this.directorChatClient = directorChatClient;
@@ -93,23 +95,78 @@ public class IntentRouter {
     /**
      * 由 LLM 路由智能体（Director）判定意图。
      *
-     * @return 解析成功的意图；任何异常或解析为空返回 {@code null}（交由调用方降级）
+     * <p>关键实现说明：<b>不使用 {@code .entity(IntentDecision.class)}</b>。
+     * Spring AI 2.0.0 + openai-java 4.39.1 的 {@code .entity()} 结构化输出路径在通义千问
+     * （DashScope OpenAI 兼容接口）下存在缺陷——模型返回的流式分片缺字段，导致
+     * {@code OpenAiChatModel$ChunkMerger} 在 {@code Optional.get()} 处抛
+     * {@code NoSuchElementException: No value present}。
+     * 改用 {@code .content()}（与全局 chatClient 共用、已验证稳定的流式聚合路径）拿纯文本 JSON，
+     * 再本地用 Jackson 解析，彻底绕开该 SDK 缺陷。
+     *
+     * @return 解析成功的意图；任何异常或解析为空返回 {@code null}（交由调用方降级到关键词路由）
      */
     private Intent routeByLlm(String message) {
         try {
-            IntentDecision decision = directorChatClient.prompt()
+            String raw = directorChatClient.prompt()
                     .user("判断以下用户消息的意图：\n" + message)
                     .call()
-                    .entity(IntentDecision.class);
+                    .content();
+            if (raw == null || raw.isBlank()) {
+                return null;
+            }
+            return parseIntentFromJson(raw);
+        } catch (Exception e) {
+            log.warn("[路由] LLM Director 调用失败，将降级：{}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * 从 Director 返回的纯文本（可能夹带 ```json 围栏或多余文字）中提取并解析意图。
+     *
+     * @return 解析成功的意图；无法识别返回 {@code null}
+     */
+    private Intent parseIntentFromJson(String raw) {
+        String json = extractJson(raw);
+        if (json == null) {
+            return null;
+        }
+        try {
+            IntentDecision decision = objectMapper.readValue(json, IntentDecision.class);
             if (decision != null && decision.intent != null) {
                 log.debug("[路由] LLM Director 判定意图={} 依据={}", decision.intent, decision.reason);
                 return decision.intent;
             }
             return null;
         } catch (Exception e) {
-            log.warn("[路由] LLM Director 调用失败，将降级：{}", e.getMessage());
+            log.warn("[路由] Director 返回无法解析为 IntentDecision：{} | 原文={}", e.getMessage(), raw);
             return null;
         }
+    }
+
+    /**
+     * 从可能包含 Markdown 围栏或前后缀文字的文本中提取首个 JSON 对象。
+     */
+    private String extractJson(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String trimmed = raw.trim();
+        // 去掉 ```json ... ``` 或 ``` ... ``` 围栏
+        int fence = trimmed.indexOf("```");
+        if (fence >= 0) {
+            int start = trimmed.indexOf('{', fence);
+            int end = trimmed.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                return trimmed.substring(start, end + 1);
+            }
+        }
+        int start = trimmed.indexOf('{');
+        int end = trimmed.lastIndexOf('}');
+        if (start >= 0 && end > start) {
+            return trimmed.substring(start, end + 1);
+        }
+        return null;
     }
 
     /**

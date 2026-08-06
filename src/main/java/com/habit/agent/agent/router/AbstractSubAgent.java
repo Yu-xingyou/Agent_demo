@@ -70,11 +70,18 @@ public abstract class AbstractSubAgent implements SubAgent {
                 .stream()
                 .chatClientResponse()
                 .onErrorResume(e -> {
-                    log.warn("[{}] 流式调用失败，降级为提示", roleName(), e);
-                    ChatResponse fallback = new ChatResponse(
-                            List.of(new Generation(new AssistantMessage(fallbackMessage()))));
+                    log.warn("[{}] 流式调用失败（{}），自动转为同步整句返回", roleName(), e.toString());
+                    String fullText;
+                    try {
+                        fullText = handle(message, conversationId);
+                    } catch (Exception ex) {
+                        log.warn("[{}] 同步降级也失败（{}），返回兜底文案", roleName(), ex.toString());
+                        fullText = fallbackMessage();
+                    }
+                    ChatResponse resp = new ChatResponse(
+                            List.of(new Generation(new AssistantMessage(fullText))));
                     return Flux.just(ChatClientResponse.builder()
-                            .chatResponse(fallback)
+                            .chatResponse(resp)
                             .build());
                 });
     }

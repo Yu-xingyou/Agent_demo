@@ -1,88 +1,93 @@
-server:
-  port: 8080
+# ============================================================
+# Spring Boot 4.1 + Spring AI 2.0.0 后端配置
+# 阶段：习惯养成聊天机器人 (Habit Agent)
+#
+# 双数据源策略：
+#   1) 本地 MongoDB (localhost:27017) —— 聊天记忆 / 会话 / 分析任务等结构化数据
+#   2) 远端 MongoDB Atlas         —— 仅承载 RAG 向量库（依赖 Atlas $vectorSearch）
+# ============================================================
 
 spring:
+  profiles:
+    active: local
   application:
     name: habit-agent
-  profiles:
-    active: local              # 默认激活本地配置（application-local.yml 存放真实凭据，已 gitignore）
+  # 允许自定义 mongoTemplate(@Primary) 覆盖自动配置生成的同名 bean
+  main:
+    allow-bean-definition-overriding: true
 
-  # ===== Jackson 序列化配置 =====
-  jackson:
-    date-format: yyyy-MM-dd
-    time-zone: Asia/Shanghai
-
-  # ===== MySQL 数据源（子模块 1-2）=====
-  datasource:
-    url: jdbc:mysql://localhost:3306/habit_agent?useUnicode=true&characterEncoding=UTF-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: ${MYSQL_USERNAME:root}        # TODO: 请替换为你的 MySQL 用户名
-    password: ${MYSQL_PASSWORD:root}        # TODO: 请替换为你的 MySQL 密码（或设置环境变量 MYSQL_PASSWORD）
-    driver-class-name: com.mysql.cj.jdbc.Driver
-
-  # ===== JPA / Hibernate（子模块 1-2）=====
-  jpa:
-    hibernate:
-      ddl-auto: update          # 自动建表/更新表结构
-    show-sql: true              # 控制台打印 SQL
-    properties:
-      hibernate:
-        format_sql: true        # 格式化 SQL 输出
-        dialect: org.hibernate.dialect.MySQLDialect
-        auto_quote_keyword: true # 自动为保留字表名/列名加引号（如 user 表）
-
-  # ===== MongoDB 数据源（子模块 1-3）=====
-  # 阶段八起使用 MongoDB Atlas（向量检索 $vectorSearch 为 Atlas 专有能力，本地社区版不支持）。
-  # 真实 Atlas 连接串请通过环境变量 MONGODB_URI 或已 gitignore 的 application-local.yml 注入，
-  # 严禁将账号密码写入受版本控制的文件。
-  # 【Spring Boot 4 重要变更】连接串由 spring.mongodb.uri 管理（MongoProperties 前缀 spring.mongodb），
-  # 不再是旧版的 spring.data.mongodb.uri；auto-index-creation 仍由 DataMongoProperties 管理（spring.data.mongodb）。
+  # ===== 双数据源 =====
+  # 主库 = 本地 MongoDB（spring.mongodb.uri）：聊天记忆 / 会话 / 分析任务等结构化数据（localhost:27017）。
+  # 远端 Atlas = app.atlas.mongodb.uri：仅承载 RAG 向量库（habit_knowledge），由 AtlasVectorStoreConfig 单独连接。
+  # 注意：Spring Boot 4.1 已将 Mongo 连接属性前缀由 spring.data.mongodb 改为 spring.mongodb。
   mongodb:
-    uri: ${MONGODB_URI:mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent}
+    uri: ${MONGODB_URI:mongodb://localhost:27017/habit_agent}
   data:
     mongodb:
-      auto-index-creation: true             # 自动创建 @Indexed 索引
+      auto-index-creation: true
 
-  # ===== 文件上传（阶段八：RAG 知识库文档上传 /api/rag/upload）=====
-  servlet:
-    multipart:
-      max-file-size: 2MB
-      max-request-size: 2MB
-
-  # ===== Spring AI — 通义千问 DashScope（OpenAI 兼容模式）（子模块 1-3）=====
+  # ===== AI 通用配置（Spring AI 2.0.0）=====
   ai:
-    openai:
-      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
-      api-key: ${DASHSCOPE_API_KEY:placeholder}   # TODO: 请设置环境变量 DASHSCOPE_API_KEY
-      chat:
-        options:
-          model: qwen-plus          # 对话模型
-          temperature: 0.7          # 生成温度
-          parallel-tool-calls: false # 关闭并行工具调用（预防 DashScope 并行分片异常，待探针验证后可改 true）
-          stream-usage: true        # 流式模式下回传 token 用量（底层 OpenAI stream_options.include_usage）；
-                                     # 不开启则流式 Usage 恒为 null，done 事件 Token 统计恒为 0
-      embedding:
-        options:
-          model: text-embedding-v3  # 向量嵌入模型
+    # Chat 记忆存储（MongoDB）
+    model:
+      chat: qwen3.5-plus
+      embedding: text-embedding-v4
 
-  # ===== MongoDB Atlas 向量存储（RAG 知识库，阶段八）=====
-  # 前置条件：需在 Atlas 控制台为 habit_knowledge 集合手动创建名为 habit_vector_index 的
-  # Vector Search 索引（type=vector, path=embedding, numDimensions=1024, similarity=cosine，
-  # 并将 metadata.doc_type / metadata.source 声明为 filter 字段）。
-  # 因索引需人工创建，此处 initialize-schema 保持 false；启动时由 VectorStoreProbe 做连通性提示。
+    chat:
+      memory:
+        mongodb:
+          collection-name: ai_chat_memory
+    # 向量存储（MongoDB）—— 仅配置项，实际连接由 AtlasVectorStoreConfig 接管
     vectorstore:
       mongodb:
-        # 向量库复用 spring.data.mongodb.uri 创建的 MongoTemplate（MongoDBAtlasVectorStoreProperties 无 uri 字段）
         collection-name: habit_knowledge
         index-name: habit_vector_index
-        path-name: embedding                  # 向量字段名，须与 Atlas 索引 path 一致
-        initialize-schema: false              # 索引由 Atlas 控制台人工创建，不由应用自动初始化
-        metadata-fields-to-filter: doc_type,source   # 允许作为检索过滤条件的元数据字段
+        path-name: embedding
+        metadata-fields-to-filter: doc_type,source
+        initialize-schema: false
 
-# ===== 日志配置（子模块 1-3）=====
+    openai:
+      # DashScope 兼容 OpenAI 协议
+      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      api-key: ${DASHSCOPE_API_KEY:sk-your-key}
+      chat:
+        enabled: true
+        options:
+          model: qwen3.5-plus
+          temperature: 0.7
+      embedding:
+        enabled: true
+        options:
+          model: text-embedding-v4
+
+    # ===== 子模块 1：健康日历 =====
+  # 注意：此处仅为骨架，后续接入真实数据源
+  # datasource:
+  #   url: jdbc:mysql://localhost:3306/habit_calendar
+  #   username: root
+  #   password: 123456
+  #   driver-class-name: com.mysql.cj.jdbc.Driver
+
+# ===== 双数据源连接串 =====
+# 主库 = 本地 MongoDB（聊天记忆 / 会话 / 分析任务）：默认 localhost:27017，可用 MONGODB_URI 环境变量覆盖。
+# 远端 Atlas（仅承载 RAG 向量库）：可用 ATLAS_MONGODB_URI 环境变量覆盖。
+app:
+  atlas:
+    mongodb:
+      uri: ${ATLAS_MONGODB_URI:mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent}
+
 logging:
   level:
-    org.springframework.ai: INFO             # Spring AI 日志级别
-    org.mongodb.driver: INFO                 # MongoDB 驱动日志
-    com.habit.agent.agent.advisor: INFO      # 阶段六自定义 Advisor（日志/安全/上下文/RAG降级）
-    com.habit.agent.agent.router: DEBUG      # 子 Agent 流式路由调试（含意图判定与分片级 TRACE）
+    root: INFO
+    com.habit.agent: DEBUG
+    org.springframework.ai: INFO
+    org.springframework.data.mongodb: WARN
+    com.mongodb: WARN
 
+# ===== 本地开发环境（激活时见 application-local.yml 覆盖）=====
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  # 本地开发使用 DashScope Key（来自 application-local.yml）

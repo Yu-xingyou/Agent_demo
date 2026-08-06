@@ -14,6 +14,7 @@ import org.springframework.ai.document.Document;
 import org.springframework.ai.transformer.splitter.TokenTextSplitter;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
 import org.springframework.data.mongodb.core.MongoTemplate;
@@ -51,7 +52,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class RagServiceImpl implements RagService {
 
     /** 向量库中存放正文的字段名（Spring AI MongoDB Atlas Store 约定）。 */
@@ -73,7 +73,14 @@ public class RagServiceImpl implements RagService {
     private static final List<String> ALLOWED_EXTENSIONS = List.of(".md", ".txt");
 
     private final VectorStore vectorStore;
+    @Qualifier("atlasMongoTemplate")
     private final MongoTemplate mongoTemplate;
+
+    public RagServiceImpl(VectorStore vectorStore,
+            @Qualifier("atlasMongoTemplate") MongoTemplate mongoTemplate) {
+        this.vectorStore = vectorStore;
+        this.mongoTemplate = mongoTemplate;
+    }
 
     @Override
     public ImportResultVO importPresetDocs() {

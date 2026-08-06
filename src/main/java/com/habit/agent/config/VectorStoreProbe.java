@@ -6,6 +6,7 @@ import java.util.Map;
 import org.bson.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.env.Environment;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.stereotype.Component;
@@ -42,10 +43,12 @@ public class VectorStoreProbe {
 
     private final String configUri;
 
-    public VectorStoreProbe(VectorStore vectorStore, MongoTemplate mongoTemplate,
-                            MongoClient mongoClient, Environment environment) {
-        // Spring Boot 4.1 起连接串前缀为 spring.mongodb（旧 spring.data.mongodb.uri 已失效）
-        this.configUri = environment.getProperty("spring.mongodb.uri", "");
+    public VectorStoreProbe(VectorStore vectorStore,
+                            @Qualifier("atlasMongoTemplate") MongoTemplate mongoTemplate,
+                            @Qualifier("atlasMongoClient") MongoClient mongoClient,
+                            Environment environment) {
+        // 向量库连接串实为远端 Atlas（app.atlas.mongodb.uri）；本地聊天库走 spring.mongodb.uri
+        this.configUri = environment.getProperty("app.atlas.mongodb.uri", "");
 
         dumpConfigSources(environment);
         String realHost = dumpActualConnection(mongoClient, mongoTemplate);
@@ -54,13 +57,11 @@ public class VectorStoreProbe {
 
     /** 打印 yml 最终值 + 环境变量 + 系统属性中所有 MongoDB 相关项。 */
     private void dumpConfigSources(Environment environment) {
-        String ymlUri = environment.getProperty("spring.mongodb.uri", "(未配置)");
+        String ymlUri = maskUri(environment.getProperty("spring.mongodb.uri", "(未配置)"));
         String ymlOldUri = environment.getProperty("spring.data.mongodb.uri", "(未配置)");
-        String ymlHost = environment.getProperty("spring.mongodb.host", "(未配置)");
-        String ymlPort = environment.getProperty("spring.mongodb.port", "(未配置)");
-        String ymlDb = environment.getProperty("spring.mongodb.database", "(未配置)");
-        log.info("[阶段八][配置] spring.mongodb.uri={}（旧键 spring.data.mongodb.uri={}）", ymlUri, ymlOldUri);
-        log.info("[阶段八][配置] spring.mongodb.host={} port={} database={}", ymlHost, ymlPort, ymlDb);
+        String atlasUri = maskUri(environment.getProperty("app.atlas.mongodb.uri", "(未配置)"));
+        log.info("[阶段八][配置] 本地聊天库 spring.mongodb.uri={}（旧键 spring.data.mongodb.uri={}）", ymlUri, ymlOldUri);
+        log.info("[阶段八][配置] 远端向量库 app.atlas.mongodb.uri={}", atlasUri);
 
         // 环境变量
         for (String k : new String[]{"MONGODB_URI", "SPRING_MONGODB_URI", "SPRING_DATA_MONGODB_URI",
@@ -133,5 +134,12 @@ public class VectorStoreProbe {
                       3) 索引配置是否为 path=embedding、numDimensions=1024、similarity=cosine。""",
                     realHost, e.getMessage());
         }
+    }
+
+    private static String maskUri(String uri) {
+        if (uri == null || uri.isBlank() || !uri.contains("@")) {
+            return uri;
+        }
+        return uri.replaceAll("://[^@]+@", "://****:****@");
     }
 }

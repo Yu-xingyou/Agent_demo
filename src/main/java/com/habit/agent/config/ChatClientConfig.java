@@ -107,6 +107,39 @@ public class ChatClientConfig {
     }
 
     /**
+     * 路由智能体（Director）专用 ChatClient：仅做意图分类派单，不参与工具循环、不挂对话记忆。
+     *
+     * <p>复用同一 {@link ChatClient.Builder}（自动读取 model/temperature/api-key 配置），但：
+     * <ul>
+     *   <li><b>不挂 {@code MessageChatMemoryAdvisor}</b>——Director 是无状态分类器，不写用户记忆，
+     *       避免路由决策结果污染会话记忆窗口（与 reportChatClient 同一考量）；</li>
+     *   <li><b>不挂业务工具</b>——分类无需调用打卡/统计/目标等工具；</li>
+     *   <li><b>低 temperature（0.0）</b>——保证意图判定稳定、可复现；</li>
+     *   <li><b>结构化输出</b>——由 {@link com.habit.agent.agent.router.IntentRouter} 通过
+     *       {@code .entity(IntentDecision.class)} 解析为枚举，避免自由文本解析脆弱。</li>
+     * </ul>
+     *
+     * <p>该 Bean 是方案 A（LLM 路由智能体）的核心：将原本硬编码的 {@code IntentRouter.route()}
+     * 升级为由模型决策的 Director，实现「路由智能体交班子智能体」。
+     */
+    @Bean
+    public ChatClient directorChatClient(ChatClient.Builder builder,
+                                         SafetyFilterAdvisor safetyFilterAdvisor,
+                                         LoggingAdvisor loggingAdvisor) {
+        return builder
+                .defaultSystem("你是一个意图分类路由器。根据用户消息判断其意图，只输出 JSON："
+                        + "{\"intent\":\"DATA_ANALYSIS\"|\"SUGGESTION\"|\"CHAT\",\"reason\":\"简短依据\"}。"
+                        + "DATA_ANALYSIS=数据分析/趋势/报告/达标率/统计；"
+                        + "SUGGESTION=改善建议/怎么做/计划/方案；"
+                        + "CHAT=闲聊/通用问答/问候。不要输出多余内容。")
+                .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor)
+                .defaultOptions(OpenAiChatOptions.builder()
+                        .temperature(0.0)
+                        .parallelToolCalls(false))
+                .build();
+    }
+
+    /**
      * 报告生成专用 ChatClient：用于一次性「喂数据→出报告」任务。
      *
      * <p>复用同一 {@link ChatClient.Builder}（自动读取 model/temperature/api-key 配置），

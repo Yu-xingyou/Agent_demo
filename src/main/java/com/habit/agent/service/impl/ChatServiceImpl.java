@@ -79,6 +79,7 @@ public class ChatServiceImpl implements ChatService {
     private final SuggestionAgent suggestionAgent;
     private final ChatAgent chatAgent;
     private final StopSignalRegistry stopSignalRegistry;
+    private final IntentRouter intentRouter;
 
     @Override
     public String chat(String userMessage, String conversationId) {
@@ -90,7 +91,7 @@ public class ChatServiceImpl implements ChatService {
     public Flux<ChatStreamEvent> stream(String userMessage, String conversationId) {
         final String cid = ensureSession(userMessage, conversationId);
         final long startNanos = System.nanoTime();
-        final IntentRouter.Intent intent = IntentRouter.route(userMessage);
+        final IntentRouter.Intent intent = intentRouter.route(userMessage);
         final SubAgent agent = resolveAgent(intent);
 
         // 是否已向客户端推送过内容：用于「首字前可重试 / 首字后仅转 error」的边界控制
@@ -233,7 +234,7 @@ public class ChatServiceImpl implements ChatService {
 
     /** 阶段九：先路由意图，再交由对应子 Agent 处理（同步接口复用）。 */
     private String chatOnce(String userMessage, String conversationId) {
-        IntentRouter.Intent intent = IntentRouter.route(userMessage);
+        IntentRouter.Intent intent = intentRouter.route(userMessage);
         SubAgent agent = resolveAgent(intent);
         log.debug("[多智能体路由] 意图={} 分发至={}", intent, agent.roleName());
         return agent.handle(userMessage, conversationId);

@@ -36,7 +36,7 @@ spring:
   # 严禁将账号密码写入受版本控制的文件。
   data:
     mongodb:
-      uri: ${MONGODB_URI:mongodb://localhost:27017/habit_agent}
+      uri: mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent
       auto-index-creation: true             # 自动创建 @Indexed 索引
 
   # ===== 文件上传（阶段八：RAG 知识库文档上传 /api/rag/upload）=====

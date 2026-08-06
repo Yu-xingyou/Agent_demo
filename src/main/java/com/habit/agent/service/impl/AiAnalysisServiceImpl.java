@@ -4,8 +4,8 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.scheduling.annotation.Async;
@@ -39,7 +39,6 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     private final AiAnalysisTaskRepository taskRepository;
     private final AnalysisService analysisService;
     private final ChatClient reportChatClient;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public AiAnalysisTask submit(Long userId, int days) {
@@ -137,13 +136,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                         + "report: 完整 Markdown 报告正文（含「## 各维度解读」「## 改进建议」标题）",
                 task.getDays(), overviewJson, achievementJson);
         try {
-            String raw = reportChatClient.prompt()
+            AnalysisResult r = reportChatClient.prompt()
                     .system("你是严谨的数据分析师，只依据给定数据输出 JSON，不要编造数据。必须返回纯 JSON，"
                             + "字段为 dailyEvaluation/trendSummary/riskWarning/suggestion/score(整数0-100)/report。")
                     .user(prompt)
                     .call()
-                    .content();
-            AnalysisResult r = parseAnalysisResult(raw);
+                    .entity(AnalysisResult.class);
             if (r != null) {
                 task.setDailyEvaluation(r.dailyEvaluation());
                 task.setTrendSummary(r.trendSummary());
@@ -199,52 +197,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     /**
-     * 从 LLM 返回的纯文本（可能夹带 ```json 围栏或多余文字）中解析结构化分析结果。
-     *
-     * <p>复用 IntentRouter 已验证稳定的范式：{@code .content()} 取纯文本 JSON + 本地 Jackson 解析，
-     * 彻底绕开 Spring AI 2.0.0 + DashScope 下 {@code .entity()} 触发的 ChunkMerger NoSuchElementException。
-     *
-     * @return 解析成功的 AnalysisResult；文本为空或解析失败返回 {@code null}（由调用方降级）
-     */
-    private AnalysisResult parseAnalysisResult(String raw) {
-        if (raw == null || raw.isBlank()) {
-            return null;
-        }
-        String json = extractJson(raw);
-        if (json == null) {
-            return null;
-        }
-        try {
-            return objectMapper.readValue(json, AnalysisResult.class);
-        } catch (Exception e) {
-            log.warn("[AiAnalysis] AnalysisResult 解析失败：{} | 原文={}", e.getMessage(), raw);
-            return null;
-        }
-    }
-
-    /**
-     * 从可能包含 Markdown 围栏或前后缀文字的文本中提取首个 JSON 对象（与 IntentRouter.extractJson 同逻辑）。
-     */
-    private String extractJson(String raw) {
-        String trimmed = raw.trim();
-        int fence = trimmed.indexOf("```");
-        if (fence >= 0) {
-            int start = trimmed.indexOf('{', fence);
-            int end = trimmed.lastIndexOf('}');
-            if (start >= 0 && end > start) {
-                return trimmed.substring(start, end + 1);
-            }
-        }
-        int start = trimmed.indexOf('{');
-        int end = trimmed.lastIndexOf('}');
-        if (start >= 0 && end > start) {
-            return trimmed.substring(start, end + 1);
-        }
-        return null;
-    }
-
-    /**
-     * LLM 结构化输出映射（仅用于本地 Jackson 反序列化）。
+     * LLM 结构化输出映射（仅用于 {@code .entity()} 反序列化）。
      */
     private record AnalysisResult(
             String dailyEvaluation,

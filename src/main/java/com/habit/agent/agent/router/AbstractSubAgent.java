@@ -68,11 +68,7 @@ public abstract class AbstractSubAgent implements SubAgent {
                 .advisors(a -> a.param(ChatMemory.CONVERSATION_ID,
                         conversationId == null ? AgentConstants.DEFAULT_USERNAME : conversationId))
                 .stream()
-                .content()
-                .map(text -> ChatClientResponse.builder()
-                        .chatResponse(new ChatResponse(
-                                List.of(new Generation(new AssistantMessage(text)))))
-                        .build())
+                .chatClientResponse()
                 .onErrorResume(e -> {
                     log.warn("[{}] 流式调用失败，降级为提示", roleName(), e);
                     ChatResponse fallback = new ChatResponse(

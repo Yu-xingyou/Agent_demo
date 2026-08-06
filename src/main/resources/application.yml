@@ -34,9 +34,12 @@ spring:
   # 阶段八起使用 MongoDB Atlas（向量检索 $vectorSearch 为 Atlas 专有能力，本地社区版不支持）。
   # 真实 Atlas 连接串请通过环境变量 MONGODB_URI 或已 gitignore 的 application-local.yml 注入，
   # 严禁将账号密码写入受版本控制的文件。
+  # 【Spring Boot 4 重要变更】连接串由 spring.mongodb.uri 管理（MongoProperties 前缀 spring.mongodb），
+  # 不再是旧版的 spring.data.mongodb.uri；auto-index-creation 仍由 DataMongoProperties 管理（spring.data.mongodb）。
+  mongodb:
+    uri: ${MONGODB_URI:mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent}
   data:
     mongodb:
-      uri: mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent
       auto-index-creation: true             # 自动创建 @Indexed 索引
 
   # ===== 文件上传（阶段八：RAG 知识库文档上传 /api/rag/upload）=====

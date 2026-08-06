@@ -44,7 +44,8 @@ public class VectorStoreProbe {
 
     public VectorStoreProbe(VectorStore vectorStore, MongoTemplate mongoTemplate,
                             MongoClient mongoClient, Environment environment) {
-        this.configUri = environment.getProperty("spring.data.mongodb.uri", "");
+        // Spring Boot 4.1 起连接串前缀为 spring.mongodb（旧 spring.data.mongodb.uri 已失效）
+        this.configUri = environment.getProperty("spring.mongodb.uri", "");
 
         dumpConfigSources(environment);
         String realHost = dumpActualConnection(mongoClient, mongoTemplate);
@@ -53,24 +54,26 @@ public class VectorStoreProbe {
 
     /** 打印 yml 最终值 + 环境变量 + 系统属性中所有 MongoDB 相关项。 */
     private void dumpConfigSources(Environment environment) {
-        String ymlUri = environment.getProperty("spring.data.mongodb.uri", "(未配置)");
-        String ymlHost = environment.getProperty("spring.data.mongodb.host", "(未配置)");
-        String ymlPort = environment.getProperty("spring.data.mongodb.port", "(未配置)");
-        String ymlDb = environment.getProperty("spring.data.mongodb.database", "(未配置)");
-        log.info("[阶段八][配置] spring.data.mongodb.uri={}", ymlUri);
-        log.info("[阶段八][配置] spring.data.mongodb.host={} port={} database={}", ymlHost, ymlPort, ymlDb);
+        String ymlUri = environment.getProperty("spring.mongodb.uri", "(未配置)");
+        String ymlOldUri = environment.getProperty("spring.data.mongodb.uri", "(未配置)");
+        String ymlHost = environment.getProperty("spring.mongodb.host", "(未配置)");
+        String ymlPort = environment.getProperty("spring.mongodb.port", "(未配置)");
+        String ymlDb = environment.getProperty("spring.mongodb.database", "(未配置)");
+        log.info("[阶段八][配置] spring.mongodb.uri={}（旧键 spring.data.mongodb.uri={}）", ymlUri, ymlOldUri);
+        log.info("[阶段八][配置] spring.mongodb.host={} port={} database={}", ymlHost, ymlPort, ymlDb);
 
         // 环境变量
-        for (String k : new String[]{"MONGODB_URI", "SPRING_DATA_MONGODB_URI",
-                "SPRING_DATA_MONGODB_HOST", "SPRING_DATA_MONGODB_PORT", "SPRING_DATA_MONGODB_DATABASE"}) {
+        for (String k : new String[]{"MONGODB_URI", "SPRING_MONGODB_URI", "SPRING_DATA_MONGODB_URI",
+                "SPRING_MONGODB_HOST", "SPRING_MONGODB_PORT", "SPRING_MONGODB_DATABASE"}) {
             String v = System.getenv(k);
             if (v != null && !v.isBlank()) {
                 log.info("[阶段八][配置] 环境变量 {}={}", k, v);
             }
         }
         // 系统属性
-        for (String k : new String[]{"spring.data.mongodb.uri", "spring.data.mongodb.host",
-                "spring.data.mongodb.port", "spring.data.mongodb.database"}) {
+        for (String k : new String[]{"spring.mongodb.uri", "spring.mongodb.host",
+                "spring.mongodb.port", "spring.mongodb.database",
+                "spring.data.mongodb.uri", "spring.data.mongodb.host"}) {
             String v = System.getProperty(k);
             if (v != null && !v.isBlank()) {
                 log.info("[阶段八][配置] 系统属性 -D{}={}", k, v);

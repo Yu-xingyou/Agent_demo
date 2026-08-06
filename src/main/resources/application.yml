@@ -68,9 +68,7 @@ spring:
   # 因索引需人工创建，此处 initialize-schema 保持 false；启动时由 VectorStoreProbe 做连通性提示。
     vectorstore:
       mongodb:
-        # 关键：Spring AI 向量库自动配置使用 spring.ai.vectorstore.mongodb.uri（而非 spring.data.mongodb.uri）
-        # 未配置时会回退到默认 host=localhost/port=27017，导致无法连 Atlas 报 SearchNotEnabled。
-        uri: mongodb+srv://2030795235_db_user:VPo5H4Fzq746cEX7@yu-xingyou.zaoakeu.mongodb.net/habit_agent
+        # 向量库复用 spring.data.mongodb.uri 创建的 MongoTemplate（MongoDBAtlasVectorStoreProperties 无 uri 字段）
         collection-name: habit_knowledge
         index-name: habit_vector_index
         path-name: embedding                  # 向量字段名，须与 Atlas 索引 path 一致

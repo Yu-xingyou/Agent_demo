@@ -12,7 +12,6 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
-import com.habit.agent.agent.advisor.ContextInjectionAdvisor;
 import com.habit.agent.agent.advisor.LoggingAdvisor;
 import com.habit.agent.agent.advisor.SafeRetrievalAdvisor;
 import com.habit.agent.agent.advisor.SafetyFilterAdvisor;
@@ -55,8 +54,6 @@ import lombok.extern.slf4j.Slf4j;
  *       <td>敏感词/超长输入前置拦截，命中即短路，不消耗 Token</td></tr>
  *   <tr><td>HIGHEST+20</td><td>{@link LoggingAdvisor}</td>
  *       <td>包裹下游全链路，记录耗时与 Token 用量</td></tr>
- *   <tr><td>HIGHEST+100</td><td>{@link ContextInjectionAdvisor}</td>
- *       <td>注入日期与今日打卡概况，须在记忆之前以便改写后的消息入库</td></tr>
  *   <tr><td>HIGHEST+200</td><td>{@code MessageChatMemoryAdvisor}</td>
  *       <td>多轮对话记忆（现有，{@code DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}）</td></tr>
  *   <tr><td>HIGHEST+300</td><td>{@link SafeRetrievalAdvisor}</td>
@@ -76,7 +73,6 @@ public class ChatClientConfig {
                                  MessageChatMemoryAdvisor memoryAdvisor,
                                  SafetyFilterAdvisor safetyFilterAdvisor,
                                  LoggingAdvisor loggingAdvisor,
-                                 ContextInjectionAdvisor contextInjectionAdvisor,
                                  SafeRetrievalAdvisor safeRetrievalAdvisor,
                                  HabitQueryTools habitQueryTools,
                                  HabitStatTools habitStatTools,
@@ -92,9 +88,33 @@ public class ChatClientConfig {
         // Advisor 传入顺序不影响实际执行顺序，最终由各自 getOrder() 排序（见类注释顺序表）
         return builder
                 .defaultSystem(systemPromptResource)
-                .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor, contextInjectionAdvisor,
+                .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor,
                         memoryAdvisor, safeRetrievalAdvisor)
                 .defaultTools(toolProvider)
+                .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
+                .build();
+    }
+
+    /**
+     * 报告生成专用 ChatClient：用于一次性「喂数据→出报告」任务。
+     *
+     * <p>复用同一 {@link ChatClient.Builder}（自动读取 model/temperature/api-key 配置），
+     * 但<b>不挂 {@code MessageChatMemoryAdvisor}</b>——该 Advisor 在 before 阶段强制要求
+     * {@code conversationId}，而报告生成无需多轮记忆、未传入会话 ID 会抛
+     * {@code IllegalArgumentException: conversationId cannot be null} 并降级为「暂无」。
+     *
+     * <p>保留 safety / logging / rag 三个在无 conversationId 时均安全的 Advisor，
+     * 其余配置与 {@link #chatClient} 一致。不挂对话工具（报告生成无需工具调用）。
+     */
+    @Bean
+    public ChatClient reportChatClient(ChatClient.Builder builder,
+                                       SafetyFilterAdvisor safetyFilterAdvisor,
+                                       LoggingAdvisor loggingAdvisor,
+                                       SafeRetrievalAdvisor safeRetrievalAdvisor) {
+        return builder
+                .defaultSystem(systemPromptResource)
+                .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor,
+                        safeRetrievalAdvisor)
                 .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .build();
     }

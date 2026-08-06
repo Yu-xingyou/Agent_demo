@@ -38,7 +38,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
     private final AiAnalysisTaskRepository taskRepository;
     private final AnalysisService analysisService;
-    private final ChatClient chatClient;
+    private final ChatClient reportChatClient;
 
     @Override
     public AiAnalysisTask submit(Long userId, int days) {
@@ -136,7 +136,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                         + "report: 完整 Markdown 报告正文（含「## 各维度解读」「## 改进建议」标题）",
                 task.getDays(), overviewJson, achievementJson);
         try {
-            AnalysisResult r = chatClient.prompt()
+            AnalysisResult r = reportChatClient.prompt()
                     .system("你是严谨的数据分析师，只依据给定数据输出 JSON，不要编造数据。必须返回纯 JSON，"
                             + "字段为 dailyEvaluation/trendSummary/riskWarning/suggestion/score(整数0-100)/report。")
                     .user(prompt)
@@ -184,7 +184,7 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                         + "3. 用「## 改进建议」给出 3 条具体可执行的建议；\n4. 语气鼓励、客观，不编造数据。",
                 task.getDays(), overviewJson, achievementJson);
         try {
-            String content = chatClient.prompt()
+            String content = reportChatClient.prompt()
                     .system("你是严谨的数据分析师，只依据给定数据输出 Markdown 报告，结论需可量化。")
                     .user(prompt)
                     .call()

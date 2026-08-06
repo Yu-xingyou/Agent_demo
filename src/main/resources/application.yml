@@ -29,9 +29,12 @@ spring:
   # ===== AI 通用配置（Spring AI 2.0.0）=====
   ai:
     # Chat 记忆存储（MongoDB）
+    # 注意：spring.ai.model.chat / embedding 是「provider 选择」键（对应 @ConditionalOnProperty
+    # havingValue="openai"），必须为 openai（DashScope 兼容 OpenAI 协议）；具体模型名在下方
+    # spring.ai.openai.chat.options.model / embedding.options.model 指定。
     model:
-      chat: qwen3.5-plus
-      embedding: text-embedding-v4
+      chat: openai
+      embedding: openai
 
     chat:
       memory:
@@ -47,8 +50,9 @@ spring:
         initialize-schema: false
 
     openai:
-      # DashScope 兼容 OpenAI 协议
-      base-url: https://dashscope.aliyuncs.com/compatible-mode
+      # DashScope 兼容 OpenAI 协议（OpenAI SDK 会在其后拼接 /chat/completions 等路径，
+      # 故必须保留 /v1，否则请求到 .../compatible-mode/chat/completions 会返回 404）
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
       api-key: ${DASHSCOPE_API_KEY:sk-your-key}
       chat:
         enabled: true

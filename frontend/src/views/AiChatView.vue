@@ -66,7 +66,7 @@ function send(text) {
   scrollToBottom()
 
   sending.value = true
-  const aiMsg = { role: 'ai', text: '' }
+  const aiMsg = { role: 'ai', text: '', stats: null }
   messages.value.push(aiMsg)
 
   abortController = streamMessage({
@@ -85,8 +85,16 @@ function send(text) {
       aiMsg.text += chunk.content
       scrollToBottom()
     },
-    onDone: () => {
+    onDone: (done) => {
       toolStatus.value = ''
+      // 展示真实 Token 用量与耗时（totalTokens 可能为 null，由模板容忍）
+      aiMsg.stats = {
+        totalTokens: done ? done.totalTokens : null,
+        promptTokens: done ? done.promptTokens : null,
+        completionTokens: done ? done.completionTokens : null,
+        duration: done ? done.duration : null,
+        firstTokenLatency: done ? done.firstTokenLatency : null,
+      }
       sending.value = false
       abortController = null
       // 新对话首轮完成后自动生成标题
@@ -302,18 +310,28 @@ onMounted(() => {
                     : 'bg-white/80 text-slate-700 border border-indigo-50')
                 : 'bg-brand/10 text-slate-700'"
             >
-              <span v-if="m.text">{{ m.text }}</span>
-              <span v-else-if="sending && m === messages[messages.length - 1]" class="inline-flex gap-1 items-center">
-                <template v-if="toolStatus">
-                  <span class="text-xs text-brand-soft">{{ toolStatus }}</span>
-                  <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-pulse" />
-                </template>
-                <template v-else>
-                  <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" />
-                  <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.15s" />
-                  <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.3s" />
-                </template>
-              </span>
+              <template v-if="m.role === 'ai' && m.text === '' && sending && m === messages[messages.length - 1]">
+                <span class="inline-flex gap-1 items-center">
+                  <template v-if="toolStatus">
+                    <span class="text-xs text-brand-soft">{{ toolStatus }}</span>
+                    <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-pulse" />
+                  </template>
+                  <template v-else>
+                    <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" />
+                    <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.15s" />
+                    <i class="w-1.5 h-1.5 rounded-full bg-brand/60 animate-bounce" style="animation-delay:.3s" />
+                  </template>
+                </span>
+              </template>
+              <template v-else>
+                <span>{{ m.text }}<span v-if="m.role === 'ai' && sending && m === messages[messages.length - 1]" class="caret">▋</span></span>
+                <!-- AI 回复底部：真实 Token 用量与耗时（totalTokens 为 null 时隐藏，避免展示误导性的 0） -->
+                <div v-if="m.role === 'ai' && m.stats" class="mt-1.5 text-[10px] text-slate-400 leading-none">
+                  <span v-if="m.stats.totalTokens != null">Tokens: {{ m.stats.totalTokens }}</span>
+                  <span v-if="m.stats.duration != null"> · {{ m.stats.duration }}ms</span>
+                  <span v-if="m.stats.firstTokenLatency != null"> · 首字 {{ m.stats.firstTokenLatency }}ms</span>
+                </div>
+              </template>
             </div>
           </div>
         </div>
@@ -338,14 +356,16 @@ onMounted(() => {
             @keyup.enter="send(input)"
           />
           <button
+            v-if="!sending"
             class="btn-grad w-10 h-10 rounded-full flex items-center justify-center text-white transition-opacity disabled:opacity-60"
-            :disabled="sending"
+            :disabled="!input.trim()"
             @click="send(input)"
           ><Send :size="18" /></button>
           <button
-            class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 border border-slate-200 hover:text-brand-soft transition-colors"
-            :disabled="!sending"
+            v-else
+            class="w-10 h-10 rounded-full flex items-center justify-center text-slate-500 border border-slate-200 hover:text-red-400 hover:border-red-200 transition-colors"
             @click="stop"
+            title="停止生成"
           ><Square :size="16" /></button>
         </div>
       </div>
@@ -365,5 +385,17 @@ onMounted(() => {
 .slide-leave-to {
   width: 0;
   opacity: 0;
+}
+
+/* 流式生成时的打字机光标闪烁 */
+.caret {
+  display: inline-block;
+  margin-left: 1px;
+  color: #6366f1;
+  animation: caret-blink 1s step-end infinite;
+}
+@keyframes caret-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
 }
 </style>

@@ -54,7 +54,9 @@ spring:
         options:
           model: qwen-plus          # 对话模型
           temperature: 0.7          # 生成温度
-          parallel-tool-calls: false # 关闭并行工具调用（Spring AI 2.0.0 ChunkMerger 对 DashScope 兼容性限制）
+          parallel-tool-calls: false # 关闭并行工具调用（预防 DashScope 并行分片异常，待探针验证后可改 true）
+          stream-usage: true        # 流式模式下回传 token 用量（底层 OpenAI stream_options.include_usage）；
+                                     # 不开启则流式 Usage 恒为 null，done 事件 Token 统计恒为 0
       embedding:
         options:
           model: text-embedding-v3  # 向量嵌入模型
@@ -78,4 +80,5 @@ logging:
     org.springframework.ai: INFO             # Spring AI 日志级别
     org.mongodb.driver: INFO                 # MongoDB 驱动日志
     com.habit.agent.agent.advisor: INFO      # 阶段六自定义 Advisor（日志/安全/上下文/RAG降级）
+    com.habit.agent.agent.router: DEBUG      # 子 Agent 流式路由调试（含意图判定与分片级 TRACE）
 

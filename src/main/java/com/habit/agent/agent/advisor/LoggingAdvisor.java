@@ -4,6 +4,8 @@ import org.springframework.ai.chat.client.ChatClientRequest;
 import org.springframework.ai.chat.client.ChatClientResponse;
 import org.springframework.ai.chat.client.advisor.api.AdvisorChain;
 import org.springframework.ai.chat.client.advisor.api.BaseAdvisor;
+import org.springframework.ai.chat.client.advisor.api.StreamAdvisor;
+import org.springframework.ai.chat.client.advisor.api.StreamAdvisorChain;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.metadata.Usage;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -11,12 +13,19 @@ import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
 import lombok.extern.slf4j.Slf4j;
+import reactor.core.publisher.Flux;
 
 /**
  * 阶段 6-2：对话日志 Advisor。
  *
  * <p>职责：记录每轮对话的会话 ID、用户输入摘要、响应耗时与 Token 用量，
- * 便于排障与成本观测。
+ * 便于排障与成本观测。同时实现 {@link StreamAdvisor} 以覆盖真流式场景。
+ *
+ * <p>流式日志策略（阶段五 5-2 真流式改造）：
+ * <ul>
+ *   <li>每个增量分片仅记 {@code TRACE}（默认关闭），避免高频日志拖慢流；</li>
+ *   <li>仅在流完成时记一次 {@code INFO} 汇总（耗时 + Token + 输出预览），防日志刷屏。</li>
+ * </ul>
  *
  * <p>设计约束：
  * <ul>
@@ -61,6 +70,37 @@ public class LoggingAdvisor implements BaseAdvisor {
             log.debug("[Advisor:Logging] 响应日志记录失败（已忽略）：{}", e.getMessage());
         }
         return response;
+    }
+
+    @Override
+    public Flux<ChatClientResponse> adviseStream(ChatClientRequest request, StreamAdvisorChain chain) {
+        final String cid = resolveConversationId(request);
+        final String inputPreview = preview(resolveUserInput(request));
+        final long startMs = System.currentTimeMillis();
+        final StringBuilder full = new StringBuilder();
+        try {
+            log.debug("[Advisor:Logging] 流式开始 | conversationId={} | 输入={}", cid, inputPreview);
+        } catch (Exception ignored) {
+            // 防御：绝不因日志异常影响主链路
+        }
+        return chain.nextStream(request)
+                .doOnNext(resp -> {
+                    String piece = resolveOutput(resp);
+                    if (piece != null && !piece.isEmpty()) {
+                        full.append(piece);
+                        // 仅 TRACE：分片级高频日志默认不输出
+                        log.trace("[Advisor:Logging] 流式分片 | conversationId={} | +{}字", cid, piece.length());
+                    }
+                })
+                .doOnComplete(() -> {
+                    try {
+                        long cost = System.currentTimeMillis() - startMs;
+                        log.info("[Advisor:Logging] 流式完成 | conversationId={} | 耗时={}ms | 输出={}",
+                                cid, cost, preview(full.toString()));
+                    } catch (Exception e) {
+                        log.debug("[Advisor:Logging] 流式完成日志记录失败（已忽略）：{}", e.getMessage());
+                    }
+                });
     }
 
     @Override

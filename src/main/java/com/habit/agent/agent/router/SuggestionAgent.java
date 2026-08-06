@@ -1,50 +1,21 @@
 package com.habit.agent.agent.router;
 
-import com.habit.agent.common.constant.AgentConstants;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
- * 阶段九（多智能体路由）改善建议子 Agent。
+ * 阶段九子智能体：改善建议智能体。
  *
- * <p>职责：针对「怎么做 / 计划 / 方案」类诉求，结合用户画像与领域知识（RAG 知识库）给出
- * 可执行、循序渐进的改善建议。system 提示词固化其「给建议、不替用户做数据分析」的边界。
+ * <p>负责处理需要建议/方法的请求（如何养成习惯、如何坚持、技巧方法），可借助工具
+ * （目标设定、习惯动作）帮助用户落地行动。同样支持工具调用与真流式输出。
+ *
+ * @see AbstractSubAgent 基类封装了 call/stream 模板与降级逻辑。
  */
-@Slf4j
 @Component
-public class SuggestionAgent implements SubAgent {
-
-    private final ChatClient chatClient;
+public class SuggestionAgent extends AbstractSubAgent {
 
     public SuggestionAgent(ChatClient chatClient) {
-        this.chatClient = chatClient;
-    }
-
-    @Override
-    public String handle(String message, String conversationId) {
-        String system = """
-                你是「习惯教练」子智能体，隶属于生活习惯助手的多智能体系统。
-                你的职责：基于用户的诉求与生活方式，给出可执行、循序渐进的改善建议与行动清单。
-                规则：
-                1. 可结合知识库（健康/运动/睡眠/饮食常识）给出科学建议，不要编造权威来源；
-                2. 只给「建议」，不重复做数据趋势分析（那由数据分析子智能体负责）；
-                3. 建议需具体、分步骤、可量化（如「每天提前 15 分钟睡」而非「早点睡」）；
-                4. 语气鼓励、不评判，尊重用户的现实约束。
-                """;
-        try {
-            return chatClient.prompt()
-                    .system(system)
-                    .user(message)
-                    .advisors(a -> a.param(
-                            org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID,
-                            conversationId == null ? AgentConstants.DEFAULT_USERNAME : conversationId))
-                    .call()
-                    .content();
-        } catch (Exception e) {
-            log.warn("[SuggestionAgent] 调用失败，降级为提示", e);
-            return "抱歉，建议生成暂时不可用，请稍后再试。你可以先描述想改善的具体习惯。";
-        }
+        super(chatClient);
     }
 
     @Override
@@ -54,6 +25,22 @@ public class SuggestionAgent implements SubAgent {
 
     @Override
     public String roleName() {
-        return "SuggestionAgent";
+        return "改善建议智能体";
+    }
+
+    @Override
+    protected String systemPrompt() {
+        return """
+                你是一个「改善建议智能体」，专门负责回答「如何养成习惯」「如何坚持下去」
+                「有哪些实用技巧」这类需要方法/建议的请求。
+                当用户希望把建议落地时，可以调用工具帮助用户设定目标（goalTools）或
+                创建具体的习惯动作（habitActionTools），让建议变得可执行。
+                回答要具体、可操作、有同理心，避免空泛的鸡汤。用中文、分点给出建议。
+                """;
+    }
+
+    @Override
+    protected String fallbackMessage() {
+        return "抱歉，建议服务暂时不可用，请稍后再试。";
     }
 }

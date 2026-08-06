@@ -8,13 +8,16 @@ export function sendMessage(message, conversationId) {
 }
 
 /**
- * 流式对话（SSE）。通过 fetch + ReadableStream 解析后端事件：
- *   meta      -> { conversationId, timestamp, model }
- *   tool_call -> { status, message }     （2026-08 升级方案 B 后该事件不再由后端发出，
- *                                          前端 onToolCall 回调保留但不再触发）
- *   chunk     -> { content, index }       （方案 B：服务端一次性输出的完整文本以单条 chunk 推送）
- *   done      -> { conversationId, totalTokens, duration, streaming_mode }（streaming_mode=one_shot）
- *   error     -> { errorCode, message, conversationId }
+ * 流式对话（SSE）。通过 fetch + ReadableStream 解析后端事件（Spring AI 2.0.0 真流式）：
+ *   meta      -> { conversationId, timestamp, model, intent }
+ *   tool_call -> { status, message, toolName }（工具调用轮次期间发出：status=start/end）
+ *   chunk     -> { content, index }       （真流式逐字增量分片，一条消息含多条 chunk）
+ *   done      -> { conversationId, promptTokens, completionTokens, totalTokens,
+ *                 duration, firstTokenLatency, streamingMode }（streamingMode="streaming"）
+ *                 Token 字段可能为 null（DashScope 未回传 usage 时），前端需容忍 null 并隐藏
+ *   error     -> { errorCode, message, conversationId, retryable }
+ *
+ * 后端采用 Framework-Controlled 模式：工具调用循环由框架透明驱动，最终回复真流式逐字下推。
  *
  * @param {{message:string, conversationId?:string, onMeta?:Function, onToolCall?:Function, onChunk?:Function, onDone?:Function, onError?:Function}} opts
  * @returns {Promise<AbortController>} 返回 AbortController，便于调用方在超时/主动停止时中断

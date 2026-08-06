@@ -36,14 +36,21 @@ import lombok.extern.slf4j.Slf4j;
  * <p><b>Spring AI 2.0.0 架构要点</b>：
  * <ul>
  *   <li>{@code ToolCallingAdvisor} 自动注册：ChatClient 在检测到工具时自动注入，
- *       工具执行循环内部管理对话历史，无需手动注册。</li>
- *   <li>记忆 Advisor 优先级调整：{@code Advisor.DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}
- *       从 1.x 的 {@code HIGHEST+1000} 调整为 {@code HIGHEST+200}，使记忆 Advisor 位于
- *       工具 Advisor 之外，工具调用中间消息不再写入 ChatMemory（避免存储实现不支持工具消息类型）。</li>
+ *       工具执行循环由框架内部透明完成，对 {@code call()} 与 {@code stream()} 均生效。</li>
+ *   <li>记忆 Advisor 优先级：官方 {@code MessageChatMemoryAdvisor} 默认 order 为
+ *       {@code HIGHEST+200}，位于工具 Advisor（+300）之外，工具调用中间消息不再写入
+ *       ChatMemory（符合官方默认推荐布局，刻意保持，勿随意改大）。</li>
  *   <li>{@code streamToolCallResponses} 已移除：中间工具调用请求不再流式发出，
- *       仅最终助手回复流式输出（纯文本轮次）或分片降级（工具调用轮次）。</li>
- *   <li>{@code parallelToolCalls} 设为 {@code false}：规避 DashScope 流式工具调用分片
- *       缺 index 字段导致 ChunkMerger 断言失败（单 tool call 时通过 ChunkMerger 合并更稳定）。</li>
+ *       仅最终助手回复逐字流式输出。工具调用轮次「中间无文本分片」是 2.0.0 的<b>预期行为</b>，
+ *       并非流式失败——此前误判此现象为故障并退回非流式（方案 B）属误判。</li>
+ *   <li>真流式根因修复：{@link SafeRetrievalAdvisor} 原有 order 为 {@code HIGHEST+300}，
+ *       与自动注册的 {@code ToolCallingAdvisor}（同样 +300）order 冲突、相对顺序未定义；
+ *       一旦 RAG Advisor 排在工具 Advisor 之前，整个工具循环被包进其 {@code onErrorResume}，
+ *       任意瞬时异常都会静默重入下游链 → 流式错乱/重复。已前移至 {@code HIGHEST+150} 修复。</li>
+ *   <li>{@code parallelToolCalls} 现状为 {@code false}（保守默认）：order 冲突修复后，
+ *       通过 {@link com.habit.agent.StreamingProbeTest} 实测 DashScope 在并行工具调用下是否
+ *       仍有分片异常；若稳定则改回 {@code true} 恢复多工具并行能力。当前取值为<b>预防措施</b>，
+ *       不再归因于已证伪的「ChunkMerger 崩溃」推测。</li>
  * </ul>
  *
  * <p><b>Advisor 链执行顺序</b>（order 越小越先执行，阶段六/八装配）：
@@ -54,10 +61,12 @@ import lombok.extern.slf4j.Slf4j;
  *       <td>敏感词/超长输入前置拦截，命中即短路，不消耗 Token</td></tr>
  *   <tr><td>HIGHEST+20</td><td>{@link LoggingAdvisor}</td>
  *       <td>包裹下游全链路，记录耗时与 Token 用量</td></tr>
+ *   <tr><td>HIGHEST+150</td><td>{@link SafeRetrievalAdvisor}</td>
+ *       <td>RAG 知识检索增强，带失败降级；前置于记忆与工具之前，异常兜底仅覆盖检索阶段</td></tr>
  *   <tr><td>HIGHEST+200</td><td>{@code MessageChatMemoryAdvisor}</td>
- *       <td>多轮对话记忆（现有，{@code DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}）</td></tr>
- *   <tr><td>HIGHEST+300</td><td>{@link SafeRetrievalAdvisor}</td>
- *       <td>RAG 知识检索增强，带失败降级；置于记忆之后避免知识片段污染记忆窗口</td></tr>
+ *       <td>多轮对话记忆（官方 {@code DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}）</td></tr>
+ *   <tr><td>HIGHEST+300</td><td>{@code ToolCallingAdvisor}（框架自动注册）</td>
+ *       <td>工具执行循环，独占该 order，避免与自定义 Advisor 冲突</td></tr>
  * </table>
  */
 @Slf4j
@@ -91,6 +100,8 @@ public class ChatClientConfig {
                 .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor,
                         memoryAdvisor, safeRetrievalAdvisor)
                 .defaultTools(toolProvider)
+                // parallelToolCalls=false：order 冲突已修复，此为预防 DashScope 并行工具调用分片异常的保守默认，
+                // 待 StreamingProbeTest 实测稳定后可改回 true 恢复多工具并行。
                 .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .build();
     }
@@ -115,6 +126,7 @@ public class ChatClientConfig {
                 .defaultSystem(systemPromptResource)
                 .defaultAdvisors(safetyFilterAdvisor, loggingAdvisor,
                         safeRetrievalAdvisor)
+                // 报告生成无需并发工具调用，同样保持 false（待探针验证后可评估改 true）
                 .defaultOptions(OpenAiChatOptions.builder().parallelToolCalls(false))
                 .build();
     }

@@ -4,20 +4,21 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import com.habit.agent.common.result.Result;
+import com.habit.agent.common.stream.StopSignalRegistry;
 import com.habit.agent.common.vo.ChatRequestVO;
 import com.habit.agent.common.vo.ChatResponseVO;
+import com.habit.agent.common.vo.ChatStreamEvent;
 import com.habit.agent.service.ChatService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,24 +28,29 @@ import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
 
 /**
- * 阶段五（AI 对话）ChatController：3 端点。
+ * 阶段五（AI 对话）ChatController：多端点。
  *
  * <ul>
  *   <li>POST /api/chat — 非流式对话；</li>
- *   <li>GET /api/chat/stream — SSE 流式对话（5 种事件：meta/chunk/tool_call/done/error）；</li>
- *   <li>POST /api/chat/stop — 停止生成。</li>
+ *   <li>GET /api/chat/stream — 真流式 SSE 对话（阶段五 5-2 改造为响应式 Flux&lt;ServerSentEvent&gt;）；</li>
+ *   <li>POST /api/chat/stop — 停止生成（触发响应式停止信号，真正取消上游订阅）；</li>
+ *   <li>GET /api/chat/history — 会话历史；</li>
+ *   <li>POST /api/chat/title — 生成会话标题。</li>
  * </ul>
  *
- * <p>SSE 协议对齐 PRD《API接口文档设计计划.md》规范：
+ * <p>真流式改造（2026-08）：原 {@code SseEmitter} + 手工拼 JSON 字符串的实现已移除，
+ * 改用 Spring AI 2.0.0 推荐的响应式写法——接口返回 {@code Flux<ServerSentEvent<ChatStreamEvent>>}，
+ * 事件体由 Jackson 序列化（不再手工拼接）。停止生成改用 {@link StopSignalRegistry} 的响应式信号，
+ * 由服务层 {@code takeUntilOther} 真正取消与模型的上游订阅（切断连接、停止计费）。
+ *
+ * <p>SSE 事件协议（向后兼容前端解析）：
  * <ul>
- *   <li><b>meta</b>：流开始，携带 conversationId、timestamp、model</li>
- *   <li><b>chunk</b>：文本片段；方案 B（退回非流式）下为整段文本的单条 chunk</li>
- *   <li><b>done</b>：流结束，含 streaming_mode 标识（one_shot = 服务端一次性输出）</li>
- *   <li><b>error</b>：流出错</li>
+ *   <li><b>meta</b>：流开始，携带 conversationId、timestamp、model、intent；</li>
+ *   <li><b>chunk</b>：文本增量分片（真流式逐字）；</li>
+ *   <li><b>tool_call</b>：工具调用状态（start/end + message + toolName）；</li>
+ *   <li><b>done</b>：流结束，含真实 Token 用量、耗时、首字延迟、streaming_mode="streaming"；</li>
+ *   <li><b>error</b>：流出错，含 errorCode/message/retryable。</li>
  * </ul>
- *
- * <p>2026-08 升级：依验证结论落地《方案 B》——真流式在 DashScope 工具调用场景崩溃，
- * 故 stream 端点保留形态但服务端一次性输出完整文本（不再伪流式分片）。</p>
  */
 @Slf4j
 @RestController
@@ -54,9 +60,7 @@ import reactor.core.publisher.Flux;
 public class ChatController {
 
     private final ChatService chatService;
-
-    /** 停止信号：conversationId -> true 表示请求中断。 */
-    private final ConcurrentHashMap<String, Boolean> stopFlags = new ConcurrentHashMap<>();
+    private final StopSignalRegistry stopSignalRegistry;
 
     @Operation(summary = "非流式对话")
     @PostMapping
@@ -75,72 +79,29 @@ public class ChatController {
         return Result.success(vo);
     }
 
-    @Operation(summary = "SSE 流式对话")
+    @Operation(summary = "真流式 SSE 对话（逐字输出）")
     @GetMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter stream(
+    public Flux<ServerSentEvent<ChatStreamEvent>> stream(
             @RequestParam String message,
             @RequestParam(required = false) String conversationId) {
 
         final String cid = (conversationId == null || conversationId.isBlank())
                 ? UUID.randomUUID().toString()
                 : conversationId;
-        stopFlags.remove(cid);
 
-        SseEmitter emitter = new SseEmitter(120_000L);
-        // meta 事件：会话元信息
-        try {
-            emitter.send(SseEmitter.event().name("meta")
-                    .data("{\"conversationId\":\"" + cid + "\",\"timestamp\":\""
-                            + LocalDateTime.now() + "\",\"model\":\"qwen-plus\"}"));
-        } catch (Exception e) {
-            emitter.completeWithError(e);
-            return emitter;
-        }
-
-        Flux<String> flux = chatService.stream(message, cid);
-        StringBuilder full = new StringBuilder();
-        final int[] index = {0};
-
-        flux.subscribe(
-                chunk -> {
-                    if (Boolean.TRUE.equals(stopFlags.get(cid))) {
-                        sendDone(emitter, cid, 0, 0);
-                        emitter.complete();
-                        return;
-                    }
-                    // 方案 B：服务端一次性输出完整文本，单条 chunk 事件推送（不做伪流式分片）。
-                    full.append(chunk);
-                    try {
-                        emitter.send(SseEmitter.event().name("chunk")
-                                .data("{\"content\":" + jsonStr(chunk) + ",\"index\":" + index[0]++ + "}"));
-                    } catch (Exception e) {
-                        emitter.completeWithError(e);
-                    }
-                },
-                error -> {
-                    log.error("[流式对话异常] conversationId={}", cid, error);
-                    try {
-                        emitter.send(SseEmitter.event().name("error")
-                                .data("{\"errorCode\":\"AI_TIMEOUT\",\"message\":\"AI 响应异常\","
-                                        + "\"conversationId\":\"" + cid + "\"}"));
-                    } catch (Exception ignored) {
-                        // ignore
-                    }
-                    emitter.complete();
-                },
-                () -> {
-                    sendDone(emitter, cid, full.length(), 0);
-                    emitter.complete();
-                });
-
-        emitter.onTimeout(() -> emitter.complete());
-        return emitter;
+        return chatService.stream(message, cid)
+                .map(event -> ServerSentEvent.<ChatStreamEvent>builder()
+                        .event(event.eventName())
+                        .data(event)
+                        .build())
+                .doOnSubscribe(s -> log.debug("[流式对话开始] conversationId={}", cid))
+                .doOnError(e -> log.error("[流式对话异常] conversationId={}", cid, e));
     }
 
     @Operation(summary = "停止生成")
     @PostMapping("/stop")
     public Result<Void> stop(@RequestParam String conversationId) {
-        stopFlags.put(conversationId, true);
+        stopSignalRegistry.stop(conversationId);
         return Result.success();
     }
 
@@ -154,23 +115,5 @@ public class ChatController {
     @PostMapping("/title")
     public Result<String> generateTitle(@RequestParam String message) {
         return Result.success(chatService.generateTitle(message));
-    }
-
-    private void sendDone(SseEmitter emitter, String conversationId, int len, long duration) {
-        // 方案 B：服务端一次性输出完整文本
-        String streamingMode = "one_shot";
-        try {
-            emitter.send(SseEmitter.event().name("done")
-                    .data("{\"conversationId\":\"" + conversationId
-                            + "\",\"totalTokens\":0,\"duration\":" + duration
-                            + ",\"streaming_mode\":\"" + streamingMode + "\"}"));
-        } catch (Exception ignored) {
-            // ignore
-        }
-    }
-
-    /** 简易 JSON 字符串转义（用于 SSE data 内联）。 */
-    private String jsonStr(String s) {
-        return "\"" + s.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n") + "\"";
     }
 }

@@ -1,51 +1,20 @@
 package com.habit.agent.agent.router;
 
-import com.habit.agent.common.constant.AgentConstants;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Component;
 
 /**
- * 阶段九（多智能体路由）数据分析子 Agent。
+ * 阶段九子智能体：数据分析智能体。
  *
- * <p>职责：针对趋势、报告、达标率、雷达等数据类诉求，结合可用工具与记忆给出
- * 客观、数据驱动的总结。system 提示词固化其「只做分析、不下指令性建议」的边界，
- * 改善建议由 {@code SuggestionAgent} 负责，避免职责混淆。
+ * <p>负责处理需要查询/分析习惯数据的请求，可借助工具（打卡查询、统计分析）获取真实数据。
+ *
+ * @see AbstractSubAgent 基类封装了 call/stream 模板与降级逻辑。
  */
-@Slf4j
 @Component
-public class DataAnalysisAgent implements SubAgent {
-
-    private final ChatClient chatClient;
+public class DataAnalysisAgent extends AbstractSubAgent {
 
     public DataAnalysisAgent(ChatClient chatClient) {
-        this.chatClient = chatClient;
-    }
-
-    @Override
-    public String handle(String message, String conversationId) {
-        String system = """
-                你是「数据分析师」子智能体，隶属于生活习惯助手的多智能体系统。
-                你的职责：仅基于用户的真实打卡数据，输出客观的趋势总结、达标率解读与数据异常提示。
-                规则：
-                1. 优先调用数据查询工具（趋势/概览/达成率/雷达）获取真实数据，不要编造数字；
-                2. 只做「分析」，不下「指令性改善建议」（那由改善建议子智能体负责）；
-                3. 结论需简洁、点列式，必要时用百分比与对比说明；
-                4. 若数据不足，如实说明并提示用户先完成打卡。
-                """;
-        try {
-            return chatClient.prompt()
-                    .system(system)
-                    .user(message)
-                    .advisors(a -> a.param(
-                            org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID,
-                            conversationId == null ? AgentConstants.DEFAULT_USERNAME : conversationId))
-                    .call()
-                    .content();
-        } catch (Exception e) {
-            log.warn("[DataAnalysisAgent] 调用失败，降级为提示", e);
-            return "抱歉，数据分析暂时不可用，请稍后再试或先到「每日打卡」页完成记录。";
-        }
+        super(chatClient);
     }
 
     @Override
@@ -55,6 +24,24 @@ public class DataAnalysisAgent implements SubAgent {
 
     @Override
     public String roleName() {
-        return "DataAnalysisAgent";
+        return "数据分析智能体";
+    }
+
+    @Override
+    protected String systemPrompt() {
+        return """
+                你是一个「数据分析智能体」，专门负责处理需要查询或分析用户习惯数据的请求。
+                当用户的问题涉及以下任意情况时，请优先调用工具获取真实数据：
+                - 查询某习惯的打卡记录、连续打卡天数；
+                - 统计某时间段的完成率、趋势、环比；
+                - 对比多个习惯的表现。
+                你有可用的工具（打卡查询、统计分析），请主动使用，不要凭空编造数据。
+                在给出分析结论时，用简洁、有条理的中文说明数据含义与可执行建议。
+                """;
+    }
+
+    @Override
+    protected String fallbackMessage() {
+        return "抱歉，数据分析服务暂时不可用，请稍后再试。";
     }
 }

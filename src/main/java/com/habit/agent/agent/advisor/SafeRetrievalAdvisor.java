@@ -30,9 +30,20 @@ import reactor.core.publisher.Flux;
  * （{@code chain.nextCall(request)}），即跳过知识注入但对话正常继续，
  * 从而保证知识库故障不影响助手基本可用性。
  *
- * <p>执行顺序 {@code HIGHEST_PRECEDENCE + 300}，位于记忆 Advisor（+200）之后。
- * 这是刻意设计：知识片段属于「本轮临时增强」，不应被写入长期对话记忆，
- * 否则 20 条的记忆窗口会被大段知识文本迅速挤满。
+ * <p>执行顺序 {@code HIGHEST_PRECEDENCE + 150}，位于安全/日志（+10/+20）之后、
+ * 记忆 Advisor（+200）与框架自动注册的 {@code ToolCallingAdvisor}（+300）之前。
+ *
+ * <p><b>为何是 +150 而非 +300</b>：Spring AI 2.0.0 的 {@code ToolCallingAdvisor}
+ * 默认 order 恰为 {@code HIGHEST_PRECEDENCE + 300}。若本 RAG Advisor 也取 +300，
+ * 两者 order 相同、相对顺序未定义；一旦本 Advisor 排在工具 Advisor 之前，
+ * 整个工具调用循环会被包进本类的 {@code onErrorResume} 中——工具循环内部任何异常
+ * 都会被静默吞掉并以 {@code chain.nextStream(request)} 重入下游链，造成流式输出
+ * 错乱/重复/提前终止（这正是此前被误判为「ChunkMerger 崩溃、真流式不可用」的表象）。
+ * 前移到 +150 后，本 Advisor 仅包裹「检索增强」阶段，工具循环位于其后，
+ * 异常兜底范围不再覆盖工具循环，从根本上消除重入风险。
+ *
+ * <p>知识片段属于「本轮临时增强」，不应被写入长期对话记忆（否则 20 条记忆窗口
+ * 会被大段知识文本迅速挤满），故置于记忆 Advisor（+200）之前是刻意设计。
  */
 @Slf4j
 @Component
@@ -67,22 +78,20 @@ public class SafeRetrievalAdvisor implements CallAdvisor, StreamAdvisor {
 
     @Override
     public Flux<ChatClientResponse> adviseStream(ChatClientRequest request, StreamAdvisorChain chain) {
-        try {
-            // 同时覆盖两类失败：同步阶段直接抛出，以及响应式流中异步抛出
-            return delegate.adviseStream(request, chain)
-                    .onErrorResume(e -> {
-                        log.warn("[Advisor:SafeRetrieval] 流式检索失败，已降级为无检索对话：{}", e.getMessage());
-                        return chain.nextStream(request);
-                    });
-        } catch (Exception e) {
-            log.warn("[Advisor:SafeRetrieval] 流式检索初始化失败，已降级为无检索对话：{}", e.getMessage());
-            return chain.nextStream(request);
-        }
+        // 仅捕获「检索增强阶段」自身的异常：降级为跳过知识注入、继续后续链（记忆→工具→模型）。
+        // 注意：因本 Advisor 已前移至 +150（位于 ToolCallingAdvisor +300 之前），
+        // 工具调用循环不在本 onErrorResume 的包裹范围内，故不会重入下游链造成重复输出。
+        return delegate.adviseStream(request, chain)
+                .onErrorResume(e -> {
+                    log.warn("[Advisor:SafeRetrieval] 流式检索失败，已降级为无检索对话：{}", e.getMessage());
+                    return chain.nextStream(request);
+                });
     }
 
     @Override
     public int getOrder() {
-        return Ordered.HIGHEST_PRECEDENCE + 300;
+        // 关键修复：由 +300 改为 +150，消除与 ToolCallingAdvisor（+300）的 order 冲突。
+        return Ordered.HIGHEST_PRECEDENCE + 150;
     }
 
     @Override

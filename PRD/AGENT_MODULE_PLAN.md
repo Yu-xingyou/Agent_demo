@@ -59,7 +59,7 @@ data:{"eventType":1002}
 | 概念 | 标识 | 说明 | 对应存储 |
 |---|---|---|---|
 | 会话（Session） | `sessionId` | 用户与助手之间的一段持续交互上下文；一个会话可包含多轮对话，支持列表 / 重命名 / 关闭 / 删除（见第 2 节） | MongoDB `chatSession`（**本地场景持久化、不自动删除，无 TTL 索引、实体无 status 字段**，见 8.4 节） |
-| 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；历史消息、停止生成等对话内操作以此为准（见第 3 节 stop/history 子接口） | MongoDB `chatMessage` |
+| 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；历史消息等对话内操作以此为准（见第 3 节 history 子接口） | MongoDB `chatMessage` |
 
 > 约定：**会话管理类接口（第 2 节）与流式聊天类接口（第 3 节）统一使用 `sessionId`**（与 `ChatSession.sessionId` 及外部参考实现一致）；历史 / 停止等对话内操作沿用 `conversationId`。本期流式主链路已对齐示例采用 `sessionId`。
 
@@ -223,7 +223,7 @@ curl -N -X POST "http://localhost:8080/api/chat" \
 ---
 
 ### 3.3 停止生成
-`POST /api/chat/stop?conversationId={conversationId}`
+`POST /api/chat/stop?sessionId={sessionId}`
 
 **返回示例**
 ```json
@@ -232,9 +232,12 @@ curl -N -X POST "http://localhost:8080/api/chat" \
 
 **调用实例**
 ```bash
-curl -X POST "http://localhost:8080/api/chat/stop?conversationId=f1dbf6ca0ed34eeda02ec0d0545a4429"
+curl -X POST "http://localhost:8080/api/chat/stop?sessionId=f1dbf6ca0ed34eeda02ec0d0545a4429"
 ```
-**实现备注**：取消该会话当前流式任务（内存 `Cancellable` / `AbortController`），流收到取消后输出 `done` 结束。
+**实现备注**：`ChatController.stop` → `ChatService.stop(sessionId)`。服务端维护内存并发标记 `GENERATE_STATUS`（ConcurrentHashMap，key=sessionId），
+流式 `chat` 在 `doFirst` 置 true、`doOnError`/`doOnComplete` 移除标记，并经 `takeWhile(status)` 控制流是否继续；
+`stop` 移除该 sessionId 标记后，对应流的 `takeWhile` 判定为 false 而终止输出（随后由 `concatWith` 补发 1002 停止事件）。
+单体实现；分布式环境可替换为 Redis。
 
 ---
 

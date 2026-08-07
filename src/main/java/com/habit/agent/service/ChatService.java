@@ -19,4 +19,14 @@ public interface ChatService {
      * @return 流式回答事件（DATA 分片 + STOP 结束）
      */
     Flux<ChatEventVO> chat(String message, String sessionId);
+
+    /**
+     * 停止指定会话的流式生成。
+     *
+     * <p>移除该会话的生成状态标记，使正在进行的 {@link #chat(String, String)} 流
+     * 在 {@code takeWhile} 判定为 false 后终止输出（见 PRD 3.3）。</p>
+     *
+     * @param sessionId 会话 ID
+     */
+    void stop(String sessionId);
 }

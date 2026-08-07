@@ -68,6 +68,10 @@ public class SafeRetrievalAdvisor implements CallAdvisor, StreamAdvisor {
 
     @Override
     public ChatClientResponse adviseCall(ChatClientRequest request, CallAdvisorChain chain) {
+        if (isInternalMetaCall(request)) {
+            // 内部元调用（标题生成 / 意图路由）不需要知识增强，直接放行，避免无谓检索与 WARN 噪音
+            return chain.nextCall(request);
+        }
         try {
             return delegate.adviseCall(request, chain);
         } catch (Exception e) {
@@ -78,6 +82,9 @@ public class SafeRetrievalAdvisor implements CallAdvisor, StreamAdvisor {
 
     @Override
     public Flux<ChatClientResponse> adviseStream(ChatClientRequest request, StreamAdvisorChain chain) {
+        if (isInternalMetaCall(request)) {
+            return chain.nextStream(request);
+        }
         // 仅捕获「检索增强阶段」自身的异常：降级为跳过知识注入、继续后续链（记忆→工具→模型）。
         // 注意：因本 Advisor 已前移至 +150（位于 ToolCallingAdvisor +300 之前），
         // 工具调用循环不在本 onErrorResume 的包裹范围内，故不会重入下游链造成重复输出。
@@ -86,6 +93,17 @@ public class SafeRetrievalAdvisor implements CallAdvisor, StreamAdvisor {
                     log.warn("[Advisor:SafeRetrieval] 流式检索失败，已降级为无检索对话：{}", e.getMessage());
                     return chain.nextStream(request);
                 });
+    }
+
+    /**
+     * 判定当前请求是否为内部元调用。
+     *
+     * <p>由调用方通过 {@code .context(AgentConstants.INTERNAL_META_CALL, true)} 显式标记。
+     * 这类调用不属于用户对话，跳过检索是正确行为，不影响真实对话的 RAG 能力。
+     */
+    private boolean isInternalMetaCall(ChatClientRequest request) {
+        Object flag = request.context().get(AgentConstants.INTERNAL_META_CALL);
+        return Boolean.TRUE.equals(flag);
     }
 
     @Override

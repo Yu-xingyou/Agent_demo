@@ -277,6 +277,8 @@ public class ChatServiceImpl implements ChatService {
         }
         try {
             String title = chatClient.prompt()
+                    // 标记为内部元调用：标题生成不属于用户对话，跳过 RAG 检索，避免无谓的检索异常与降级日志
+                    .advisors(a -> a.param(AgentConstants.INTERNAL_META_CALL, true))
                     .user("用不超过15个字总结这段对话的主题：" + userMessage)
                     .options(OpenAiChatOptions.builder().temperature(0.3))
                     .call()

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import com.fasterxml.jackson.annotation.JsonClassDescription;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.habit.agent.common.constant.AgentConstants;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -108,6 +109,8 @@ public class IntentRouter {
     private Intent routeByLlm(String message) {
         try {
             String raw = directorChatClient.prompt()
+                    // 标记为内部元调用：意图判定不属于用户对话，跳过 RAG 检索，避免无谓的检索异常与降级日志
+                    .advisors(a -> a.param(AgentConstants.INTERNAL_META_CALL, true))
                     .user("判断以下用户消息的意图：\n" + message)
                     .call()
                     .content();

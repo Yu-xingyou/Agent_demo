@@ -87,6 +87,17 @@ public final class AgentConstants {
     /** 向量库集合名（须与 spring.ai.vectorstore.mongodb.collection-name 一致） */
     public static final String RAG_COLLECTION_NAME = "habit_knowledge";
 
+    // ===== 内部元调用标记 =====
+    /**
+     * ChatClient 请求上下文 Key：标记该次调用为「内部元调用」。
+     *
+     * <p>内部元调用指非用户可见的辅助性 LLM 调用，如「生成会话标题」「意图路由判定」。
+     * 这类调用不属于用户对话，既不应携带 {@code conversationId} 写入长期记忆，
+     * 也不需要 RAG 知识检索。{@code SafeRetrievalAdvisor} 检测到该标记为 {@code true} 时
+     * 直接放行下游链，从而避免因缺少 conversationId 触发无意义的检索异常与降级 WARN 日志。
+     */
+    public static final String INTERNAL_META_CALL = "internalMetaCall";
+
     /** 系统内部错误 */
     public static final int CODE_SYSTEM_ERROR = 50001;
     /** 数据库错误 */

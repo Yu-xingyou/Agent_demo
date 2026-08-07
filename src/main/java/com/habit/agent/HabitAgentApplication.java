@@ -1,15 +1,16 @@
 package com.habit.agent;
 
+import org.springframework.ai.vectorstore.mongodb.autoconfigure.MongoDBAtlasVectorStoreAutoConfiguration;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * 生活习惯助手后端启动类
+ * 生活习惯助手后端启动类（单体应用，不使用 Nacos/微服务）
  *
- * 仅包含最基本的 Spring Boot 启动注解，无额外配置。
- * 数据库配置在后续模块中逐步添加。
+ * 排除 MongoDBAtlasVectorStoreAutoConfiguration：向量库由 VectorStoreMongoConfig
+ * 通过独立 REMOTE_MONGO_URI 连接远程 Atlas，避免自动配置使用本地 spring.data.mongodb 连接。
  */
-@SpringBootApplication
+@SpringBootApplication(exclude = MongoDBAtlasVectorStoreAutoConfiguration.class)
 public class HabitAgentApplication {
 
     public static void main(String[] args) {

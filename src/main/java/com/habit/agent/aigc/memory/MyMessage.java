@@ -1,0 +1,24 @@
+package com.habit.agent.aigc.memory;
+
+import lombok.Data;
+import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.chat.messages.ToolResponseMessage;
+import org.springframework.ai.content.Media;
+
+import java.util.List;
+import java.util.Map;
+
+/**
+ * 消息序列化载体（MongoDB 记忆存储格式，参照天机学堂 tj-aigc MyMessage）
+ */
+@Data
+public class MyMessage {
+
+    private String messageType;
+    private Map<String, Object> metadata = Map.of();
+    private List<Media> media = List.of();
+    private List<AssistantMessage.ToolCall> toolCalls = List.of();
+    private String textContent;
+    private List<ToolResponseMessage.ToolResponse> toolResponses = List.of();
+    private Map<String, Object> params = Map.of();
+}

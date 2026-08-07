@@ -1,0 +1,26 @@
+package com.habit.agent.aigc.enums;
+
+import lombok.Getter;
+
+/**
+ * 消息类型枚举（参照天机学堂 tj-aigc MessageTypeEnum）
+ */
+@Getter
+public enum MessageTypeEnum {
+
+    USER(1, "用户提问"),
+    ASSISTANT(2, "AI的回答");
+
+    private final int value;
+    private final String desc;
+
+    MessageTypeEnum(int value, String desc) {
+        this.value = value;
+        this.desc = desc;
+    }
+
+    @Override
+    public String toString() {
+        return this.name();
+    }
+}

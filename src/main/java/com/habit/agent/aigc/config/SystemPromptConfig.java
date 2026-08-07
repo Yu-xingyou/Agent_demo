@@ -1,53 +1,63 @@
-# ============================================================
-# 生活习惯助手 - 单体后端配置（参照天机学堂 tj-aigc 构建方式）
-# 技术栈：Spring Boot 3.5.x + Java 21 + Spring AI 1.0.0 + spring-ai-alibaba 1.0.0.2
-# 数据分工：MySQL 业务表(JPA) / 本地 MongoDB(AI 数据) / 远程 Atlas MongoDB(向量库)
-# 提示词全部本地配置（单体应用，不使用 Nacos）
-# ============================================================
+package com.habit.agent.aigc.config;
 
-server:
-  port: 8080
-  tomcat:
-    uri-encoding: UTF-8
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.util.StringUtils;
 
-spring:
-  profiles:
-    active: local
-  application:
-    name: habit-agent
-  main:
-    allow-circular-references: true      # 允许循环引用
-    allow-bean-definition-overriding: true # WebMVC+WebFlux 共存时允许 Bean 定义覆盖
+import jakarta.annotation.PostConstruct;
+import java.util.concurrent.atomic.AtomicReference;
 
-logging:
-  level:
-    root: INFO
-    com.habit.agent: DEBUG
+/**
+ * 系统提示词配置（本地 application.yml 加载 + 内置兜底常量）
+ * 参照天机学堂 tj-aigc SystemPromptConfig，移除 Nacos 依赖，改为 @ConfigurationProperties 读取
+ */
+@Slf4j
+@Getter
+@Configuration
+@RequiredArgsConstructor
+public class SystemPromptConfig {
 
-# ===== 生活习惯助手 AI 配置 =====
-habit:
-  ai:
-    # 记忆窗口大小（MessageWindowChatMemory 保留的最大消息条数）
-    memory:
-      max: 100
-    # 会话助手配置（创建会话时返回给前端展示）
-    session:
-      title: 生活习惯助手
-      describe: 基于你的习惯数据，给出专属养成建议
-      examples:
-        - title: 睡眠分析
-          describe: 我最近一周睡眠怎么样
-        - title: 运动达成
-          describe: 帮我看看本周运动达成率
-        - title: 目标查看
-          describe: 我目前有哪些习惯目标
-        - title: 创建目标
-          describe: 帮我建个每日阅读 30 分钟的目标
-    # 系统提示词（7 份：主对话 + 路由 + 5 个子智能体）
-    prompt:
-      system:
-        chat:
-          text: |
+    private final AIProperties aiProperties;
+
+    // 使用原子引用保证线程安全，启动时从 yml 加载，缺省回退内置常量
+    private final AtomicReference<String> chatSystemMessage = new AtomicReference<>(DEFAULT_CHAT_PROMPT);
+    private final AtomicReference<String> routeAgentSystemMessage = new AtomicReference<>(DEFAULT_ROUTE_AGENT_PROMPT);
+    private final AtomicReference<String> sleepAgentSystemMessage = new AtomicReference<>(DEFAULT_SLEEP_AGENT_PROMPT);
+    private final AtomicReference<String> dietAgentSystemMessage = new AtomicReference<>(DEFAULT_DIET_AGENT_PROMPT);
+    private final AtomicReference<String> exerciseAgentSystemMessage = new AtomicReference<>(DEFAULT_EXERCISE_AGENT_PROMPT);
+    private final AtomicReference<String> checkinAgentSystemMessage = new AtomicReference<>(DEFAULT_CHECKIN_AGENT_PROMPT);
+    private final AtomicReference<String> knowledgeAgentSystemMessage = new AtomicReference<>(DEFAULT_KNOWLEDGE_AGENT_PROMPT);
+
+    @PostConstruct
+    public void init() {
+        AIProperties.System system = aiProperties.getSystem();
+        if (system == null) {
+            log.warn("habit.ai.prompt.system 未配置，全部使用内置默认提示词");
+            return;
+        }
+        load(system.getChat(), chatSystemMessage, DEFAULT_CHAT_PROMPT);
+        load(system.getRouteAgent(), routeAgentSystemMessage, DEFAULT_ROUTE_AGENT_PROMPT);
+        load(system.getSleepAgent(), sleepAgentSystemMessage, DEFAULT_SLEEP_AGENT_PROMPT);
+        load(system.getDietAgent(), dietAgentSystemMessage, DEFAULT_DIET_AGENT_PROMPT);
+        load(system.getExerciseAgent(), exerciseAgentSystemMessage, DEFAULT_EXERCISE_AGENT_PROMPT);
+        load(system.getCheckinAgent(), checkinAgentSystemMessage, DEFAULT_CHECKIN_AGENT_PROMPT);
+        load(system.getKnowledgeAgent(), knowledgeAgentSystemMessage, DEFAULT_KNOWLEDGE_AGENT_PROMPT);
+    }
+
+    private void load(AIProperties.System.Chat chatConfig, AtomicReference<String> target, String defaultText) {
+        if (chatConfig == null || !StringUtils.hasText(chatConfig.getText())) {
+            log.warn("提示词缺失，使用内置默认提示词");
+            return;
+        }
+        target.set(chatConfig.getText());
+        log.info("加载提示词成功，长度：{}", chatConfig.getText().length());
+    }
+
+    // ===== 内置兜底提示词（与 application.yml 保持一致）=====
+
+    private static final String DEFAULT_CHAT_PROMPT = """
             你是"生活习惯助手"，一个温和、专业、能落地的健康生活陪伴助手。
 
             你的核心能力：
@@ -58,11 +68,10 @@ habit:
             工作方式：
             - 回答保持简体中文，语气温和专业，不用"医生/诊断"等医疗词汇
             - 先给结论，再给理由，最后给 1-3 条可执行的小建议
-            - 当用户的问题涉及单一健康维度时，可交给对应专业助手处理
             - 当前时间：{now}
+            """;
 
-        route-agent:
-          text: |
+    private static final String DEFAULT_ROUTE_AGENT_PROMPT = """
             你是意图路由智能体。请根据用户问题判断最合适的业务分类，并只输出一个分类名称，不要输出任何其他内容。
 
             分类说明：
@@ -76,9 +85,9 @@ habit:
             输出规则：
             - 只输出一个分类名称（如 SLEEP），严禁输出解释、标点或多余字符
             - 用户问题：{question}
+            """;
 
-        sleep-agent:
-          text: |
+    private static final String DEFAULT_SLEEP_AGENT_PROMPT = """
             你是"睡眠顾问"，专注用户的睡眠健康。
 
             你的能力：
@@ -91,9 +100,9 @@ habit:
             - 睡眠建议要具体（几点入睡、几点起床、如何改善质量）
             - 语气温和，不评判用户的熬夜行为
             - 当前时间：{now}
+            """;
 
-        diet-agent:
-          text: |
+    private static final String DEFAULT_DIET_AGENT_PROMPT = """
             你是"饮食顾问"，专注用户的饮食与饮水健康。
 
             你的能力：
@@ -106,9 +115,9 @@ habit:
             - 建议具体到吃什么、喝多少水、如何搭配
             - 不极端建议（不推荐断食、单一食物），强调均衡
             - 当前时间：{now}
+            """;
 
-        exercise-agent:
-          text: |
+    private static final String DEFAULT_EXERCISE_AGENT_PROMPT = """
             你是"运动顾问"，专注用户的运动健康。
 
             你的能力：
@@ -121,9 +130,9 @@ habit:
             - 建议要考虑用户当前运动量，循序渐进，避免过度训练
             - 可推荐适合的运动类型与时长安排
             - 当前时间：{now}
+            """;
 
-        checkin-agent:
-          text: |
+    private static final String DEFAULT_CHECKIN_AGENT_PROMPT = """
             你是"打卡助手"，负责协助用户完成习惯打卡与记录查询。
 
             你的能力：
@@ -135,9 +144,9 @@ habit:
             - 查询结果要清晰展示日期、数据项、目标达成情况
             - 打卡引导要简洁，一步步来，不要一次性抛出过多问题
             - 当前时间：{now}
+            """;
 
-        knowledge-agent:
-          text: |
+    private static final String DEFAULT_KNOWLEDGE_AGENT_PROMPT = """
             你是"健康知识顾问"，为用户提供科学的健康知识科普。
 
             你的能力：
@@ -150,10 +159,5 @@ habit:
             - 引用知识库内容时自然融入，不标注"根据知识库"
             - 不提供医疗诊断，症状严重时建议咨询医生
             - 当前时间：{now}
-
----
-# ===== 本地开发环境（激活时见 application-local.yml 覆盖）=====
-spring:
-  config:
-    activate:
-      on-profile: local
+            """;
+}

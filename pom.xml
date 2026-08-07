@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>4.1.0</version>
+        <version>3.5.3</version>
         <relativePath/>
     </parent>
 
@@ -15,20 +15,49 @@
     <artifactId>habit-agent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>habit-agent</name>
-    <description>生活习惯助手 Agent - Spring AI 2.0 全栈实践项目</description>
+    <description>生活习惯助手 Agent - 单体应用，参照天机学堂 tj-aigc 构建方式（Spring AI 1.0.0 + spring-ai-alibaba 1.0.0.2）</description>
 
     <properties>
         <java.version>21</java.version>
+        <spring-ai.version>1.0.0</spring-ai.version>
+        <spring-ai-alibaba.version>1.0.0.2</spring-ai-alibaba.version>
     </properties>
 
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring AI BOM -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Alibaba AI BOM -->
+            <dependency>
+                <groupId>com.alibaba.cloud.ai</groupId>
+                <artifactId>spring-ai-alibaba-bom</artifactId>
+                <version>${spring-ai-alibaba.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
     <dependencies>
-        <!-- Web (纯 REST API，前后端分离，不渲染页面) -->
+        <!-- Web (WebMVC REST + SSE 端点) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- JPA + MySQL (业务数据层) -->
+        <!-- WebFlux (Flux 响应式 SSE，与天机学堂一致) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webflux</artifactId>
+        </dependency>
+
+        <!-- JPA + MySQL (业务数据层，保留现有 4 张业务表) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -39,17 +68,35 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- MongoDB (本地：会话/消息/记忆/分析) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
         <!-- 参数校验 (Jakarta Bean Validation / Hibernate Validator) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
 
-        <!-- 接口文档 (springdoc-openapi, Swagger UI) -->
+        <!-- Spring AI Alibaba DashScope (对话 + text-embedding-v3 向量) -->
+        <dependency>
+            <groupId>com.alibaba.cloud.ai</groupId>
+            <artifactId>spring-ai-alibaba-starter-dashscope</artifactId>
+        </dependency>
+
+        <!-- 远程 MongoDB Atlas 向量库 (RAG VectorStore) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
+        </dependency>
+
+        <!-- 接口文档 (springdoc-openapi, Swagger UI) - 2.8.x 适配 Spring Boot 3.5 -->
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
-            <version>3.1.0</version>
+            <version>2.8.9</version>
         </dependency>
 
         <!-- 工具类库 -->

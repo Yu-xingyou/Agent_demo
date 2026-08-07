@@ -187,14 +187,20 @@ curl -X POST "http://localhost:8080/api/chat" \
 ---
 
 ### 3.2 流式对话（核心，SSE）
-`GET /api/chat/stream?message={message}&conversationId={conversationId}`
+`POST /api/chat`，请求体为 `ChatMessageDTO`（`message` + `conversationId`），响应 `text/event-stream` 流式 `Flux<ChatEventVO>`（不被 `Result` 包裹，等价于 `@NoWrapper`）。
 
-**请求参数**
+**请求体（application/json）**
+```json
+{
+  "message": "帮我记录我今天 23 点睡觉",
+  "conversationId": "c8f0e1a2-3b4d-4e5f"
+}
+```
 
-| 名称 | 位置 | 类型 | 必选 | 说明 |
-|---|---|---|---|---|
-| message | query | string | 是 | 用户消息 |
-| conversationId | query | string | 否 | 对话 ID，不传则新建 |
+| 字段 | 类型 | 必选 | 说明 |
+|---|---|---|---|
+| message | string | 是 | 用户消息 |
+| conversationId | string | 否 | 对话 ID，不传则新建 |
 
 **响应**：SSE 流，协议见 1.4。示例流（每行一个 JSON，事件之间空行分隔）：
 ```
@@ -208,9 +214,11 @@ data:{"eventType":1002}
 
 **调用实例**
 ```bash
-curl -N "http://localhost:8080/api/chat/stream?message=%E5%B8%AE%E6%88%91%E8%AE%B0%E5%BD%95%E4%BB%8A%E5%A4%A9%E4%BB%8A%E7%82%B9%E7%9D%A1%E8%A7%89"
+curl -N -X POST "http://localhost:8080/api/chat" \
+  -H "Content-Type: application/json" \
+  -d '{"message":"帮我记录我今天 23 点睡觉"}'
 ```
-**实现备注**：`ChatController.chatStream` → `ChatService`；`USER`/`ASSISTANT` 消息落库（MongoDB `chat_message`）；意图经 `RouterAgent` 结构化分类，子智能体复用现有 `HabitService` 等（Spring AI Tool 适配器）；`KNOWLEDGE_QA` 走 RAG 向量检索（见第 4 节）。
+**实现备注**：`ChatController.chat(@RequestBody ChatMessageDTO)` → `ChatService.chat(message, conversationId)`；`USER`/`ASSISTANT` 消息落库（MongoDB `chat_message`）；意图经 `RouterAgent` 结构化分类，子智能体复用现有 `HabitService` 等（Spring AI Tool 适配器）；`KNOWLEDGE_QA` 走 RAG 向量检索（见第 4 节）。本期已实现主链路（请求→流式回答），落库/路由/RAG 为后续扩展。
 
 ---
 

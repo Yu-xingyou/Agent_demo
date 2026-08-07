@@ -12,7 +12,6 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
 import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
-import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
@@ -69,15 +68,14 @@ public class ChatServiceImpl implements ChatService {
         // 大模型输出内容的缓存器，用于在输出中断后的数据存储
         StringBuilder outputBuilder = new StringBuilder();
 
-        // RAG 知识检索增强：基于 MongoDB 向量库(habit_knowledge)做语义检索，融入上下文
         // Spring AI 2.0 使用 RetrievalAugmentationAdvisor + VectorStoreDocumentRetriever
+        // 注意：2.0 的 VectorStoreDocumentRetriever 不再接受 SearchRequest，
+        // 而是将 topK / similarityThreshold 作为独立 builder 方法
         RetrievalAugmentationAdvisor qaAdvisor = RetrievalAugmentationAdvisor.builder()
                 .documentRetriever(VectorStoreDocumentRetriever.builder()
                         .vectorStore(this.vectorStore)
-                        .searchRequest(SearchRequest.builder()
-                                .similarityThreshold(0.6d) // 相似度阈值，低于此分不纳入上下文
-                                .topK(6) // 最多取 6 条相关知识
-                                .build())
+                        .similarityThreshold(0.6) // 相似度阈值，低于此分不纳入上下文（Double）
+                        .topK(6) // 最多取 6 条相关知识（Integer）
                         .build())
                 .build();
         // 中断补写的幂等标记：确保部分回答最多只落库一次

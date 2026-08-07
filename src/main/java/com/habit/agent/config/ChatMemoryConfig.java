@@ -1,12 +1,13 @@
 package com.habit.agent.config;
 
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 import org.springframework.ai.chat.memory.repository.mongo.MongoChatMemoryRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
+
+import com.habit.agent.agent.advisor.IdempotentChatMemoryAdvisor;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,8 +18,14 @@ import lombok.extern.slf4j.Slf4j;
  * 集合 {@code ai_chat_memory}（默认集合名，不可配置），配合 {@link MessageWindowChatMemory}
  * （默认保留最近 20 条消息窗口，始终保留 SystemMessage）实现多轮对话上下文保持。
  *
- * <p>暴露 {@link MessageChatMemoryAdvisor} Bean 供 ChatClient 注入，
+ * <p>暴露 {@link IdempotentChatMemoryAdvisor} Bean 供 ChatClient 注入，
  * 调用方通过 {@code advisorParams(ChatMemory.CONVERSATION_ID, ...)} 按会话隔离记忆。
+ *
+ * <p><b>为何不用官方 {@code MessageChatMemoryAdvisor}</b>：官方实现 before() 每次请求都
+ * 无条件写入用户消息，流式失败降级/重试导致调用链重复执行时，同一用户消息会被写入多次
+ * （聊天记录用户消息重复、memory 序列错乱 → 子智能体看不到历史）。自定义
+ * {@link IdempotentChatMemoryAdvisor} 以「最后一条同内容则跳过」的幂等策略写入记忆，
+ * 同时保持历史注入行为与官方一致。
  */
 @Slf4j
 @Configuration
@@ -52,7 +59,9 @@ public class ChatMemoryConfig {
     }
 
     @Bean
-    public MessageChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
-        return MessageChatMemoryAdvisor.builder(chatMemory).build();
+    public IdempotentChatMemoryAdvisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
+        // 自定义幂等记忆 Advisor：替代官方 MessageChatMemoryAdvisor，
+        // 修复「用户消息重复写入」与「子智能体看不到历史」两个 bug。
+        return new IdempotentChatMemoryAdvisor(chatMemory);
     }
 }

@@ -114,7 +114,9 @@ public class ChatServiceImpl implements ChatService {
                         firstTokenNanos, chunkIndex, lastUsage, toolPhaseActive))
                 .takeUntilOther(stopSignal);
 
-        // 4) 重试：仅在首个 chunk 发出前对可重试异常退避重试（避免内容重复）
+        // 4) 重试：仅在首个 chunk 发出前对可重试异常退避重试（避免内容重复）。
+        //    记忆写入已由 IdempotentChatMemoryAdvisor 幂等化：即使重试重新订阅冷 Flux、
+        //    重复执行 before()，同一轮用户消息也不会被再次写入记忆。
         Flux<ChatStreamEvent> withRetry = contentFlow
                 .onErrorResume(e -> {
                     if (!hasEmittedContent.get() && ChatStreamException.isRetryable(e)) {

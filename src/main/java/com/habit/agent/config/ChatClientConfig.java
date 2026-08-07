@@ -1,8 +1,6 @@
 package com.habit.agent.config;
 
 import org.springframework.ai.chat.client.ChatClient;
-import org.springframework.ai.chat.memory.ChatMemory;
-import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.ai.tool.ToolCallbackProvider;
@@ -12,6 +10,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.Resource;
 
+import com.habit.agent.agent.advisor.IdempotentChatMemoryAdvisor;
 import com.habit.agent.agent.advisor.LoggingAdvisor;
 import com.habit.agent.agent.advisor.SafeRetrievalAdvisor;
 import com.habit.agent.agent.advisor.SafetyFilterAdvisor;
@@ -37,9 +36,11 @@ import lombok.extern.slf4j.Slf4j;
  * <ul>
  *   <li>{@code ToolCallingAdvisor} 自动注册：ChatClient 在检测到工具时自动注入，
  *       工具执行循环由框架内部透明完成，对 {@code call()} 与 {@code stream()} 均生效。</li>
- *   <li>记忆 Advisor 优先级：官方 {@code MessageChatMemoryAdvisor} 默认 order 为
+ *   <li>记忆 Advisor 优先级：自定义 {@link IdempotentChatMemoryAdvisor} order 为
  *       {@code HIGHEST+200}，位于工具 Advisor（+300）之外，工具调用中间消息不再写入
- *       ChatMemory（符合官方默认推荐布局，刻意保持，勿随意改大）。</li>
+ *       ChatMemory。该 Advisor 替代官方 {@code MessageChatMemoryAdvisor}：before 按
+ *       「最后一条同内容则跳过」幂等写用户消息，after 幂等写助手回复，
+ *       修复流式降级/重试导致的用户消息重复写入与子智能体看不到历史的问题。</li>
  *   <li>{@code streamToolCallResponses} 已移除：中间工具调用请求不再流式发出，
  *       仅最终助手回复逐字流式输出。工具调用轮次「中间无文本分片」是 2.0.0 的<b>预期行为</b>，
  *       并非流式失败——此前误判此现象为故障并退回非流式（方案 B）属误判。</li>
@@ -63,8 +64,8 @@ import lombok.extern.slf4j.Slf4j;
  *       <td>包裹下游全链路，记录耗时与 Token 用量</td></tr>
  *   <tr><td>HIGHEST+150</td><td>{@link SafeRetrievalAdvisor}</td>
  *       <td>RAG 知识检索增强，带失败降级；前置于记忆与工具之前，异常兜底仅覆盖检索阶段</td></tr>
- *   <tr><td>HIGHEST+200</td><td>{@code MessageChatMemoryAdvisor}</td>
- *       <td>多轮对话记忆（官方 {@code DEFAULT_CHAT_MEMORY_PRECEDENCE_ORDER}）</td></tr>
+ *   <tr><td>HIGHEST+200</td><td>{@link IdempotentChatMemoryAdvisor}</td>
+ *       <td>多轮对话记忆（注入历史 + 幂等写 user/assistant，替代官方实现）</td></tr>
  *   <tr><td>HIGHEST+300</td><td>{@code ToolCallingAdvisor}（框架自动注册）</td>
  *       <td>工具执行循环，独占该 order，避免与自定义 Advisor 冲突</td></tr>
  * </table>
@@ -79,7 +80,7 @@ public class ChatClientConfig {
 
     @Bean
     public ChatClient chatClient(ChatClient.Builder builder,
-                                 MessageChatMemoryAdvisor memoryAdvisor,
+                                 IdempotentChatMemoryAdvisor memoryAdvisor,
                                  SafetyFilterAdvisor safetyFilterAdvisor,
                                  LoggingAdvisor loggingAdvisor,
                                  SafeRetrievalAdvisor safeRetrievalAdvisor,

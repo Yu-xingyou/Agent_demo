@@ -70,16 +70,12 @@ public abstract class AbstractSubAgent implements SubAgent {
                 .stream()
                 .chatClientResponse()
                 .onErrorResume(e -> {
-                    log.warn("[{}] 流式调用失败（{}），自动转为同步整句返回", roleName(), e.toString());
-                    String fullText;
-                    try {
-                        fullText = handle(message, conversationId);
-                    } catch (Exception ex) {
-                        log.warn("[{}] 同步降级也失败（{}），返回兜底文案", roleName(), ex.toString());
-                        fullText = fallbackMessage();
-                    }
+                    // 降级修复：不再调用同步 handle()（那会再次触发完整 advisor 链，把同一轮用户消息
+                    // 重复写入记忆）。直接返回兜底文案的 ChatClientResponse —— 该响应会流经
+                    // 聚合器并触发一次 after()，正常写入本轮助手回复，记忆保持完整。
+                    log.warn("[{}] 流式调用失败（{}），直接返回兜底文案", roleName(), e.toString());
                     ChatResponse resp = new ChatResponse(
-                            List.of(new Generation(new AssistantMessage(fullText))));
+                            List.of(new Generation(new AssistantMessage(fallbackMessage()))));
                     return Flux.just(ChatClientResponse.builder()
                             .chatResponse(resp)
                             .build());

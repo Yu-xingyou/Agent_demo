@@ -103,6 +103,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
+        <!-- Spring AI 2.0 官方 MongoDB 聊天记忆仓库（替代示例的 Redis 实现） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-chat-memory-repository-mongodb</artifactId>
+        </dependency>
     </dependencies>
 
     <build>

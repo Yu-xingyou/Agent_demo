@@ -90,6 +90,11 @@ habit:
         - title: "怎么做每周健康总结？"
           question: "给我生成一份本周的健康报告，包括睡眠、运动、饮食和心情"
 
+    # ===== 会话记忆（多轮对话）=====
+    # 记忆仓库使用 Spring AI 2.0 官方 MongoDB 实现（MongoChatMemoryRepository），集合 ai_chat_memory
+    memory:
+      max: 100 # 滑动窗口最大消息数，超出则淘汰最旧的轮次
+
 spring:
   profiles:
     active: local

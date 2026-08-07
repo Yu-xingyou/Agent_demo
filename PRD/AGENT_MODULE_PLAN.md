@@ -220,6 +220,8 @@ curl -N -X POST "http://localhost:8080/api/chat" \
 ```
 **实现备注**：`ChatController.chat(@RequestBody ChatMessageDTO)` → `ChatService.chat(message, sessionId)`；`USER`/`ASSISTANT` 消息落库（MongoDB `chat_message`）；意图经 `RouterAgent` 结构化分类，子智能体复用现有 `HabitService` 等（Spring AI Tool 适配器）；`KNOWLEDGE_QA` 走 RAG 向量检索（见第 4 节）。本期已实现主链路（请求→流式回答），落库/路由/RAG 为后续扩展。
 
+**会话记忆（多轮对话）**：已接入 Spring AI 2.0 的 `MessageChatMemoryAdvisor` + `MessageWindowChatMemory`，底层仓库使用官方 `MongoChatMemoryRepository`（替代参考实现中的 Redis 版），记忆持久化于 MongoDB 集合 `ai_chat_memory`。每次请求通过 advisor 参数 `ChatMemory.CONVERSATION_ID` 指定会话，会话标识规则为 `{userId}_{sessionId}`（参考实现为 `UserContext.getUser() + "_" + sessionId`，本项目单用户场景用 `AgentConstants.DEFAULT_USER_ID`）。`habit.ai.memory.max`（默认 100）控制滑动窗口最大消息数。
+
 ---
 
 ### 3.3 停止生成

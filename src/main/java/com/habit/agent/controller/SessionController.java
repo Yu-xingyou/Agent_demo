@@ -2,6 +2,7 @@ package com.habit.agent.controller;
 
 import com.habit.agent.common.result.Result;
 import com.habit.agent.service.ChatSessionService;
+import com.habit.agent.vo.ChatSessionVO;
 import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 会话管理 REST API。
@@ -71,5 +73,16 @@ public class SessionController {
             @Parameter(description = "会话ID", example = "f1dbf6ca0ed34eeda02ec0d0545a4429")
             @PathVariable("sessionId") String sessionId) {
         return Result.success(chatSessionService.queryBySessionId(sessionId));
+    }
+
+    /**
+     * GET /api/sessions/history — 查询历史会话列表（按更新时间分组）
+     *
+     * <p>分组维度：当天 / 最近30天 / 最近1年 / 1年以上；仅返回已生成标题的会话，最多 30 条。</p>
+     */
+    @Operation(summary = "查询历史会话列表", description = "按更新时间将历史会话分组为 当天/最近30天/最近1年/1年以上 返回")
+    @GetMapping("/history")
+    public Result<Map<String, List<ChatSessionVO>>> queryHistorySession() {
+        return Result.success(chatSessionService.queryHistorySession());
     }
 }

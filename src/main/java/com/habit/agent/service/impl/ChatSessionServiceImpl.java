@@ -12,6 +12,7 @@ import com.habit.agent.repository.ChatSessionRepository;
 import com.habit.agent.service.ChatService;
 import com.habit.agent.service.ChatSessionService;
 import com.habit.agent.memory.MyAssistantMessage;
+import com.habit.agent.vo.ChatSessionVO;
 import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 import lombok.RequiredArgsConstructor;
@@ -22,9 +23,13 @@ import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 会话服务实现。
@@ -150,5 +155,61 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         chatSession.setUpdater(userId);
         chatSessionRepository.save(chatSession);
         log.info("异步更新会话标题：sessionId={}, title={}", sessionId, chatSession.getTitle());
+    }
+
+    /**
+     * 查询历史会话列表，按更新时间分组（当天 / 最近30天 / 最近1年 / 1年以上）。
+     *
+     * <p>仅返回标题非空（已生成标题）的会话，按 {@code updateTime} 倒序，最多 30 条。
+     * 分组键与前端展示约定保持一致。</p>
+     */
+    @Override
+    public Map<String, List<ChatSessionVO>> queryHistorySession() {
+        var userId = AgentConstants.DEFAULT_USER_ID;
+        // 查询该用户的会话，按 updateTime 倒序，限制 30 条
+        List<ChatSession> list = chatSessionRepository.findByUserId(userId)
+                .stream()
+                .filter(s -> s.getTitle() != null && !s.getTitle().isBlank())
+                .sorted((a, b) -> b.getUpdateTime().compareTo(a.getUpdateTime()))
+                .limit(30)
+                .toList();
+
+        if (list.isEmpty()) {
+            log.info("未查询到历史会话：userId={}", userId);
+            return Map.of();
+        }
+
+        // 转换为 ChatSessionVO 列表
+        List<ChatSessionVO> vos = list.stream()
+                .map(s -> ChatSessionVO.builder()
+                        .sessionId(s.getSessionId())
+                        .title(s.getTitle())
+                        .updateTime(s.getUpdateTime())
+                        .build())
+                .toList();
+
+        final String TODAY = "当天";
+        final String LAST_30_DAYS = "最近30天";
+        final String LAST_YEAR = "最近1年";
+        final String MORE_THAN_YEAR = "1年以上";
+
+        LocalDate now = LocalDate.now();
+
+        // 按更新时间与当前日期的差值分组（保持分组键首次出现顺序）
+        return vos.stream().collect(Collectors.groupingBy(
+                vo -> {
+                    long between = Math.abs(ChronoUnit.DAYS.between(vo.getUpdateTime().toLocalDate(), now));
+                    if (between == 0) {
+                        return TODAY;
+                    } else if (between <= 30) {
+                        return LAST_30_DAYS;
+                    } else if (between <= 365) {
+                        return LAST_YEAR;
+                    } else {
+                        return MORE_THAN_YEAR;
+                    }
+                },
+                LinkedHashMap::new,
+                Collectors.toList()));
     }
 }

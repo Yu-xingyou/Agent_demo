@@ -1,9 +1,11 @@
 package com.habit.agent.service;
 
+import com.habit.agent.vo.ChatSessionVO;
 import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 会话业务逻辑接口。
@@ -57,4 +59,14 @@ public interface ChatSessionService {
      * @param userId    用户 ID
      */
     void update(String sessionId, String title, Long userId);
+
+    /**
+     * 查询历史会话列表，按更新时间分组。
+     *
+     * <p>仅返回标题非空（已生成标题）的会话，按 {@code updateTime} 倒序，最多 30 条。
+     * 分组维度：{@code 当天 / 最近30天 / 最近1年 / 1年以上}。</p>
+     *
+     * @return key 为分组名、value 为会话列表的 Map（无数据时返回空 Map）
+     */
+    Map<String, List<ChatSessionVO>> queryHistorySession();
 }

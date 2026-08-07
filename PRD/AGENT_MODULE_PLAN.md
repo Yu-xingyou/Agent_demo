@@ -681,4 +681,31 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 
 ---
 
+---
+
+## 11. RAG 知识检索增强
+
+> 在对话中引入检索增强生成（RAG），使 Agent 能基于本地健康知识库作答，而非仅依赖模型先验。
+
+### 11.1 技术栈与配置
+- 向量库：**MongoDB Atlas Vector Search**（`spring-ai-starter-vector-store-mongodb-atlas` 自动装配 `VectorStore`）。
+- 集合：`habit_knowledge`；索引：`habit_knowledge_vector_index`（`initialize-schema=false`，索引由 `mongo-init.js` 创建）。
+- Embedding 模型：`text-embedding-v3`（千问兼容 OpenAI 协议）。
+- 检索增强：`QuestionAnswerAdvisor`（Spring AI 2.0，包 `org.springframework.ai.chat.client.advisor.vectorstore`）。
+
+### 11.2 数据入库
+- 端点：`POST /api/embedding?messages=文本列表`，批量将文本写为 `Document` 并 `vectorStore.add(...)` 写入向量库。
+- 调用示例：`curl -X POST "http://localhost:8080/api/embedding?messages=成年人每天建议饮水1500-2000毫升&messages=成年人建议睡眠7-9小时"`。
+
+### 11.3 对话增强
+- `ChatServiceImpl.chat` 内构建 `QuestionAnswerAdvisor`：`similarityThreshold=0.6`、`topK=6`，注入到 `chatClient` 的 `advisors` 链。
+- 流式对话（`chatResponse()`）下 QAAdvisor 同样生效，检索结果作为上下文融入系统提示。
+- 系统提示词已补充：科普类问题优先基于知识库作答，未命中时给出通用建议并标注来源性质。
+
+### 11.4 与工具（Tool）的关系
+- RAG 提供**通用健康科普**（静态知识）；Tool（第 10 节）提供**用户个性化数据操作**（打卡/目标/查询）。
+- 二者互补：用户问"每天喝多少水"走 RAG；问"我昨天喝了多少"走 `query_habit_records` 工具。
+
+---
+
 *文档生成时间：2026-08-07 · 形态：接口开发文档（单体 Spring Boot 4 应用内 Agent 接口模块，契约以本项目代码与前端封装为准）*

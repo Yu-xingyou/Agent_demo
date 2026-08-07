@@ -10,6 +10,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.vectorstore.SearchRequest;
+import org.springframework.ai.vectorstore.VectorStore;
+import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -51,6 +54,8 @@ public class ChatServiceImpl implements ChatService {
     private final SystemPromptConfig systemPromptConfig;
     /** 会话记忆，用于「停止生成」时补写已输出的部分回答 */
     private final ChatMemory chatMemory;
+    /** 向量库，用于 RAG 知识检索增强 */
+    private final VectorStore vectorStore;
 
     /** 会话生成状态标记（true=正在生成）。ConcurrentHashMap 保证线程安全；
      * 当前为单体实现，分布式场景可替换为 Redis。 */
@@ -62,6 +67,14 @@ public class ChatServiceImpl implements ChatService {
         String conversationId = ChatService.getConversationId(sessionId);
         // 大模型输出内容的缓存器，用于在输出中断后的数据存储
         StringBuilder outputBuilder = new StringBuilder();
+
+        // RAG 知识检索增强：基于 MongoDB 向量库(habit_knowledge)做语义检索，融入上下文
+        QuestionAnswerAdvisor qaAdvisor = QuestionAnswerAdvisor.builder(this.vectorStore)
+                .searchRequest(SearchRequest.builder()
+                        .similarityThreshold(0.6d) // 相似度阈值，低于此分不纳入上下文
+                        .topK(6) // 最多取 6 条相关知识
+                        .build())
+                .build();
         // 中断补写的幂等标记：确保部分回答最多只落库一次
         AtomicBoolean stopRecordSaved = new AtomicBoolean(false);
         // 是否被 takeWhile 提前截断（true=用户点了停止，而非模型自然输出结束）
@@ -72,7 +85,9 @@ public class ChatServiceImpl implements ChatService {
                         .text(systemPromptConfig.getChatSystemMessage().get()) // 系统提示词
                         .param("now", DateUtil.now()) // 当前时间参数
                 )
-                .advisors(advisor -> advisor.param(ChatMemory.CONVERSATION_ID, conversationId)) // 注入会话记忆
+                .advisors(advisor -> advisor
+                        .advisors(qaAdvisor) // 注入 RAG 检索增强
+                        .param(ChatMemory.CONVERSATION_ID, conversationId)) // 注入会话记忆
                 .user(message)
                 .stream()
                 .chatResponse()

@@ -23,10 +23,14 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>降级语义：
  * <ul>
- *   <li>同步 {@link #handle}：沿用原 try-catch 返回兜底文案；</li>
+ *   <li>同步 {@link #handle}：沿用原 try-catch 返回兜底文案，内部已吞掉异常不会抛出；</li>
  *   <li>流式 {@link #handleStream}：异常在订阅后异步抛出，无法用 try-catch 包裹，
- *       改用 {@code onErrorResume} 返回一条包含兜底文案的 {@link ChatClientResponse}，
- *       保证前端始终能收到可读内容而非静默断流。</li>
+ *       改用 {@code onErrorResume} 降级为<b>同步完整调用 {@link #handle}</b>。
+ *       原因：① 同步 {@code call()} 路径不经过有缺陷的 DashScope 流式聚合器
+ *       （{@code OpenAiChatModel$ChunkMerger} 的无保护 {@code Optional.get()}），可拿到
+ *       完整工具调用结果而非静默断流只给兜底文案；② {@link #handle} 与流式路径都走
+ *       同一套 {@code IdempotentChatMemoryAdvisor}，user/assistant 写入均幂等，
+ *       降级重入不会造成记忆重复。</li>
  * </ul>
  */
 @Slf4j
@@ -70,15 +74,17 @@ public abstract class AbstractSubAgent implements SubAgent {
                 .stream()
                 .chatClientResponse()
                 .onErrorResume(e -> {
-                    // 降级修复：不再调用同步 handle()（那会再次触发完整 advisor 链，把同一轮用户消息
-                    // 重复写入记忆）。直接返回兜底文案的 ChatClientResponse —— 该响应会流经
-                    // 聚合器并触发一次 after()，正常写入本轮助手回复，记忆保持完整。
-                    log.warn("[{}] 流式调用失败（{}），直接返回兜底文案", roleName(), e.toString());
-                    ChatResponse resp = new ChatResponse(
-                            List.of(new Generation(new AssistantMessage(fallbackMessage()))));
-                    return Flux.just(ChatClientResponse.builder()
-                            .chatResponse(resp)
-                            .build());
-                });
+                // 降级：流式路径触发 DashScope 流式聚合器已知缺陷（NoSuchElementException）时，
+                // 改用同步完整调用 handle() —— 同步 call() 不经 ChunkMerger 可正常聚合工具调用；
+                // 且 IdempotentChatMemoryAdvisor 保证 user/assistant 幂等写入，不会重复。
+                // handle() 内部已 try-catch，异常时返回兜底文案，此处不会抛出。
+                log.warn("[{}] 流式调用失败（{}），降级为同步完整调用", roleName(), e.toString());
+                String content = handle(message, conversationId);
+                ChatResponse resp = new ChatResponse(
+                        List.of(new Generation(new AssistantMessage(content))));
+                return Flux.just(ChatClientResponse.builder()
+                        .chatResponse(resp)
+                        .build());
+            });
     }
 }

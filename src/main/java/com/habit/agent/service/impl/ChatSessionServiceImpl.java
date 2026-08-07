@@ -212,4 +212,36 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 LinkedHashMap::new,
                 Collectors.toList()));
     }
+
+    /**
+     * 删除历史会话：删除数据库记录并清空对话记忆。
+     */
+    @Override
+    public void deleteHistorySession(String sessionId) {
+        Long userId = AgentConstants.DEFAULT_USER_ID;
+        // 删除数据库中的会话记录
+        chatSessionRepository.deleteBySessionIdAndUserId(sessionId, userId);
+        // 删除对话记忆（保证历史列表与记忆状态一致）
+        String conversationId = ChatService.getConversationId(sessionId);
+        chatMemory.clear(conversationId);
+        log.info("删除历史会话：sessionId={}, conversationId={}", sessionId, conversationId);
+    }
+
+    /**
+     * 更新历史会话标题（用户手动重命名），标题截断至 100 字。
+     */
+    @Override
+    public void updateTitle(String sessionId, String title) {
+        Long userId = AgentConstants.DEFAULT_USER_ID;
+        ChatSession chatSession = chatSessionRepository.findBySessionIdAndUserId(sessionId, userId);
+        if (chatSession == null) {
+            log.warn("更新标题失败：会话不存在 sessionId={}, userId={}", sessionId, userId);
+            return;
+        }
+        chatSession.setTitle(StrUtil.sub(title, 0, 100));
+        chatSession.setUpdateTime(LocalDateTime.now());
+        chatSession.setUpdater(userId);
+        chatSessionRepository.save(chatSession);
+        log.info("更新会话标题：sessionId={}, title={}", sessionId, chatSession.getTitle());
+    }
 }

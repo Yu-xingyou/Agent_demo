@@ -10,9 +10,11 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -84,5 +86,26 @@ public class SessionController {
     @GetMapping("/history")
     public Result<Map<String, List<ChatSessionVO>>> queryHistorySession() {
         return Result.success(chatSessionService.queryHistorySession());
+    }
+
+    /**
+     * DELETE /api/sessions/history — 删除历史会话（同时清空对话记忆）
+     */
+    @Operation(summary = "删除历史会话", description = "删除指定会话及其对话记忆")
+    @DeleteMapping("/history")
+    public Result<Void> deleteHistorySession(@RequestParam("sessionId") String sessionId) {
+        chatSessionService.deleteHistorySession(sessionId);
+        return Result.success();
+    }
+
+    /**
+     * PUT /api/sessions/history — 更新历史会话标题（手动重命名）
+     */
+    @Operation(summary = "更新历史会话标题", description = "更新指定会话的标题（最多 100 字）")
+    @PutMapping("/history")
+    public Result<Void> updateTitle(@RequestParam("sessionId") String sessionId,
+                                    @RequestParam("title") String title) {
+        chatSessionService.updateTitle(sessionId, title);
+        return Result.success();
     }
 }

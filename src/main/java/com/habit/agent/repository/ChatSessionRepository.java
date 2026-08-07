@@ -24,4 +24,7 @@ public interface ChatSessionRepository extends MongoRepository<ChatSession, Stri
 
     /** 按会话 ID + 用户 ID 精确定位单条会话（用于异步更新标题） */
     ChatSession findBySessionIdAndUserId(String sessionId, Long userId);
+
+    /** 按会话 ID + 用户 ID 删除会话（用于删除历史会话） */
+    void deleteBySessionIdAndUserId(String sessionId, Long userId);
 }

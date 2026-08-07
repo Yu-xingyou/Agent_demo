@@ -69,4 +69,22 @@ public interface ChatSessionService {
      * @return key 为分组名、value 为会话列表的 Map（无数据时返回空 Map）
      */
     Map<String, List<ChatSessionVO>> queryHistorySession();
+
+    /**
+     * 删除历史会话（同时清空其对话记忆）。
+     *
+     * <p>删除数据库中的会话记录，并调用 {@code ChatMemory.clear} 清除该会话的向量/消息记忆，
+     * 保证历史列表与记忆状态一致。</p>
+     *
+     * @param sessionId 会话 id
+     */
+    void deleteHistorySession(String sessionId);
+
+    /**
+     * 更新历史会话标题（用户手动重命名）。
+     *
+     * @param sessionId 会话 id
+     * @param title     新标题（截断至 100 字）
+     */
+    void updateTitle(String sessionId, String title);
 }

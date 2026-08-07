@@ -6,6 +6,8 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
+
+import com.habit.agent.memory.ToolEnrichingChatMemory;
 import org.springframework.ai.chat.memory.repository.mongo.MongoChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -79,13 +81,17 @@ public class SpringAIConfig {
 
     /**
      * 滑动窗口式会话记忆。
+     *
+     * <p>用 {@link ToolEnrichingChatMemory} 装饰，使工具（Tool）调用结果随助手消息
+     * 一起持久化，修复"工具查出的数据不入库/历史查询看不到"的问题。</p>
      */
     @Bean
     public ChatMemory chatMemory(MongoChatMemoryRepository mongoChatMemoryRepository) {
-        return MessageWindowChatMemory.builder()
+        ChatMemory window = MessageWindowChatMemory.builder()
                 .chatMemoryRepository(mongoChatMemoryRepository)
                 .maxMessages(maxMessages) // 最多保留 maxMessages 条，超出则淘汰最旧轮次
                 .build();
+        return new ToolEnrichingChatMemory(window);
     }
 
     /**

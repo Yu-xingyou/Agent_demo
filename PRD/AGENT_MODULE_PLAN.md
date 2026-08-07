@@ -664,6 +664,21 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 - **原子性**：单个工具调用即一次 Service 事务；组合调用按顺序执行，前序失败则中止后续并提示。
 - **与流式协议关系**：工具调用过程**不进入 SSE 事件流**（见 1.4，`1003` 工具事件已去除），用户仅看到最终自然语言结果，符合"只回聊天记录"原则。
 
+### 10.4 工具结果持久化（bug 修复）
+
+**问题**：Agent 调用工具查出的结构化数据，历史查询（`queryBySessionId`）时看不到——看似"数据没保存"。
+
+**根因**：一轮对话的消息序列为 `[USER, TOOL(response), ASSISTANT]`。官方 `MongoChatMemoryRepository` 实际**已把 TOOL 消息存进 MongoDB**，但 `queryBySessionId` 只回显 `USER/ASSISTANT` 文本、过滤掉 `TOOL`，且 `AssistantMessage` 无 `params` 字段承载工具结果，导致工具查到的内容在历史上"消失"。
+
+**修复思路（迁移自天机 1.0 示例的 `ToolResultHolder + MyAssistantMessage` 思路，适配本项目 Spring AI 2.0 + Mongo）**：
+- 不引入 `ToolResultHolder`/Redis，而是利用消息自带的 `metadata`（官方 Mongo 仓库会序列化/回读它）。
+- 新增 `MyAssistantMessage extends AssistantMessage`：构造时把 `params` 并入 `metadata`（key=`tool_params`）。
+- 新增 `ToolEnrichingChatMemory`（装饰器，实现 `ChatMemory`）：在 `add(conversationId, List<Message>)` 时，提取本轮 `TOOL` 响应合并进最后一个 `ASSISTANT` 消息的 params，再委托 `MessageWindowChatMemory` 落库。
+- `SpringAIConfig.chatMemory` 用 `ToolEnrichingChatMemory` 包装 `MessageWindowChatMemory`，`MessageChatMemoryAdvisor` 透明使用。
+- `ChatSessionServiceImpl.queryBySessionId`：对 `ASSISTANT` 消息用 `MyAssistantMessage.extractParams` 从 metadata 回读 params，写入 `MessageVO.params` 回显前端。
+
+**效果**：工具查出的数据随助手消息落库，历史记录中每轮 AI 回答都带 `params`（工具结果），前端可在气泡下方展示"工具查到：饮水 2000ml"等。
+
 ---
 
 *文档生成时间：2026-08-07 · 形态：接口开发文档（单体 Spring Boot 4 应用内 Agent 接口模块，契约以本项目代码与前端封装为准）*

@@ -10,6 +10,7 @@ import com.habit.agent.enums.MessageTypeEnum;
 import com.habit.agent.repository.ChatSessionRepository;
 import com.habit.agent.service.ChatService;
 import com.habit.agent.service.ChatSessionService;
+import com.habit.agent.memory.MyAssistantMessage;
 import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 会话服务实现。
@@ -102,10 +104,19 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                 .filter(message -> message.getMessageType() == MessageType.USER
                         || message.getMessageType() == MessageType.ASSISTANT)
                 // 转换为 MessageVO 对象
-                .map(message -> MessageVO.builder()
-                        .content(message.getText())
-                        .type(MessageTypeEnum.valueOf(message.getMessageType().name()))
-                        .build())
+                .map(message -> {
+                    MessageVO.MessageVOBuilder builder = MessageVO.builder()
+                            .content(message.getText())
+                            .type(MessageTypeEnum.valueOf(message.getMessageType().name()));
+                    // 回显工具调用结果：从助手消息 metadata 中提取 params
+                    if (message.getMessageType() == MessageType.ASSISTANT) {
+                        Map<String, Object> params = MyAssistantMessage.extractParams(message);
+                        if (params != null && !params.isEmpty()) {
+                            builder.params(params);
+                        }
+                    }
+                    return builder.build();
+                })
                 .toList();
     }
 }

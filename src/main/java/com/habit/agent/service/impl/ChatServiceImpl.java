@@ -1,7 +1,6 @@
 package com.habit.agent.service.impl;
 
 import cn.hutool.core.date.DateUtil;
-import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.config.SystemPromptConfig;
 import com.habit.agent.enums.ChatEventTypeEnum;
 import com.habit.agent.service.ChatService;
@@ -28,8 +27,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * 并携带当前时间参数 {@code now}（提示词模板中用 {@code {now}} 占位）。</p>
  *
  * <p>多轮记忆由 {@code MessageChatMemoryAdvisor}（已注册到 {@link ChatClient}）自动注入，
- * 通过 {@link ChatMemory#CONVERSATION_ID} 指定会话；会话标识规则见 {@link #getConversationId(String)}，
- * 记忆最终由 MongoDB（{@code MongoChatMemoryRepository}）持久化。</p>
+ * 通过 {@link ChatMemory#CONVERSATION_ID} 指定会话；会话标识规则见
+ * {@link ChatService#getConversationId(String)}，记忆最终由 MongoDB
+ * （{@code MongoChatMemoryRepository}）持久化。</p>
  *
  * <p>流式过程由 {@link #GENERATE_STATUS} 标记位控制：{@code stop(sessionId)} 移除标记后，
  * 流的 {@code takeWhile} 判定为 false 而终止输出（对应 PRD 3.3 停止生成）。</p>
@@ -49,7 +49,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     public Flux<ChatEventVO> chat(String message, String sessionId) {
         // 获取对话 id（用户id_会话id），用于记忆仓库隔离不同用户的会话
-        String conversationId = getConversationId(sessionId);
+        String conversationId = ChatService.getConversationId(sessionId);
 
         return chatClient.prompt()
                 .system(promptSystem -> promptSystem
@@ -83,17 +83,6 @@ public class ChatServiceImpl implements ChatService {
         // 移除生成标记，使对应会话的流式 takeWhile 判定为 false 而终止
         GENERATE_STATUS.remove(sessionId);
         log.info("已请求停止会话生成: sessionId={}", sessionId);
-    }
-
-    /**
-     * 获取对话 id，规则：用户id_会话id。
-     * 用于记忆仓库按用户维度隔离会话（对应示例的 {@code UserContext.getUser() + "_" + sessionId}）。
-     *
-     * @param sessionId 会话 id
-     * @return 记忆库使用的对话 id
-     */
-    private String getConversationId(String sessionId) {
-        return AgentConstants.DEFAULT_USER_ID + "_" + sessionId;
     }
 }
 

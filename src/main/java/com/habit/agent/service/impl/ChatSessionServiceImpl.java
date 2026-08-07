@@ -6,11 +6,17 @@ import cn.hutool.core.util.RandomUtil;
 import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.config.SessionProperties;
 import com.habit.agent.entity.mongo.ChatSession;
+import com.habit.agent.enums.MessageTypeEnum;
 import com.habit.agent.repository.ChatSessionRepository;
+import com.habit.agent.service.ChatService;
 import com.habit.agent.service.ChatSessionService;
+import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.Message;
+import org.springframework.ai.chat.messages.MessageType;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -34,6 +40,8 @@ public class ChatSessionServiceImpl implements ChatSessionService {
 
     private final SessionProperties sessionProperties;
     private final ChatSessionRepository chatSessionRepository;
+    /** 会话记忆（MongoDB 实现），历史消息查询的数据来源 */
+    private final ChatMemory chatMemory;
 
     @Override
     public SessionVO createSession(Integer num) {
@@ -75,5 +83,29 @@ public class ChatSessionServiceImpl implements ChatSessionService {
             return List.of();
         }
         return RandomUtil.randomEleList(hotQuestions, Math.min(take, hotQuestions.size()));
+    }
+
+    @Override
+    public List<MessageVO> queryBySessionId(String sessionId) {
+        // 1. 根据会话 ID 推导对话 ID（与流式写入侧使用同一规则）
+        String conversationId = ChatService.getConversationId(sessionId);
+
+        // 2. 从会话记忆（MongoDB）中获取历史消息
+        List<Message> messageList = chatMemory.get(conversationId);
+        if (messageList == null || messageList.isEmpty()) {
+            return List.of();
+        }
+
+        // 3. 过滤并转换消息列表
+        return messageList.stream()
+                // 只保留用户提问与 AI 回答，过滤掉 SYSTEM / TOOL 等非展示类消息
+                .filter(message -> message.getMessageType() == MessageType.USER
+                        || message.getMessageType() == MessageType.ASSISTANT)
+                // 转换为 MessageVO 对象
+                .map(message -> MessageVO.builder()
+                        .content(message.getText())
+                        .type(MessageTypeEnum.valueOf(message.getMessageType().name()))
+                        .build())
+                .toList();
     }
 }

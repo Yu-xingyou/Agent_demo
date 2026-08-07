@@ -1,5 +1,6 @@
 package com.habit.agent.service;
 
+import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.vo.ChatEventVO;
 import reactor.core.publisher.Flux;
 
@@ -29,4 +30,19 @@ public interface ChatService {
      * @param sessionId 会话 ID
      */
     void stop(String sessionId);
+
+    /**
+     * 获取对话 id，规则：用户id_会话id。
+     *
+     * <p>用于记忆仓库（MongoDB {@code ai_chat_memory}）按用户维度隔离会话。
+     * 对话与写入侧（{@code ChatServiceImpl#chat}）、读取侧
+     * （{@code ChatSessionServiceImpl#queryBySessionId}）必须使用同一规则，
+     * 故提升为接口静态方法统一维护。</p>
+     *
+     * @param sessionId 会话 id
+     * @return 记忆库使用的对话 id
+     */
+    static String getConversationId(String sessionId) {
+        return AgentConstants.DEFAULT_USER_ID + "_" + sessionId;
+    }
 }

@@ -98,12 +98,17 @@ curl "http://localhost:8080/api/sessions"
 {
   "code": 200, "message": "success",
   "data": [
-    { "role": "USER", "content": "帮我记录今天23点睡觉、喝了2升水" },
-    { "role": "ASSISTANT", "content": "已为您记录：23:00 入睡、饮水 2000 毫升。" }
+    { "type": "USER", "content": "帮我记录今天23点睡觉、喝了2升水", "params": null },
+    { "type": "ASSISTANT", "content": "已为您记录：23:00 入睡、饮水 2000 毫升。", "params": null }
   ]
 }
 ```
-**data**：数组，每项 `{ role:"USER"|"ASSISTANT", content:string }`。
+**data**：数组，每项 `{ type:"USER"|"ASSISTANT", content:string, params:object|null }`（对应 `MessageVO`）。
+
+**实现说明**
+- 数据来源为会话记忆（MongoDB 集合 `ai_chat_memory`），而非独立的消息表；对话 id 由 `ChatService.getConversationId(sessionId)` 推导（规则 `用户id_会话id`），与流式写入侧共用同一规则。
+- 仅返回 `USER` / `ASSISTANT` 两类消息，`SYSTEM`（系统提示词）与 `TOOL` 等非展示类消息被过滤。
+- 受 `habit.ai.memory.max`（默认 100）滑动窗口限制，超出窗口的早期消息不再返回；会话不存在或无记录时返回空数组。
 
 **调用实例**
 ```bash

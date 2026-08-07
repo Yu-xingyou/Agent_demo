@@ -1,5 +1,6 @@
 package com.habit.agent.service;
 
+import com.habit.agent.vo.MessageVO;
 import com.habit.agent.vo.SessionVO;
 
 import java.util.List;
@@ -31,4 +32,16 @@ public interface ChatSessionService {
      * @return 热门问题列表
      */
     List<SessionVO.HotQuestion> hotQuestions(Integer num);
+
+    /**
+     * 根据会话 id 查询历史消息列表。
+     *
+     * <p>从会话记忆（MongoDB {@code ai_chat_memory}）中读取该会话的对话记录，
+     * 仅保留用户提问（USER）与 AI 回答（ASSISTANT），过滤掉 SYSTEM / TOOL 等
+     * 非展示类消息，用于前端回显历史对话（PRD 2.2）。</p>
+     *
+     * @param sessionId 会话 id
+     * @return 消息列表（按时间正序；会话不存在或无记录时返回空列表）
+     */
+    List<MessageVO> queryBySessionId(String sessionId);
 }

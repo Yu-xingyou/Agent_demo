@@ -9,12 +9,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
+import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * 流式对话服务实现（Spring AI 2.0）。
@@ -33,6 +35,12 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * <p>流式过程由 {@link #GENERATE_STATUS} 标记位控制：{@code stop(sessionId)} 移除标记后，
  * 流的 {@code takeWhile} 判定为 false 而终止输出（对应 PRD 3.3 停止生成）。</p>
+ *
+ * <p><b>中断落库</b>：{@code MessageChatMemoryAdvisor} 只在流「正常跑完」时才把回答写入记忆，
+ * 因此点击停止生成后这一轮回答会丢失，导致后续对话缺失上下文。此处用 {@code outputBuilder}
+ * 累积已输出分片，并在 {@code doOnCancel}（前端断连）与 {@code takeWhile} 截断两条路径上
+ * 调用 {@link #saveStopHistoryRecord} 补写；两者可能同时触发，故以 CAS 标记保证只写一次，
+ * 且模型自然结束时不补写，避免与 Advisor 重复落库。</p>
  */
 @Slf4j
 @Service
@@ -41,6 +49,8 @@ public class ChatServiceImpl implements ChatService {
 
     private final ChatClient chatClient;
     private final SystemPromptConfig systemPromptConfig;
+    /** 会话记忆，用于「停止生成」时补写已输出的部分回答 */
+    private final ChatMemory chatMemory;
 
     /** 会话生成状态标记（true=正在生成）。ConcurrentHashMap 保证线程安全；
      * 当前为单体实现，分布式场景可替换为 Redis。 */
@@ -50,6 +60,12 @@ public class ChatServiceImpl implements ChatService {
     public Flux<ChatEventVO> chat(String message, String sessionId) {
         // 获取对话 id（用户id_会话id），用于记忆仓库隔离不同用户的会话
         String conversationId = ChatService.getConversationId(sessionId);
+        // 大模型输出内容的缓存器，用于在输出中断后的数据存储
+        StringBuilder outputBuilder = new StringBuilder();
+        // 中断补写的幂等标记：确保部分回答最多只落库一次
+        AtomicBoolean stopRecordSaved = new AtomicBoolean(false);
+        // 是否被 takeWhile 提前截断（true=用户点了停止，而非模型自然输出结束）
+        AtomicBoolean truncated = new AtomicBoolean(false);
 
         return chatClient.prompt()
                 .system(promptSystem -> promptSystem
@@ -62,11 +78,34 @@ public class ChatServiceImpl implements ChatService {
                 .chatResponse()
                 .doFirst(() -> GENERATE_STATUS.put(sessionId, true)) // 首次输出时标记生成中
                 .doOnError(throwable -> GENERATE_STATUS.remove(sessionId)) // 异常时清除标记
-                .doOnComplete(() -> GENERATE_STATUS.remove(sessionId)) // 完成时清除标记
-                .takeWhile(response -> Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false)) // 标记被移除则终止流
+                .doOnComplete(() -> GENERATE_STATUS.remove(sessionId)) // 正常完成时清除标记（记忆由 Advisor 自动落库）
+                .doOnCancel(() -> {
+                    // 流被取消（用户点击「停止生成」或前端断开连接）：
+                    // 此时 MessageChatMemoryAdvisor 不会写入回答，需手动补写已输出的部分内容
+                    GENERATE_STATUS.remove(sessionId);
+                    saveStopHistoryRecord(conversationId, outputBuilder.toString(), stopRecordSaved);
+                })
+                // 输出过程中判断是否仍在生成：标记被移除（stop）则终止流
+                .takeWhile(response -> {
+                    boolean generating = Optional.ofNullable(GENERATE_STATUS.get(sessionId)).orElse(false);
+                    if (!generating) {
+                        // 断言失败即为「被截断」，据此与模型自然输出结束区分开
+                        truncated.set(true);
+                    }
+                    return generating;
+                })
+                // takeWhile 截断走的是正常完成信号，上游 Advisor 不会落库，需在此补写；
+                // 模型自然结束时 truncated 为 false，交由 Advisor 落库，避免重复写入
+                .doOnComplete(() -> {
+                    if (truncated.get()) {
+                        saveStopHistoryRecord(conversationId, outputBuilder.toString(), stopRecordSaved);
+                    }
+                })
                 .map(chatResponse -> {
                     // 获取大模型的输出的内容
                     String text = chatResponse.getResult().getOutput().getText();
+                    // 追加到输出内容中，供中断时落库使用
+                    outputBuilder.append(text);
                     // 封装响应对象
                     return ChatEventVO.builder()
                             .eventData(text)
@@ -76,6 +115,30 @@ public class ChatServiceImpl implements ChatService {
                 .concatWith(Flux.just(ChatEventVO.builder()  // 标记输出结束
                         .eventType(ChatEventTypeEnum.STOP.getValue())
                         .build()));
+    }
+
+    /**
+     * 保存「停止输出」时已生成的部分内容到会话记忆。
+     *
+     * <p>正常输出结束时，{@code MessageChatMemoryAdvisor} 会自动把完整回答写入记忆；
+     * 但流被中断（stop / 前端断连）时该写入不会发生，导致这一轮回答丢失，
+     * 下一轮对话也就失去了上下文，故此处手动补写。</p>
+     *
+     * @param conversationId 对话 id
+     * @param content        大模型已输出的内容
+     * @param saved          幂等标记，防止 cancel 与 complete 信号同时触发造成重复落库
+     */
+    private void saveStopHistoryRecord(String conversationId, String content, AtomicBoolean saved) {
+        // 未输出任何内容则无需落库，避免写入空的助手消息
+        if (content == null || content.isBlank()) {
+            return;
+        }
+        // CAS 保证只写一次
+        if (!saved.compareAndSet(false, true)) {
+            return;
+        }
+        chatMemory.add(conversationId, new AssistantMessage(content));
+        log.info("已保存中断输出的部分回答: conversationId={}, length={}", conversationId, content.length());
     }
 
     @Override

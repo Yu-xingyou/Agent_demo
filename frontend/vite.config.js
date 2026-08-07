@@ -17,6 +17,7 @@ export default defineConfig({
       '/api': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api/, ''),
         configure: (proxy) => {
           // 关闭 SSE（text/event-stream）响应的缓冲：http-proxy 默认会整体缓冲分块响应，
           // 直到连接关闭才一次性转发，导致前端流式输出表现为一次性出现。

@@ -1,26 +1,31 @@
 import request from '@/utils/request'
 
-/** 获取当前用户所有会话列表（按最后消息时间倒序） */
+/**
+ * 会话管理（天机学堂 example 协议 + 会话侧边栏扩展）。
+ * 返回结构均为 { code, message, data }，request.js 已解包 data。
+ */
+
+/** 新建会话（返回 { sessionId, title, describe, examples }） */
+export function createSession(n = 3) {
+  return request.post('/session', null, { params: { n } })
+}
+
+/** 热门示例列表 */
+export function hotExamples(n = 3) {
+  return request.get('/session/hot', { params: { n } })
+}
+
+/** 会话列表（按最后消息时间倒序） */
 export function listSessions() {
-  return request.get('/sessions')
+  return request.get('/session/list')
 }
 
-/** 获取单个会话详情 */
-export function getSession(conversationId) {
-  return request.get(`/sessions/${conversationId}`)
+/** 查询单个会话历史消息（[{ type, content }]） */
+export function getSession(sessionId) {
+  return request.get(`/session/${sessionId}`)
 }
 
-/** 重命名会话 */
-export function renameSession(conversationId, title) {
-  return request.put(`/sessions/${conversationId}/rename`, null, { params: { title } })
-}
-
-/** 关闭会话 */
-export function closeSession(conversationId) {
-  return request.post(`/sessions/${conversationId}/close`)
-}
-
-/** 删除会话 */
-export function deleteSession(conversationId) {
-  return request.delete(`/sessions/${conversationId}`)
+/** 删除会话（级联清理） */
+export function deleteSession(sessionId) {
+  return request.delete(`/session/${sessionId}`)
 }

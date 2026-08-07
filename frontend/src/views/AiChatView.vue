@@ -2,18 +2,18 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { Sparkles, Send, Square, Bot, User, RotateCcw, Plus, Trash2, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { streamMessage, stopChat, getChatHistory, generateTitle } from '@/api/chat'
-import { listSessions, deleteSession } from '@/api/session'
+import { streamMessage, stopChat } from '@/api/chat'
+import { createSession, listSessions, getSession, deleteSession } from '@/api/session'
+import { isRouteAgentName } from '@/constants/agent'
 import KnowledgeDrawer from '@/components/KnowledgeDrawer.vue'
 
-// 阶段八：知识库管理抽屉（内嵌于本页，不新增路由）
+// 知识库管理抽屉（内嵌于本页，不新增路由）
 const knowledgeOpen = ref(false)
 
 // ---- 会话列表 ----
 const sessions = ref([])
 const sessionLoading = ref(false)
 const sidebarOpen = ref(true)
-let isFirstMessageRound = false
 
 async function fetchSessions() {
   sessionLoading.value = true
@@ -41,7 +41,7 @@ const suggestions = [
 
 const input = ref('')
 const sending = ref(false)
-const conversationId = ref('')
+const sessionId = ref('')
 const toolStatus = ref('')
 let abortController = null
 
@@ -52,14 +52,25 @@ function scrollToBottom() {
   })
 }
 
-function send(text) {
+/** 确保当前会话存在：无 sessionId 时先向后端创建会话 */
+async function ensureSession() {
+  if (sessionId.value) return
+  try {
+    const data = await createSession(3)
+    if (data && data.sessionId) {
+      sessionId.value = data.sessionId
+      await fetchSessions()
+    }
+  } catch {
+    // 创建失败时允许继续发送（后端会再次处理）
+  }
+}
+
+async function send(text) {
   const content = (typeof text === 'string' ? text : input.value).trim()
   if (!content || sending.value) return
 
-  // 首次发送消息时标记为新对话
-  if (!conversationId.value) {
-    isFirstMessageRound = true
-  }
+  await ensureSession()
 
   messages.value.push({ role: 'user', text: content })
   input.value = ''
@@ -70,60 +81,33 @@ function send(text) {
   messages.value.push(aiMsg)
 
   abortController = streamMessage({
-    message: content,
-    conversationId: conversationId.value || undefined,
-    onMeta: (meta) => {
-      if (meta && meta.conversationId) {
-        conversationId.value = meta.conversationId
-      }
-    },
-    onToolCall: (tc) => {
-      if (tc && tc.message) toolStatus.value = tc.message
-    },
-    onChunk: (chunk) => {
-      if (toolStatus.value) toolStatus.value = ''
-      aiMsg.text += chunk.content
+    question: content,
+    sessionId: sessionId.value,
+    onData: (textChunk) => {
+      toolStatus.value = ''
+      const t = textChunk || ''
+      // 过滤路由智能体内部转发名（防御，正常流式不包含）
+      if (isRouteAgentName(t.trim())) return
+      aiMsg.text += t
       scrollToBottom()
     },
-    onDone: (done) => {
-      toolStatus.value = ''
-      // 展示真实 Token 用量与耗时（totalTokens 可能为 null，由模板容忍）
-      aiMsg.stats = {
-        totalTokens: done ? done.totalTokens : null,
-        promptTokens: done ? done.promptTokens : null,
-        completionTokens: done ? done.completionTokens : null,
-        duration: done ? done.duration : null,
-        firstTokenLatency: done ? done.firstTokenLatency : null,
-      }
+    onStop: () => {
       sending.value = false
       abortController = null
-      // 新对话首轮完成后自动生成标题
-      if (isFirstMessageRound && conversationId.value) {
-        isFirstMessageRound = false
-        handleTitleGeneration(content)
-      }
+      fetchSessions()
+    },
+    onDone: () => {
+      sending.value = false
+      abortController = null
     },
     onError: (err) => {
       toolStatus.value = ''
       sending.value = false
       abortController = null
-      isFirstMessageRound = false
       aiMsg.text = (aiMsg.text || '') + '\n\n⚠️ ' + ((err && err.message) || '助手暂时无法回应，请稍后再试')
       scrollToBottom()
     },
   })
-}
-
-async function handleTitleGeneration(userMessage) {
-  try {
-    const title = await generateTitle(userMessage)
-    if (title) {
-      // 刷新会话列表以获取新标题
-      setTimeout(() => fetchSessions(), 800)
-    }
-  } catch {
-    // 标题生成失败不影响主流程
-  }
 }
 
 function stop() {
@@ -132,15 +116,22 @@ function stop() {
     abortController.abort()
     abortController = null
   }
-  if (conversationId.value) stopChat(conversationId.value)
+  if (sessionId.value) stopChat(sessionId.value)
   sending.value = false
-  isFirstMessageRound = false
   ElMessage.info('已停止生成')
 }
 
 async function resetChat() {
-  conversationId.value = ''
-  isFirstMessageRound = false
+  if (sending.value) stop()
+  sessionId.value = ''
+  try {
+    const data = await createSession(3)
+    if (data && data.sessionId) {
+      sessionId.value = data.sessionId
+    }
+  } catch {
+    // 创建失败不阻断重置
+  }
   messages.value = [
     { role: 'ai', text: '对话已重置，有什么想聊的？' },
   ]
@@ -153,13 +144,15 @@ async function loadSession(session) {
   if (sending.value) {
     stop()
   }
-  conversationId.value = session.conversationId
-  isFirstMessageRound = false
+  sessionId.value = session.sessionId
   messages.value = []
   try {
-    const history = await getChatHistory(session.conversationId)
+    const history = await getSession(session.sessionId)
     if (Array.isArray(history) && history.length > 0) {
-      messages.value = history.map(h => ({ role: h.role, text: h.text }))
+      messages.value = history.map(h => ({
+        role: h.type === 'USER' ? 'user' : 'ai',
+        text: h.content,
+      }))
     } else {
       messages.value = [{ role: 'ai', text: '该会话暂无消息记录。' }]
     }
@@ -177,11 +170,12 @@ async function removeSession(session, event) {
       cancelButtonText: '取消',
       type: 'warning',
     })
-    await deleteSession(session.conversationId)
-    if (conversationId.value === session.conversationId) {
-      resetChat()
+    await deleteSession(session.sessionId)
+    if (sessionId.value === session.sessionId) {
+      await resetChat()
+    } else {
+      await fetchSessions()
     }
-    await fetchSessions()
     ElMessage.success('会话已删除')
   } catch {
     // 用户取消删除
@@ -229,9 +223,9 @@ onMounted(() => {
           </div>
           <button
             v-for="s in sessions"
-            :key="s.conversationId"
+            :key="s.sessionId"
             class="w-full text-left px-3 py-2.5 rounded-xl flex items-center gap-2 group transition-all"
-            :class="conversationId === s.conversationId
+            :class="sessionId === s.sessionId
               ? 'bg-brand/10 border-l-2 border-brand text-slate-800'
               : 'hover:bg-white/50 text-slate-600 border-l-2 border-transparent'"
             @click="loadSession(s)"
@@ -325,7 +319,7 @@ onMounted(() => {
               </template>
               <template v-else>
                 <span>{{ m.text }}<span v-if="m.role === 'ai' && sending && m === messages[messages.length - 1]" class="caret">▋</span></span>
-                <!-- AI 回复底部：真实 Token 用量与耗时（totalTokens 为 null 时隐藏，避免展示误导性的 0） -->
+                <!-- AI 回复底部：Token 用量与耗时（新协议暂无真实用量，保留占位） -->
                 <div v-if="m.role === 'ai' && m.stats" class="mt-1.5 text-[10px] text-slate-400 leading-none">
                   <span v-if="m.stats.totalTokens != null">Tokens: {{ m.stats.totalTokens }}</span>
                   <span v-if="m.stats.duration != null"> · {{ m.stats.duration }}ms</span>
@@ -371,7 +365,7 @@ onMounted(() => {
       </div>
     </div>
 
-    <!-- 阶段八：知识库管理抽屉 -->
+    <!-- 知识库管理抽屉 -->
     <KnowledgeDrawer v-model="knowledgeOpen" />
   </div>
 </template>

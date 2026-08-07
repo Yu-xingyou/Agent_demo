@@ -12,6 +12,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.mongodb.core.MongoTemplate;
 
+import com.habit.agent.tools.AnalysisTools;
+import com.habit.agent.tools.CommonTools;
+import com.habit.agent.tools.GoalTools;
+import com.habit.agent.tools.HabitTools;
+import com.habit.agent.tools.KnowledgeTools;
+import com.habit.agent.tools.ReminderTools;
+import com.habit.agent.tools.SessionTools;
+
 /**
  * Spring AI 2.0 配置（流式对话 + 会话记忆能力）。
  *
@@ -36,9 +44,18 @@ public class SpringAIConfig {
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder,
                                  Advisor loggerAdvisor,
-                                 Advisor messageChatMemoryAdvisor) {
+                                 Advisor messageChatMemoryAdvisor,
+                                 HabitTools habitTools,
+                                 GoalTools goalTools,
+                                 ReminderTools reminderTools,
+                                 AnalysisTools analysisTools,
+                                 KnowledgeTools knowledgeTools,
+                                 SessionTools sessionTools,
+                                 CommonTools commonTools) {
         return chatClientBuilder
                 .defaultAdvisors(loggerAdvisor, messageChatMemoryAdvisor)
+                .defaultTools(habitTools, goalTools, reminderTools,
+                        analysisTools, knowledgeTools, sessionTools, commonTools)
                 .build();
     }
 

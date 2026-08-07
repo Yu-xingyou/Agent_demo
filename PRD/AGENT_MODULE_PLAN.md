@@ -529,4 +529,141 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 
 ---
 
+## 10. Agent 调用工具表（Tool Calling）
+
+> 本节定义 Agent（LLM）在对话中可主动调用的**工具（Tool）**。工具以 Spring AI 的 `@Tool` / `ToolCallback` 形式注册到 ChatClient，由 `RouterAgent` 依据用户意图路由后触发。
+> 工具设计原则：**每个工具对齐一个已存在的业务 Service 能力**（见第 2~5 节与 `HabitService` / `GoalService` / `ReminderService` / `AnalysisService` / `RagService` / `ChatSessionService`），不引入文档未定义的写操作，保证"对话即操作"的闭环可控。
+> 所有写操作（新增/更新/删除）默认使用 `AgentConstants.DEFAULT_USER_ID`，无需用户传身份。
+
+### 10.1 工具总览
+
+| # | 工具名 | 类别 | 能力一句话 | 对应后端 Service |
+|---|---|---|---|---|
+| T01 | `record_habit` | 习惯打卡 | 录入/更新某日睡眠/运动/饮水/饮食/心情打卡 | `HabitService.saveOrUpdate` |
+| T02 | `query_habit_records` | 习惯打卡 | 按日期范围/最近 N 天/指定日查询打卡记录 | `HabitService.getRecentRecords` 等 |
+| T03 | `delete_habit_record` | 习惯打卡 | 删除指定打卡记录 | `HabitService.deleteRecord` |
+| T04 | `list_active_goals` | 目标管理 | 查询当前启用的习惯目标（含完成度） | `GoalService.getActiveGoalsWithCustom` |
+| T05 | `set_goal` | 目标管理 | 创建或更新睡眠/运动/饮水/饮食/自定义目标 | `GoalService.saveGoal` / `updateGoal` |
+| T06 | `delete_goal` | 目标管理 | 删除目标及其关联打卡 | `GoalService.deleteGoal` |
+| T07 | `create_reminder` | 提醒 | 创建打卡提醒（时间/周期/标题） | `ReminderService.create` |
+| T08 | `manage_reminder` | 提醒 | 更新/删除/开关/列出提醒 | `ReminderService.update/delete/toggle/list` |
+| T09 | `analyze_habit_trend` | 分析 | 生成近 N 天各维度趋势与雷达/达成率分析 | `AnalysisService` + `AiAnalysisService` |
+| T10 | `search_knowledge` | 知识库 | 语义检索睡眠/运动/饮食知识片段（RAG） | `RagService.search` |
+| T11 | `manage_session` | 会话 | 重命名/关闭/删除会话、读历史 | `ChatSessionService` |
+| T12 | `get_current_date` | 基础 | 获取当前日期，供时间类工具推断"今天/昨天" | 内置 |
+
+### 10.2 工具详细定义
+
+#### T01 · `record_habit` — 录入/更新打卡
+- **意图 Trigger**："记下今天 23 点睡""记录喝了 2 升水""我刚跑了 5 公里""今天心情不错"。
+- **入参**：
+  | 字段 | 类型 | 必选 | 说明 |
+  |---|---|---|---|
+  | `recordDate` | string(date) | 否 | 打卡日期，缺省=今天 |
+  | `sleepTime` | string(HH:mm) | 否 | 入睡时间 |
+  | `wakeTime` | string(HH:mm) | 否 | 起床时间 |
+  | `exerciseMinutes` | int | 否 | 运动时长(分钟) |
+  | `waterMl` | int | 否 | 饮水量(毫升) |
+  | `dietNote` | string | 否 | 饮食备注 |
+  | `mood` | int(1-5) | 否 | 心情评分 |
+- **行为**：调用 `HabitService.saveOrUpdate`；同一天重复调用为**覆盖更新**（依赖 `uk_user_date`）。
+- **返回**：保存后的 `HabitRecordVO`（含日期与各维度值）。
+- **对话回写**：自然语言确认，如"已记录：2026-08-07 入睡 23:00、饮水 2000ml"。
+
+#### T02 · `query_habit_records` — 查询打卡
+- **意图 Trigger**："最近一周睡得怎么样""昨天喝了多少水""查 8 月的记录"。
+- **入参**：
+  | 字段 | 类型 | 必选 | 说明 |
+  |---|---|---|---|
+  | `days` | int | 否 | 最近 N 天，缺省 7 |
+  | `startDate` | string(date) | 否 | 范围起（与 endDate 同用） |
+  | `endDate` | string(date) | 否 | 范围止 |
+  | `recordDate` | string(date) | 否 | 指定单日 |
+- **行为**：按优先级 `recordDate` > 日期范围 > `days` 选择 `HabitService` 对应查询方法。
+- **返回**：`List<HabitRecordVO>`。
+- **对话回写**：以表格/小结形式复述关键数值，并可与 T09 联动做分析。
+
+#### T03 · `delete_habit_record` — 删除打卡
+- **意图 Trigger**："删掉 8 月 3 号的记录""刚才记错了去掉"。
+- **入参**：`id`(long, 必填) 或 `recordDate`(date) 二选一定位。
+- **行为**：`HabitService.deleteRecord`；按日期时需先 `getRecordByDate` 取 id。
+- **返回**：成功/失败标志。
+
+#### T04 · `list_active_goals` — 查询目标
+- **意图 Trigger**："我现在的运动目标是多少""有哪些在进行的目标"。
+- **入参**：无（或 `includeCustom` bool，缺省 true）。
+- **行为**：`GoalService.getActiveGoalsWithCustom`，返回内置+自定义目标及本周完成度。
+- **返回**：`List<HabitGoalVO>`（含 `goalType`/`targetValue`/`unit`/`progress`）。
+
+#### T05 · `set_goal` — 创建/更新目标
+- **意图 Trigger**："把睡眠目标设成 8 小时""新增一个每天读书 30 分钟的目标"。
+- **入参**：
+  | 字段 | 类型 | 必选 | 说明 |
+  |---|---|---|---|
+  | `goalType` | enum | 是 | `SLEEP`/`EXERCISE`/`WATER`/`DIET`/`CUSTOM` |
+  | `targetValue` | number | 否 | 目标值（如 8 小时、2000ml） |
+  | `unit` | string | 否 | 单位 |
+  | `title` | string | 否 | 自定义目标标题（CUSTOM 必填） |
+- **行为**：内置类型同类型唯一→`updateGoal`；否则 `saveGoal`。CUSTOM 允许多个。
+- **返回**：保存后的 `HabitGoalVO`。
+
+#### T06 · `delete_goal` — 删除目标
+- **意图 Trigger**："取消阅读目标""删掉运动目标"。
+- **入参**：`id`(long, 必填)。
+- **行为**：`GoalService.deleteGoal`（级联删除关联打卡）。
+
+#### T07 · `create_reminder` — 创建提醒
+- **意图 Trigger**："每天 22 点提醒我睡觉""每周一提醒称重"。
+- **入参**：
+  | 字段 | 类型 | 必选 | 说明 |
+  |---|---|---|---|
+  | `title` | string | 是 | 提醒标题 |
+  | `remindTime` | string(HH:mm) | 是 | 提醒时间 |
+  | `repeatType` | enum | 否 | `DAILY`/`WEEKLY`/`ONCE`，缺省 DAILY |
+  | `weekday` | int | 否 | WEEKLY 时填 1-7 |
+- **行为**：`ReminderService.create`。
+- **返回**：`Reminder`（含 id/active）。
+
+#### T08 · `manage_reminder` — 管理提醒
+- **意图 Trigger**："把睡觉提醒改到 21 点""关掉周五的提醒""列出我的提醒"。
+- **入参**：`action`(enum: `update`/`delete`/`toggle`/`list`) + 对应 `id`/`vo` 字段。
+- **行为**：分发到 `ReminderService.update/delete/toggle/list`。
+
+#### T09 · `analyze_habit_trend` — 智能分析（已实现）
+- **意图 Trigger**："分析我这周的习惯""给我一份健康周报""运动达标率多少"。
+- **入参**：`days`(int, 否, 缺省 7)、`type`(enum: `TREND`/`OVERVIEW`/`ACHIEVEMENT`/`RADAR`/`AI_SUMMARY`, 否, 缺省 AI_SUMMARY)。
+- **行为**：
+  - 结构化数据（TREND/OVERVIEW/ACHIEVEMENT/RADAR）→ `AnalysisService`（`/api/analysis/*`），结果以 `Map` 返回供 LLM 组织语言。
+  - `AI_SUMMARY` → 目前基于结构化指标生成**纯文本周报**（非 LLM 生成）。
+- **返回**：`AnalysisResult{ type, summary?, data? }`。
+- **待完善**：`AI_SUMMARY` 后续接入 LLM 摘要能力（如 `AiAnalysisService`）升级为模型生成的自然语言周报（代码中已标注 TODO）。
+
+#### T10 · `search_knowledge` — 知识库检索（RAG，过渡实现）
+- **意图 Trigger**："失眠怎么办""每天该喝多少水""运动前后怎么吃"。
+- **入参**：`query`(string, 必填)、`topK`(int, 否, 缺省 3)、`docType`(enum, 否: `sleep`/`exercise`/`diet`)。
+- **行为**：当前为**本地健康常识库关键词检索**（RAG 接入前过渡实现），按 `query`/`docType` 匹配内置科普片段并打分。
+- **返回**：`List<KnowledgeResult{ docType, content, score }>`；Agent 据此组织知识型回答（对应 4.3）。
+- **待完善**：接入 MongoDB Atlas Vector Search 后，替换为 `RagService.search` 的真实语义检索（代码中已标注替换点）。
+
+#### T11 · `manage_session` — 会话管理（部分实现）
+- **意图 Trigger**："查一下上次那个会话聊了什么"。
+- **入参（已实现）**：`sessionId`(string)，对应 `QUERY_SESSION_HISTORY` 子能力。
+- **行为（已实现）**：`ChatSessionService.queryBySessionId` 返回 `List<MessageVO>`（用户提问 + AI 回答）。
+- **待完善**：`rename`/`close`/`delete` 写操作待 `ChatSessionService` 补充对应方法后接入（当前后端仅提供历史查询）。
+
+#### T12 · `get_current_date` — 当前日期（已实现）
+- **意图 Trigger**：任何需要"今天/昨天/本周"推断的场景（隐式调用）。
+- **入参**：无。
+- **行为**：返回服务端 `LocalDate.now()` 及中文星期，供 T01/T02 缺省日期解析。
+- **返回**：`CurrentDateResult{ date, weekday, weekdayNum }`。
+
+### 10.3 工具路由与权限约束
+
+- **路由**：`RouterAgent` 先对用户消息做意图分类（如 `HABIT_RECORD` / `HABIT_QUERY` / `GOAL` / `REMINDER` / `KNOWLEDGE_QA` / `ANALYSIS` / `SESSION`），再决定调用单一工具或工具组合（如 T01+T05 联动设目标并打卡）。
+- **写操作确认**：删除类（T03/T06/T08-delete/T11-delete）与批量更新建议在落库前于对话中向用户**二次确认**，避免误操作；只读类（T02/T04/T09/T10/T11-history）可直接调用。
+- **原子性**：单个工具调用即一次 Service 事务；组合调用按顺序执行，前序失败则中止后续并提示。
+- **与流式协议关系**：工具调用过程**不进入 SSE 事件流**（见 1.4，`1003` 工具事件已去除），用户仅看到最终自然语言结果，符合"只回聊天记录"原则。
+
+---
+
 *文档生成时间：2026-08-07 · 形态：接口开发文档（单体 Spring Boot 4 应用内 Agent 接口模块，契约以本项目代码与前端封装为准）*

@@ -5,7 +5,6 @@ import java.util.Map;
 
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.ai.chat.messages.ToolCall;
 import org.springframework.ai.content.Media;
 
 /**
@@ -24,7 +23,7 @@ public class MyAssistantMessage extends AssistantMessage {
     public static final String PARAMS_KEY = "tool_params";
 
     public MyAssistantMessage(String content, Map<String, Object> metadata,
-                             List<ToolCall> toolCalls, List<Media> media,
+                             List<AssistantMessage.ToolCall> toolCalls, List<Media> media,
                              Map<String, Object> params) {
         super(content, metadata, toolCalls, media);
         if (params != null && !params.isEmpty()) {

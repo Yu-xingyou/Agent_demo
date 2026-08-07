@@ -2,8 +2,9 @@
 import { ref, nextTick, onMounted } from 'vue'
 import { Sparkles, Send, Square, Bot, User, RotateCcw, Plus, Trash2, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { streamMessage, stopChat, getChatHistory, generateTitle } from '@/api/chat'
+import { streamMessage, stopChat, getChatHistory } from '@/api/chat'
 import { listSessions, deleteSession } from '@/api/session'
+import { isRouteAgentName } from '@/constants/agent'
 import KnowledgeDrawer from '@/components/KnowledgeDrawer.vue'
 
 // 阶段八：知识库管理抽屉（内嵌于本页，不新增路由）
@@ -66,20 +67,14 @@ function send(text) {
   scrollToBottom()
 
   sending.value = true
-  const aiMsg = { role: 'ai', text: '', stats: null }
+  const aiMsg = { role: 'ai', text: '' }
   messages.value.push(aiMsg)
 
-  abortController = streamMessage({
+  abortController = new AbortController()
+  streamMessage({
     message: content,
     conversationId: conversationId.value || undefined,
-    onMeta: (meta) => {
-      if (meta && meta.conversationId) {
-        conversationId.value = meta.conversationId
-      }
-    },
-    onToolCall: (tc) => {
-      if (tc && tc.message) toolStatus.value = tc.message
-    },
+    signal: abortController.signal,
     onChunk: (chunk) => {
       if (toolStatus.value) toolStatus.value = ''
       aiMsg.text += chunk.content
@@ -87,20 +82,16 @@ function send(text) {
     },
     onDone: (done) => {
       toolStatus.value = ''
-      // 展示真实 Token 用量与耗时（totalTokens 可能为 null，由模板容忍）
-      aiMsg.stats = {
-        totalTokens: done ? done.totalTokens : null,
-        promptTokens: done ? done.promptTokens : null,
-        completionTokens: done ? done.completionTokens : null,
-        duration: done ? done.duration : null,
-        firstTokenLatency: done ? done.firstTokenLatency : null,
+      // 后端通过 X-Session-Id 响应头下发会话 ID（首次创建时）
+      if (done && done.conversationId) {
+        conversationId.value = done.conversationId
       }
       sending.value = false
       abortController = null
-      // 新对话首轮完成后自动生成标题
-      if (isFirstMessageRound && conversationId.value) {
+      // 新对话首轮完成后刷新会话列表以获取后端生成的标题
+      if (isFirstMessageRound) {
         isFirstMessageRound = false
-        handleTitleGeneration(content)
+        setTimeout(() => fetchSessions(), 800)
       }
     },
     onError: (err) => {
@@ -112,18 +103,6 @@ function send(text) {
       scrollToBottom()
     },
   })
-}
-
-async function handleTitleGeneration(userMessage) {
-  try {
-    const title = await generateTitle(userMessage)
-    if (title) {
-      // 刷新会话列表以获取新标题
-      setTimeout(() => fetchSessions(), 800)
-    }
-  } catch {
-    // 标题生成失败不影响主流程
-  }
 }
 
 function stop() {
@@ -159,7 +138,17 @@ async function loadSession(session) {
   try {
     const history = await getChatHistory(session.conversationId)
     if (Array.isArray(history) && history.length > 0) {
-      messages.value = history.map(h => ({ role: h.role, text: h.text }))
+      // 后端返回 List<MessageVO>，字段 type(USER/ASSISTANT)/content
+      // 过滤路由智能体内部名称，避免内部实现细节回显给用户
+      const mapped = history
+        .filter(h => !(h.type === 'ASSISTANT' && isRouteAgentName(h.content)))
+        .map(h => ({
+          role: h.type === 'USER' ? 'user' : 'ai',
+          text: h.content || ''
+        }))
+      messages.value = mapped.length > 0
+        ? mapped
+        : [{ role: 'ai', text: '该会话暂无消息记录。' }]
     } else {
       messages.value = [{ role: 'ai', text: '该会话暂无消息记录。' }]
     }
@@ -325,12 +314,6 @@ onMounted(() => {
               </template>
               <template v-else>
                 <span>{{ m.text }}<span v-if="m.role === 'ai' && sending && m === messages[messages.length - 1]" class="caret">▋</span></span>
-                <!-- AI 回复底部：真实 Token 用量与耗时（totalTokens 为 null 时隐藏，避免展示误导性的 0） -->
-                <div v-if="m.role === 'ai' && m.stats" class="mt-1.5 text-[10px] text-slate-400 leading-none">
-                  <span v-if="m.stats.totalTokens != null">Tokens: {{ m.stats.totalTokens }}</span>
-                  <span v-if="m.stats.duration != null"> · {{ m.stats.duration }}ms</span>
-                  <span v-if="m.stats.firstTokenLatency != null"> · 首字 {{ m.stats.firstTokenLatency }}ms</span>
-                </div>
               </template>
             </div>
           </div>

@@ -31,11 +31,10 @@ const routes = [
     component: () => import('@/views/AiAdviceView.vue'),
     meta: { title: 'AI建议' },
   },
+  // 「AI 建议」聊天页统一入口，/ai-chat 为旧别名，重定向避免重复路由
   {
     path: '/ai-chat',
-    name: 'ai-chat',
-    component: () => import('@/views/AiAdviceView.vue'),
-    meta: { title: 'AI建议' },
+    redirect: '/ai-advice',
   },
   // 分析报告已整合进「AI 建议」页，旧路由重定向至整合页
   {

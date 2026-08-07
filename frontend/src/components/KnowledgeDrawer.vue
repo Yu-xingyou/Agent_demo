@@ -1,8 +1,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
-import { BookOpen, Upload, Search, Trash2, RefreshCw, FileText, ChevronDown, Inbox } from 'lucide-vue-next'
+import { BookOpen, Search, Trash2, RefreshCw, FileText, ChevronDown, Inbox } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { importPresetDocs, uploadDocument, searchKnowledge, listDocuments, deleteDocument } from '@/api/rag'
+import { importDocuments, searchKnowledge, listDocuments, deleteDocuments } from '@/api/rag'
 
 const props = defineProps({
   modelValue: { type: Boolean, default: false },
@@ -26,57 +26,9 @@ const typeMeta = (t) => TYPE_META[t] || TYPE_META.custom
 // ---- 导入预设 ----
 const importing = ref(false)
 async function handleImport() {
-  importing.value = true
-  try {
-    const res = await importPresetDocs()
-    ElMessage.success(`已导入 ${res?.totalDocs ?? 0} 篇 / ${res?.totalChunks ?? 0} 个片段`)
-    if (res?.errors?.length) ElMessage.warning(`${res.errors.length} 篇导入失败`)
-    await fetchDocuments()
-  } catch (e) {
-    console.error('导入预设知识库失败', e)
-  } finally {
-    importing.value = false
-  }
-}
-
-// ---- 上传文档 ----
-const uploading = ref(false)
-const fileInput = ref(null)
-function pickFile() {
-  fileInput.value?.click()
-}
-async function handleFileChange(e) {
-  const file = e.target.files?.[0]
-  e.target.value = ''
-  if (file) await doUpload(file)
-}
-async function handleDrop(e) {
-  dragging.value = false
-  const file = e.dataTransfer?.files?.[0]
-  if (file) await doUpload(file)
-}
-const dragging = ref(false)
-
-async function doUpload(file) {
-  const name = (file.name || '').toLowerCase()
-  if (!name.endsWith('.md') && !name.endsWith('.txt')) {
-    ElMessage.warning('仅支持 .md / .txt 格式文件')
-    return
-  }
-  if (file.size > 2 * 1024 * 1024) {
-    ElMessage.warning('文件大小不能超过 2MB')
-    return
-  }
-  uploading.value = true
-  try {
-    const res = await uploadDocument(file)
-    ElMessage.success(`《${file.name}》已入库，共 ${res?.totalChunks ?? 0} 个片段`)
-    await fetchDocuments()
-  } catch (e) {
-    console.error('上传知识文档失败', e)
-  } finally {
-    uploading.value = false
-  }
+  // 预设知识（sql/knowledge/*.md）由后端初始化脚本 init-knowledge.mjs
+  // 调用 /api/embedding 写入向量库，前端按钮不直接导入预设文档。
+  ElMessage.info('预设知识需由后端初始化脚本导入；如需自定义知识，请调用导入接口并传入文档文本')
 }
 
 // ---- 检索测试 ----
@@ -152,7 +104,7 @@ async function handleDelete(doc) {
     return
   }
   try {
-    await deleteDocument(doc.id)
+    await deleteDocuments([doc.id])
     docs.value = docs.value.filter((d) => d.id !== doc.id)
     results.value = results.value.filter((r) => r.id !== doc.id)
     ElMessage.success('片段已删除')
@@ -204,30 +156,8 @@ watch(visible, (v) => {
             @click="handleImport"
           >
             <RefreshCw :size="15" :class="importing ? 'animate-spin' : ''" />
-            {{ importing ? '导入中…' : '导入预设知识库（睡眠 / 运动 / 饮食）' }}
+            {{ importing ? '导入中…' : '导入知识库说明' }}
           </button>
-
-          <div
-            class="mt-3 rounded-xl border-2 border-dashed px-4 py-5 text-center transition-colors cursor-pointer"
-            :class="dragging ? 'border-brand bg-brand/5' : 'border-slate-200 hover:border-brand/40 bg-white/50'"
-            @click="pickFile"
-            @dragover.prevent="dragging = true"
-            @dragleave.prevent="dragging = false"
-            @drop.prevent="handleDrop"
-          >
-            <Upload :size="20" class="mx-auto text-slate-400 mb-1.5" />
-            <p class="text-xs text-slate-600">
-              {{ uploading ? '上传中，正在向量化…' : '拖拽或点击上传 .md / .txt' }}
-            </p>
-            <p class="text-[11px] text-slate-400 mt-0.5">单个文件不超过 2MB</p>
-            <input
-              ref="fileInput"
-              type="file"
-              accept=".md,.txt"
-              class="hidden"
-              @change="handleFileChange"
-            />
-          </div>
         </section>
 
         <!-- 检索测试区 -->

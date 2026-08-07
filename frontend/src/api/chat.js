@@ -1,110 +1,82 @@
 import request from '@/utils/request'
+import { isRouteAgentName } from '@/constants/agent'
 
-// 对应后端 ChatController 的阶段五/六接口：/api/chat、/api/chat/stream、/api/chat/stop
-// 阶段六：ChatClient 已注册业务 Tool，AI 可在对话中调用真实习惯数据。
+// 后端 /api/chat 是 POST + text/event-stream，需要读取 X-Session-Id 响应头，
+// 因此用原生 fetch 实现，绕过 request（request 基于 axios，对 SSE 头读取不友好）。
+export async function streamMessage({ message, conversationId = null, signal, onMeta, onChunk, onDone, onError }) {
+  const base = (import.meta.env.VITE_API_BASE || '').replace(/\/$/, '')
+  const url = `${base}/api/chat`
+  const body = { message }
+  if (conversationId) body.conversationId = conversationId
 
-export function sendMessage(message, conversationId) {
-  return request.post('/chat', { message, conversationId })
-}
-
-/**
- * 流式对话（SSE）。通过 fetch + ReadableStream 解析后端事件（Spring AI 2.0.0 真流式）：
- *   meta      -> { conversationId, timestamp, model, intent }
- *   tool_call -> { status, message, toolName }（工具调用轮次期间发出：status=start/end）
- *   chunk     -> { content, index }       （真流式逐字增量分片，一条消息含多条 chunk）
- *   done      -> { conversationId, promptTokens, completionTokens, totalTokens,
- *                 duration, firstTokenLatency, streamingMode }（streamingMode="streaming"）
- *                 Token 字段可能为 null（DashScope 未回传 usage 时），前端需容忍 null 并隐藏
- *   error     -> { errorCode, message, conversationId, retryable }
- *
- * 后端采用 Framework-Controlled 模式：工具调用循环由框架透明驱动，最终回复真流式逐字下推。
- *
- * @param {{message:string, conversationId?:string, onMeta?:Function, onToolCall?:Function, onChunk?:Function, onDone?:Function, onError?:Function}} opts
- * @returns {Promise<AbortController>} 返回 AbortController，便于调用方在超时/主动停止时中断
- */
-export function streamMessage(opts) {
-  const { message, conversationId, onMeta, onToolCall, onChunk, onDone, onError } = opts
-  const controller = new AbortController()
-
-  const params = new URLSearchParams({ message })
-  if (conversationId) params.set('conversationId', conversationId)
-
-  fetch(`/api/chat/stream?${params.toString()}`, {
-    method: 'GET',
-    headers: { Accept: 'text/event-stream' },
-    signal: controller.signal,
-  })
-    .then((res) => {
-      if (!res.ok || !res.body) {
-        onError && onError({ errorCode: 'HTTP_' + res.status, message: '对话请求失败' })
-        return
-      }
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      const read = () => {
-        reader.read().then(({ done, value }) => {
-          if (done) return
-          buffer += decoder.decode(value, { stream: true })
-          // SSE 以空行分隔事件
-          const events = buffer.split('\n\n')
-          buffer = events.pop() || ''
-          for (const raw of events) {
-            const evt = parseSseEvent(raw)
-            if (!evt) continue
-            if (evt.event === 'meta') onMeta && onMeta(evt.data)
-            else if (evt.event === 'tool_call') onToolCall && onToolCall(evt.data)
-            else if (evt.event === 'chunk') onChunk && onChunk(evt.data)
-            else if (evt.event === 'done') onDone && onDone(evt.data)
-            else if (evt.event === 'error') onError && onError(evt.data)
-          }
-          read()
-        }).catch((err) => {
-          if (err.name !== 'AbortError') {
-            onError && onError({ errorCode: 'STREAM_ERROR', message: '对话流中断' })
-          }
-        })
-      }
-      read()
-    })
-    .catch((err) => {
-      if (err.name !== 'AbortError') {
-        onError && onError({ errorCode: 'NETWORK', message: '网络异常' })
-      }
-    })
-
-  return controller
-}
-
-function parseSseEvent(raw) {
-  const lines = raw.split('\n')
-  let event = 'message'
-  const dataLines = []
-  for (const line of lines) {
-    if (line.startsWith('event:')) event = line.slice(6).trim()
-    else if (line.startsWith('data:')) dataLines.push(line.slice(5).trim())
-  }
-  if (dataLines.length === 0) return null
-  let data = null
+  let sessionId = null
   try {
-    data = JSON.parse(dataLines.join('\n'))
-  } catch {
-    data = dataLines.join('\n')
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal
+    })
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '')
+      onError && onError(new Error(`流式请求失败: ${resp.status} ${text}`))
+      return
+    }
+    // 会话 ID 由后端通过响应头 X-Session-Id 下发（仅在首次创建会话时返回）
+    const sid = resp.headers.get('X-Session-Id')
+    if (sid) sessionId = sid
+
+    const reader = resp.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      // SSE 以空行分隔事件
+      const parts = buffer.split('\n\n')
+      buffer = parts.pop() || ''
+      for (const part of parts) {
+        const line = part.split('\n').find((l) => l.startsWith('data:'))
+        if (!line) continue
+        const payload = line.slice(5).trim()
+        if (!payload) continue
+        let event
+        try {
+          event = JSON.parse(payload)
+        } catch (e) {
+          continue
+        }
+        const { eventType, eventData } = event
+        if (eventType === 1001) {
+          // 普通文本分片，过滤路由智能体内部名称
+          if (isRouteAgentName(eventData)) continue
+          onChunk && onChunk({ content: eventData, fullText: eventData })
+        } else if (eventType === 1002) {
+          // 流式完成（eventData 为纯文本提示，无统计字段）
+          onDone && onDone({ conversationId: sessionId, text: eventData })
+        }
+      }
+    }
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      onDone && onDone({ conversationId: sessionId })
+      return
+    }
+    onError && onError(err)
   }
-  return { event, data }
+  return sessionId
 }
 
+// 停止当前流式响应
 export function stopChat(conversationId) {
-  return request.post('/chat/stop', null, { params: { conversationId } })
+  return request.post('/chat/stop', null, {
+    params: conversationId ? { conversationId } : {}
+  })
 }
 
-/** 获取指定会话的历史消息列表 */
-export function getChatHistory(conversationId) {
-  return request.get('/chat/history', { params: { conversationId } })
-}
-
-/** AI 生成会话标题 */
-export function generateTitle(message) {
-  return request.post('/chat/title', null, { params: { message } })
+// 加载会话历史（后端 GET /api/sessions/{id} 返回 List<MessageVO>，字段 type/content）
+export function getChatHistory(sessionId) {
+  return request.get(`/sessions/${sessionId}`)
 }

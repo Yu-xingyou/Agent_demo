@@ -105,7 +105,8 @@ public class HabitTools {
 
         if (queryDate != null) {
             log.info("Agent 查询单日打卡: userId={}, date={}", userId, queryDate);
-            records = habitService.getRecordByDate(userId, queryDate);
+            HabitRecordVO single = habitService.getRecordByDate(userId, queryDate);
+            records = (single != null) ? List.of(single) : List.of();
         } else if (startDate != null && endDate != null) {
             log.info("Agent 查询范围打卡: userId={}, {}~{}", userId, startDate, endDate);
             records = habitService.getRecordsByDateRange(userId, startDate, endDate);

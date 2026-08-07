@@ -1,6 +1,9 @@
 # habit-agent
 
-生活习惯助手 Agent —— 基于 Spring Boot 4 + Vue 3 的前后端分离应用。
+生活习惯助手 —— 基于 Spring Boot 4 + Vue 3 的前后端分离应用。
+
+> 当前分支 `agent` 已清理掉原有 Agent / AI 相关代码（对话、RAG、智能分析、会话管理等），
+> 仅保留后端业务骨架（习惯 / 目标 / 打卡记录 / 提醒 / 统计分析），便于后续重建 Agent 功能。
 
 ## 仓库结构（单仓库 Monorepo）
 
@@ -8,8 +11,7 @@
 agent_demo/
 ├── src/                 # 后端：Spring Boot 4 应用（仅提供 /api REST）
 ├── pom.xml              # 后端构建（Maven）
-├── frontend/            # 前端：Vue 3 + Vite 工程
-└── PRD/                 # 产品需求与开发流程文档
+└── frontend/            # 前端：Vue 3 + Vite 工程
 ```
 
 前端与后端同仓管理，开发期通过 Vite 代理将 `/api` 转发到后端 8080，跨域由后端 `CorsConfig` 允许 `http://localhost:5173`。
@@ -23,6 +25,7 @@ mvn spring-boot:run
 ```
 
 > 后端仅提供 `http://localhost:8080/api/**` 的 REST 接口，已彻底移除 Thymeleaf/SSR。
+> 需要本地 MySQL（默认 `habit_agent` 库，连接串见 `application-local.yml`）。
 
 ### 2. 启动前端（端口 5173）
 

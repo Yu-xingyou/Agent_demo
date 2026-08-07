@@ -1,9 +1,7 @@
 package com.habit.agent.config;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
-import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 import java.util.List;
@@ -20,9 +18,6 @@ public class CorsConfig implements WebMvcConfigurer {
             "http://127.0.0.1:5173"
     );
 
-    @Autowired
-    private RateLimitInterceptor rateLimitInterceptor;
-
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/api/**")
@@ -32,11 +27,5 @@ public class CorsConfig implements WebMvcConfigurer {
                 .exposedHeaders("Authorization")
                 .allowCredentials(true)
                 .maxAge(3600);
-    }
-
-    @Override
-    public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(rateLimitInterceptor)
-                .addPathPatterns("/api/chat", "/api/ai-analysis/generate");
     }
 }

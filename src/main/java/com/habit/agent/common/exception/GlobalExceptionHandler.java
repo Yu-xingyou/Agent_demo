@@ -12,7 +12,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 import jakarta.validation.ConstraintViolationException;
 
 import com.habit.agent.common.constant.AgentConstants;
-import com.habit.agent.common.exception.RateLimitException;
 import com.habit.agent.common.result.Result;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -105,16 +104,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Result<Void>> handleAiCall(AiCallException ex) {
         log.error("AI调用异常: code={}, message={}", ex.getCode(), ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
-                .body(Result.error(ex.getCode(), ex.getMessage()));
-    }
-
-    /**
-     * 请求限流异常（令牌桶配额耗尽）
-     */
-    @ExceptionHandler(RateLimitException.class)
-    public ResponseEntity<Result<Void>> handleRateLimit(RateLimitException ex) {
-        log.warn("请求限流: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
                 .body(Result.error(ex.getCode(), ex.getMessage()));
     }
 

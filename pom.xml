@@ -19,34 +19,13 @@
 
     <properties>
         <java.version>21</java.version>
-        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
-
-    <dependencyManagement>
-        <dependencies>
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
-    </dependencyManagement>
 
     <dependencies>
         <!-- Web (纯 REST API，前后端分离，不渲染页面) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
-        </dependency>
-
-        <!-- WebFlux：Spring AI 2.0 流式输出（.stream()）依赖 Reactive 栈 / WebClient。
-             官方 Implementation Notes 要求命令式应用显式引入；web+webflux 共存时仍以 Tomcat(Servlet) 启动，
-             SseEmitter / @RestController 不受影响。 -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
         <!-- JPA + MySQL (业务数据层) -->
@@ -58,39 +37,6 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
-        </dependency>
-
-        <!-- MongoDB (文档型 AI 数据 + 对话记忆) -->
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-mongodb</artifactId>
-        </dependency>
-
-        <!-- Spring AI MongoDB 对话记忆 Repository (阶段五：对话记忆持久化到 ai_chat_memory 集合) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-chat-memory-repository-mongodb</artifactId>
-        </dependency>
-
-        <!-- Spring AI OpenAI Starter (通过 OpenAI 兼容模式接入通义千问 DashScope) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-openai</artifactId>
-        </dependency>
-
-        <!-- MongoDB Atlas 向量存储 (RAG 知识库) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
-        </dependency>
-
-        <!-- Spring AI RAG 模块 (阶段八：RetrievalAugmentationAdvisor / VectorStoreDocumentRetriever /
-             ContextualQueryAugmenter，位于 org.springframework.ai.rag.* 包)。
-             注意：Spring AI 2.0.0 中该能力由 spring-ai-rag 提供，且不会被 vector-store starter 传递引入，
-             需显式声明；版本由上方 spring-ai-bom 统一管理。 -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-rag</artifactId>
         </dependency>
 
         <!-- 参数校验 (Jakarta Bean Validation / Hibernate Validator) -->
@@ -117,13 +63,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-        </dependency>
-
-        <!-- Reactor Test：流式验证探针（StepVerifier） -->
-        <dependency>
-            <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-test</artifactId>
             <scope>test</scope>
         </dependency>
     </dependencies>

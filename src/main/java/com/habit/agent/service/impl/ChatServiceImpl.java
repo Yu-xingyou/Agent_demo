@@ -1,9 +1,11 @@
 package com.habit.agent.service.impl;
 
 import cn.hutool.core.date.DateUtil;
+import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.config.SystemPromptConfig;
 import com.habit.agent.enums.ChatEventTypeEnum;
 import com.habit.agent.service.ChatService;
+import com.habit.agent.service.ChatSessionService;
 import com.habit.agent.vo.ChatEventVO;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -56,6 +58,8 @@ public class ChatServiceImpl implements ChatService {
     private final ChatMemory chatMemory;
     /** 向量库，用于 RAG 知识检索增强 */
     private final VectorStore vectorStore;
+    /** 会话服务，用于首条消息到达时异步生成会话标题 */
+    private final ChatSessionService chatSessionService;
 
     /** 会话生成状态标记（true=正在生成）。ConcurrentHashMap 保证线程安全；
      * 当前为单体实现，分布式场景可替换为 Redis。 */
@@ -67,6 +71,9 @@ public class ChatServiceImpl implements ChatService {
         String conversationId = ChatService.getConversationId(sessionId);
         // 大模型输出内容的缓存器，用于在输出中断后的数据存储
         StringBuilder outputBuilder = new StringBuilder();
+
+        // 首条消息到达时异步生成/更新会话标题（不阻塞对话主流程，保证聊天体验）
+        chatSessionService.update(sessionId, message, AgentConstants.DEFAULT_USER_ID);
 
         // Spring AI 2.0 使用 RetrievalAugmentationAdvisor + VectorStoreDocumentRetriever
         // 注意：2.0 的 VectorStoreDocumentRetriever 不再接受 SearchRequest，

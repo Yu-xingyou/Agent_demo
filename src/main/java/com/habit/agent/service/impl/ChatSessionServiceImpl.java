@@ -3,6 +3,7 @@ package com.habit.agent.service.impl;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.RandomUtil;
+import cn.hutool.core.util.StrUtil;
 import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.config.SessionProperties;
 import com.habit.agent.entity.mongo.ChatSession;
@@ -18,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.MessageType;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -65,7 +67,9 @@ public class ChatSessionServiceImpl implements ChatSessionService {
         ChatSession chatSession = ChatSession.builder()
                 .sessionId(sessionId)
                 .userId(userId)
-                .title(sessionProperties.getTitle())
+                // 持久化标题先置空：首屏展示标题由 SessionVO 提供（来自配置），
+                // 真正标题在首条消息到达时由 update() 异步生成，避免新建会话无标题
+                .title(null)
                 .createTime(now)
                 .updateTime(now)
                 .creater(userId)
@@ -118,5 +122,33 @@ public class ChatSessionServiceImpl implements ChatSessionService {
                     return builder.build();
                 })
                 .toList();
+    }
+
+    /**
+     * 异步更新会话标题（首条消息到达时调用）。
+     *
+     * <p>仅当该会话当前标题为空、且传入 title 非空时才写入，避免覆盖已有标题；
+     * 标题统一截断至 100 字，并刷新 updateTime。采用异步执行，不阻塞对话主流程。</p>
+     */
+    @Async
+    @Override
+    public void update(String sessionId, String title, Long userId) {
+        if (sessionId == null || userId == null || StrUtil.isBlank(title)) {
+            return;
+        }
+        // 定位用户的会话（单用户演示场景 userId 即 DEFAULT_USER_ID）
+        ChatSession chatSession = chatSessionRepository.findBySessionIdAndUserId(sessionId, userId);
+        if (chatSession == null) {
+            log.warn("异步更新标题失败：会话不存在 sessionId={}, userId={}", sessionId, userId);
+            return;
+        }
+        // 仅当标题为空时才用首条消息覆盖，避免覆盖自定义/历史标题
+        if (StrUtil.isBlank(chatSession.getTitle())) {
+            chatSession.setTitle(StrUtil.sub(title, 0, 100));
+        }
+        chatSession.setUpdateTime(LocalDateTime.now());
+        chatSession.setUpdater(userId);
+        chatSessionRepository.save(chatSession);
+        log.info("异步更新会话标题：sessionId={}, title={}", sessionId, chatSession.getTitle());
     }
 }

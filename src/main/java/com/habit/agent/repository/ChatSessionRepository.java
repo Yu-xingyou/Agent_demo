@@ -21,4 +21,7 @@ public interface ChatSessionRepository extends MongoRepository<ChatSession, Stri
 
     /** 按用户 ID 查询其全部会话（idx_user 索引），用于会话列表 */
     List<ChatSession> findByUserId(Long userId);
+
+    /** 按会话 ID + 用户 ID 精确定位单条会话（用于异步更新标题） */
+    ChatSession findBySessionIdAndUserId(String sessionId, Long userId);
 }

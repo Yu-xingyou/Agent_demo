@@ -7,6 +7,8 @@ import org.springframework.ai.chat.client.advisor.api.Advisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.memory.MessageWindowChatMemory;
 
+import com.habit.agent.advisor.RecordOptimizationAdvisor;
+import com.habit.agent.memory.MyChatMemoryRepository;
 import com.habit.agent.memory.ToolEnrichingChatMemory;
 import org.springframework.ai.chat.memory.repository.mongo.MongoChatMemoryRepository;
 import org.springframework.beans.factory.annotation.Value;
@@ -46,6 +48,7 @@ public class SpringAIConfig {
     @Bean
     public ChatClient chatClient(ChatClient.Builder chatClientBuilder,
                                  Advisor loggerAdvisor,
+                                 Advisor recordOptimizationAdvisor,
                                  Advisor messageChatMemoryAdvisor,
                                  HabitTools habitTools,
                                  GoalTools goalTools,
@@ -55,7 +58,10 @@ public class SpringAIConfig {
                                  SessionTools sessionTools,
                                  CommonTools commonTools) {
         return chatClientBuilder
-                .defaultAdvisors(loggerAdvisor, messageChatMemoryAdvisor)
+                // 注意 Advisor 顺序：recordOptimizationAdvisor 的 order 比 messageChatMemoryAdvisor 更小，
+                // 因此它在链中先 before、后 after —— 即「大模型响应先经记忆 Advisor 落库，
+                // 再由其清理路由智能体写入的内部转发记录」。详见 RecordOptimizationAdvisor 类注释。
+                .defaultAdvisors(loggerAdvisor, recordOptimizationAdvisor, messageChatMemoryAdvisor)
                 .defaultTools(habitTools, goalTools, reminderTools,
                         analysisTools, knowledgeTools, sessionTools, commonTools)
                 .build();
@@ -100,5 +106,17 @@ public class SpringAIConfig {
     @Bean
     public Advisor messageChatMemoryAdvisor(ChatMemory chatMemory) {
         return MessageChatMemoryAdvisor.builder(chatMemory).build();
+    }
+
+    /**
+     * 记录优化 Advisor：清理路由智能体内部转发记录。
+     *
+     * <p>当大模型输出恰好是某个智能体名称（如 {@code SLEEP}/{@code DIET}/{@code ROUTE}）
+     * 时，说明这是路由分类的内部结果、不应展示给用户，故移除记忆仓库中最近写入的两条消息。
+     * order 刻意小于 {@link #messageChatMemoryAdvisor(ChatMemory)}，确保其在记忆落库之后执行清理。</p>
+     */
+    @Bean
+    public Advisor recordOptimizationAdvisor(MyChatMemoryRepository myChatMemoryRepository) {
+        return new RecordOptimizationAdvisor(myChatMemoryRepository);
     }
 }

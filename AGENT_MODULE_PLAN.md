@@ -32,34 +32,42 @@ http://localhost:8080
 > 说明：本项目的"幂等"仅出现在 RAG 导入接口的设计属性上（`/api/rag/import` 重复调用不会重复膨胀，靠文档标识去重，而非请求级幂等键），不涉及任何 `requestId` / `Idempotency-Key` 字段。
 
 ### 1.4 流式响应协议（SSE）
-`GET /api/chat/stream` 采用 **Spring AI 2.0 真流式 SSE**，`Content-Type: text/event-stream`，以空行分隔事件，每个事件形如：
+`GET /api/chat/stream` 采用 **SSE（`text/event-stream`）**，**每行是一个 JSON**，靠 `eventType` / `eventData` 两个字段区分事件；**只回聊天内容本身，不回工具调用过程、不回 token 统计等附加信息**。
+
+- 每个事件以 `data:` 前缀单行给出，事件之间以空行分隔（标准 SSE 分帧）。
+- `eventType` 取值：
+  - `1001` —— 数据事件（内容分片），`eventData` 为增量文本，逐字/逐句下推。
+  - `1002` —— 停止事件（流结束，无 `eventData`）。
+  - （原 `1003` 参数事件对应「工具调用消息」，本期不暴露，已去除。）
+- 示例流：
 ```
-event: chunk
-data: {"content":"好的","index":0}
+data:{"eventData":"好的，已为您记录今日作息。","eventType":1001}
 
-event: done
-data: {"conversationId":"...","streamingMode":"streaming"}
+data:{"eventData":"","eventType":1001}
+
+data:{"eventType":1002}
 ```
-事件类型（`event` 字段）：
-
-| event | data 字段 | 说明 |
-|---|---|---|
-| `meta` | `{ conversationId, timestamp, model, intent }` | 会话/模型/意图元数据，流开始时发出 |
-| `tool_call` | `{ status, message, toolName }`（`status`: `start`/`end`） | 框架驱动工具调用轮次时发出 |
-| `chunk` | `{ content, index }` | 真流式逐字增量分片，一条消息含多条 `chunk` |
-| `done` | `{ conversationId, promptTokens, completionTokens, totalTokens, duration, firstTokenLatency, streamingMode }` | 流结束统计；`*Tokens` 可能为 `null`（DashScope 未回传 usage），前端需容忍 `null` |
-| `error` | `{ errorCode, message, conversationId, retryable }` | 出错时发出 |
-
-前端采用 Framework-Controlled 模式：工具调用循环由框架透明驱动，最终回复真流式逐字下推。
+- 新对话的 `conversationId` 由后端在**流式响应头** `X-Conversation-Id` 下发（控制面信息，不进入事件流，满足「只回聊天记录」），前端据此写入会话上下文。
+- 错误处理：不走 SSE 事件，直接以 HTTP 状态码表达（前端对 `res.ok` 校验 + `catch` 处理）。
 
 ### 1.5 认证
 本期为**单用户演示场景**，默认 `DEFAULT_USER_ID = 1`（`AgentConstants`）。接口不要求传用户身份，后端统一兜底为默认用户；无 `Authorization` 校验。
+
+### 1.6 术语说明：会话ID（sessionId）与 对话ID（conversationId）
+本系统中「**会话**」与「**对话**」是两个不同的概念，对应不同的标识，**不可混用**：
+
+| 概念 | 标识 | 说明 | 对应存储 |
+|---|---|---|---|
+| 会话（Session） | `sessionId` | 用户与助手之间的一段持续交互上下文；一个会话可包含多轮对话，支持列表 / 重命名 / 关闭 / 删除（见第 2 节） | MongoDB `chatSession`（7 天 TTL） |
+| 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；流式对话、历史消息、停止生成均以此为准（见第 3 节） | MongoDB `chatMessage` |
+
+> 约定：**会话管理类接口（第 2 节）一律使用 `sessionId`；聊天 / 流式 / 历史类接口（第 3 节）一律使用 `conversationId`**。两者不可互相替换。
 
 ---
 
 ## 2. 会话接口（`/api/sessions`）
 
-> 对应前端 `src/api/session.js`。会话 ID 在本项目中命名为 `conversationId`（非 `sessionId`）。
+> 对应前端 `src/api/session.js`。本接口管理「会话」，统一使用 `sessionId`（与第 3 节的 `conversationId` 是不同概念，见 1.6）。
 
 ### 2.1 会话列表
 `GET /api/sessions`
@@ -69,11 +77,11 @@ data: {"conversationId":"...","streamingMode":"streaming"}
 {
   "code": 200, "message": "success",
   "data": [
-    { "conversationId": "f1dbf6ca0ed34eeda02ec0d0545a4429", "title": "今日作息记录", "updateTime": "2026-08-07 21:30:12" }
+    { "sessionId": "f1dbf6ca0ed34eeda02ec0d0545a4429", "title": "今日作息记录", "updateTime": "2026-08-07 21:30:12" }
   ]
 }
 ```
-**data**：数组，每项 `{ conversationId:string, title:string, updateTime:string }`，按最后消息时间倒序。
+**data**：数组，每项 `{ sessionId:string, title:string, updateTime:string }`，按最后消息时间倒序。
 
 **调用实例**
 ```bash
@@ -83,7 +91,7 @@ curl "http://localhost:8080/api/sessions"
 ---
 
 ### 2.2 会话详情（历史消息）
-`GET /api/sessions/{conversationId}`
+`GET /api/sessions/{sessionId}`
 
 **返回示例**
 ```json
@@ -105,7 +113,7 @@ curl "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a4429"
 ---
 
 ### 2.3 重命名会话
-`PUT /api/sessions/{conversationId}/rename?title={title}`
+`PUT /api/sessions/{sessionId}/rename?title={title}`
 
 **返回示例**
 ```json
@@ -120,7 +128,7 @@ curl -X PUT "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a4429
 ---
 
 ### 2.4 关闭会话
-`POST /api/sessions/{conversationId}/close`
+`POST /api/sessions/{sessionId}/close`
 
 **返回示例**
 ```json
@@ -135,7 +143,7 @@ curl -X POST "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a442
 ---
 
 ### 2.5 删除会话
-`DELETE /api/sessions/{conversationId}`
+`DELETE /api/sessions/{sessionId}`
 
 **返回示例**
 ```json
@@ -151,7 +159,7 @@ curl -X DELETE "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a4
 
 ## 3. 聊天接口（`/api/chat`）
 
-> 对应前端 `src/api/chat.js`。用户消息字段命名为 `message`，会话字段命名为 `conversationId`（非 `question` / `sessionId`）。
+> 对应前端 `src/api/chat.js`。用户消息字段命名为 `message`，对话标识命名为 `conversationId`（对应「对话」，见 1.6；非外部模板的 `question`）。
 
 ### 3.1 发送消息（非流式）
 `POST /api/chat`
@@ -161,7 +169,7 @@ curl -X DELETE "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a4
 { "message": "帮我记录今天23点睡觉、喝了2升水", "conversationId": "f1dbf6ca0ed34eeda02ec0d0545a4429" }
 ```
 - `message`：用户消息（必填）。
-- `conversationId`：会话 ID（可选，不传则新建会话）。
+- `conversationId`：对话 ID（可选，不传则新建对话）。
 
 **返回示例**
 ```json
@@ -186,28 +194,17 @@ curl -X POST "http://localhost:8080/api/chat" \
 | 名称 | 位置 | 类型 | 必选 | 说明 |
 |---|---|---|---|---|
 | message | query | string | 是 | 用户消息 |
-| conversationId | query | string | 否 | 会话 ID，不传则新建 |
+| conversationId | query | string | 否 | 对话 ID，不传则新建 |
 
-**响应**：SSE 流，事件协议见 1.4。示例流（逐事件）：
+**响应**：SSE 流，协议见 1.4。示例流（每行一个 JSON，事件之间空行分隔）：
 ```
-event: meta
-data: {"conversationId":"f1dbf6ca0ed34eeda02ec0d0545a4429","timestamp":1754573412000,"model":"qwen-plus","intent":"HABIT_RECORD"}
+data:{"eventData":"好的，已为您记录今日作息。","eventType":1001}
 
-event: tool_call
-data: {"status":"start","message":"调用习惯记录工具","toolName":"saveHabitRecord"}
+data:{"eventData":"","eventType":1001}
 
-event: chunk
-data: {"content":"好的","index":0}
-
-event: chunk
-data: {"content":"，已为您记录今日作息。","index":1}
-
-event: tool_call
-data: {"status":"end","message":"工具调用完成","toolName":"saveHabitRecord"}
-
-event: done
-data: {"conversationId":"f1dbf6ca0ed34eeda02ec0d0545a4429","promptTokens":null,"completionTokens":null,"totalTokens":null,"duration":1820,"firstTokenLatency":420,"streamingMode":"streaming"}
+data:{"eventType":1002}
 ```
+（新对话的 `conversationId` 通过响应头 `X-Conversation-Id` 下发，见 1.4。）
 
 **调用实例**
 ```bash
@@ -460,8 +457,8 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 2. **DashScope 兼容 `/embeddings` 对 `text-embedding-v3` 开放（中）**：RAG embedding 是否支持需实测，否则改用原生 embedding 接口。
 3. **MongoDB Atlas Vector Search 配置（中）**：`MongoVectorStore` 需正确配置 search index，否则检索失败。
 4. **SSE 缓冲（低）**：须逐片 `flush` 且 Vite 代理去缓冲，否则前端收不到实时分片。
-5. **`*Tokens` 可能为 null（低）**：前端须容忍 DashScope 未回传 usage 的情况。
-6. **字段命名一致性（中）**：本项目统一用 `message` / `conversationId`（非外部模板的 `question` / `sessionId` / `requestId`），后端实现须与前端 `src/api/*.js` 严格对齐。
+5. **流式仅回聊天内容（低）**：SSE 只发 `eventType:1001`（内容）/ `1002`（结束），不含 token 统计；前端不得依赖任何统计字段。
+6. **字段命名与标识一致性（中）**：非流式统一 `message` 与 `Result{code,message,data}`；`sessionId`（会话，第 2 节）与 `conversationId`（对话，第 3 节）是不同概念、不可混用，后端实现须与前端 `src/api/*.js` 严格对齐（前端当前 `session.js` 仍用 `conversationId` 作路径参数，须后续统一为 `sessionId`，见 1.6）。
 7. **RAG 导入幂等（低）**：`/api/rag/import` 靠文档标识去重，重复调用安全；无需也不引入幂等键机制。
 
 ---

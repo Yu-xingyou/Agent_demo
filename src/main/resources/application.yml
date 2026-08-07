@@ -23,6 +23,15 @@ spring:
         options:
           model: text-embedding-v3
 
+    # ===== MongoDB Atlas 向量库（RAG：habit_knowledge 集合）=====
+    # 连接串复用 spring.data.mongodb.uri（本地开发指向 REMOTE_MONGO_URI 远程 Atlas）
+    # collection-name 与 mongo-init.js 中 habit_knowledge 对齐；index-name 与向量检索索引对齐
+    vectorstore:
+      mongodb:
+        collection-name: habit_knowledge
+        index-name: habit_knowledge_vector_index
+        initialize-schema: false
+
 logging:
   level:
     root: INFO

@@ -440,14 +440,22 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 
 | 配置项 | 说明 | 位置 |
 |---|---|---|
-| `LOCAL_MONGO_URI` | 本地 MongoDB（会话/消息）连接串 | `application-local.yml` 占位 |
-| `REMOTE_MONGO_URI` | 远程 MongoDB Atlas（向量库 `habit_knowledge`）连接串 | `application-local.yml` 占位 |
-| `QWEN_API_KEY` | 千问 API Key（DashScope） | `application-local.yml` 占位 |
+| `LOCAL_MONGO_URI` | 本地 MongoDB（会话/消息）连接串 | `application-local.yml` 占位（环境变量） |
+| `REMOTE_MONGO_URI` | 远程 MongoDB Atlas（向量库 `habit_knowledge`）连接串 | `application-local.yml` 占位（环境变量，明文不入库） |
+| `QWEN_API_KEY` | 千问 API Key（DashScope） | `application-local.yml` 占位（环境变量） |
 | `spring.ai.openai.base-url` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | `application.yml` |
 | `spring.ai.openai.chat.options.model` | `qwen-plus` | `application.yml` |
 | `spring.ai.openai.embedding.options.model` | `text-embedding-v3` | `application.yml` |
+| `spring.ai.vectorstore.mongodb.collection-name` | `habit_knowledge`（与 `mongo-init.js` 对齐） | `application.yml` |
+| `spring.ai.vectorstore.mongodb.index-name` | `habit_knowledge_vector_index`（Atlas 向量检索索引） | `application.yml` |
+| `spring.ai.vectorstore.mongodb.initialize-schema` | `false`（索引由 `mongo-init.js` 的 `createSearchIndex` 建） | `application.yml` |
 
 新增依赖：`spring-ai-bom`、`spring-ai-starter-model-openai`、`spring-ai-starter-vector-store-mongodb-atlas`（Spring AI 2.0 中 MongoDB 向量库 starter 的正确 artifactId，非 `...-mongodb`）、`spring-boot-starter-data-mongodb`。
+
+> **两套 MongoDB 连接分离说明**：`spring-boot-starter-data-mongodb` 与 `spring-ai-starter-vector-store-mongodb-atlas` 默认**共用同一个 `spring.data.mongodb.uri`**。本系统要求本地实例（会话/消息/记忆/分析）与远程 Atlas（向量库 `habit_knowledge`）分离，因此：
+> - 本地实例：用 `spring.data.mongodb.host/port/database` 指向本地 `habit_agent`。
+> - 远程向量库：通过独立的 `REMOTE_MONGO_URI` 环境变量注入，由**后续代码层**新增一个 `MongoDatabaseFactory`（或 `MongoClient`）Bean 绑定到 `REMOTE_MONGO_URI`，专供 `MongoDbAtlasVectorStore` 使用，避免与本地实例冲突。
+> - `initialize-schema: false`，向量检索索引（`habit_knowledge_vector_index`）由 `sql/mongo-init.js` 的 `db.habit_knowledge.createSearchIndex(...)` 建立，不在应用启动时自动建。
 
 ---
 

@@ -28,9 +28,24 @@ public class AIProperties {
         /** 路由（route-agent）智能体系统提示语 */
         private Chat routeAgent;
 
+        /** 睡眠建议（sleep-agent）智能体系统提示语 */
+        private Chat sleepAgent;
+
+        /** 饮食建议（diet-agent）智能体系统提示语 */
+        private Chat dietAgent;
+
+        /** 运动建议（exercise-agent）智能体系统提示语 */
+        private Chat exerciseAgent;
+
+        /** 习惯打卡（checkin-agent）智能体系统提示语 */
+        private Chat checkinAgent;
+
+        /** 健康知识讲解（knowledge-agent）智能体系统提示语 */
+        private Chat knowledgeAgent;
+
         @Data
         public static class Chat {
-            /** 系统提示词文本（身份：健康习惯管理助手） */
+            /** 系统提示词文本 */
             private String text;
         }
     }

@@ -9,6 +9,20 @@ spring:
   application:
     name: habit-agent
 
+  # ===== Spring AI 2.0 配置（OpenAI 兼容模式：DashScope 千问）=====
+  ai:
+    openai:
+      # 千问 API Key（DashScope），本地值见 application-local.yml
+      api-key: ${QWEN_API_KEY}
+      # DashScope 兼容 OpenAI 协议的接入点
+      base-url: https://dashscope.aliyuncs.com/compatible-mode/v1
+      chat:
+        options:
+          model: qwen-plus
+      embedding:
+        options:
+          model: text-embedding-v3
+
 logging:
   level:
     root: INFO
@@ -20,4 +34,4 @@ spring:
   config:
     activate:
       on-profile: local
-  # 本地开发使用 application-local.yml 中的 datasource 配置
+  # 本地开发使用 application-local.yml 中的 datasource / mongodb / ai 配置

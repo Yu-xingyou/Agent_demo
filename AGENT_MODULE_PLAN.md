@@ -447,7 +447,7 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 | `spring.ai.openai.chat.options.model` | `qwen-plus` | `application.yml` |
 | `spring.ai.openai.embedding.options.model` | `text-embedding-v3` | `application.yml` |
 
-新增依赖：`spring-ai-bom`、`spring-ai-starter-model-openai`、`spring-ai-starter-vector-store-mongodb`、`spring-boot-starter-data-mongodb`。
+新增依赖：`spring-ai-bom`、`spring-ai-starter-model-openai`、`spring-ai-starter-vector-store-mongodb-atlas`（Spring AI 2.0 中 MongoDB 向量库 starter 的正确 artifactId，非 `...-mongodb`）、`spring-boot-starter-data-mongodb`。
 
 ---
 

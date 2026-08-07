@@ -19,7 +19,22 @@
 
     <properties>
         <java.version>21</java.version>
+        <!-- Spring AI 2.0.0 以 Spring Boot 4 为最低支持版本，兼容 4.1.x -->
+        <spring-ai.version>2.0.0</spring-ai.version>
     </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- Spring AI BOM：统一管理 spring-ai-* 模块版本 -->
+            <dependency>
+                <groupId>org.springframework.ai</groupId>
+                <artifactId>spring-ai-bom</artifactId>
+                <version>${spring-ai.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
 
     <dependencies>
         <!-- Web (纯 REST API，前后端分离，不渲染页面) -->
@@ -64,6 +79,23 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- ===== Agent / AI 模块依赖（Spring AI 2.0）===== -->
+        <!-- OpenAI 兼容模型（DashScope 千问，兼容 OpenAI 协议） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-model-openai</artifactId>
+        </dependency>
+        <!-- MongoDB 向量库（RAG：habit_knowledge 集合，Atlas Vector Search） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
+        </dependency>
+        <!-- MongoDB 数据访问（会话/消息/记忆存储） -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
         </dependency>
     </dependencies>
 

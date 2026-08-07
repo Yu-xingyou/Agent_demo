@@ -22,9 +22,11 @@ import java.time.LocalDateTime;
  * <ul>
  *     <li>{@code uk_session_id}：sessionId 唯一索引</li>
  *     <li>{@code idx_user_status}：userId + status 复合索引（查询用户活跃会话）</li>
- *     <li>{@code ttl_expire_at}：expireAt TTL 索引（7 天自动过期）</li>
  * </ul>
  * </p>
+ *
+ * <p><b>持久化说明：</b>本地场景下会话<b>不自动删除</b>，故<b>不设置 TTL 过期索引</b>，
+ * 也不保留 {@code expireAt} 字段（详见开发文档 1.6 与 mongo-init.js 注释）。</p>
  */
 @Data
 @Builder
@@ -66,11 +68,6 @@ public class ChatSession {
     /** 最后更新时间（每次收发消息刷新，用于会话列表倒序） */
     @Field("updateTime")
     private LocalDateTime updateTime;
-
-    /** TTL 过期时间（创建时 +7 天，由 MongoDB TTL 索引自动清理） */
-    @Indexed(name = "ttl_expire_at", expireAfter = "7d")
-    @Field("expireAt")
-    private LocalDateTime expireAt;
 
     // ===== 状态常量 =====
     public static final String STATUS_ACTIVE = "ACTIVE";

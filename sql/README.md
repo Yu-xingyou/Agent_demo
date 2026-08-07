@@ -71,7 +71,7 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 | 集合名 | 说明 | TTL | 对应 Java 实体 |
 |---|---|---|---|
 | `chatMessage` | 对话消息 | 无 | ChatMessageDoc |
-| `chatSession` | 会话管理 | 7 天自动过期 | ChatSessionDoc |
+| `chatSession` | 会话管理 | 无（本地场景持久化、不自动删除） | ChatSessionDoc |
 | `aiAnalysis` | AI 分析结果 + 每日评价 | DAILY 1天缓存；WEEKLY/MONTHLY/CUSTOM 永不过期 | AiAnalysisDoc |
 | `chatMemory` | Spring AI ChatMemoryRepository 存储 | 无 | 由 MongoChatMemoryRepository 管理 |
 | `habit_knowledge` | RAG 知识库向量存储 | 无 | Spring AI VectorStore 管理 |
@@ -84,7 +84,6 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 | chatMessage | idx_user_time | 复合索引 | 按用户查询消息历史 |
 | chatSession | uk_session_id | 唯一索引 | 会话 ID（sessionId）唯一 |
 | chatSession | idx_user_status | 复合索引 | 查询用户活跃会话 |
-| chatSession | ttl_expire_at | TTL 索引 | 7 天自动过期 |
 | aiAnalysis | idx_user_type_time | 复合索引 | 按用户和类型查询 |
 | aiAnalysis | idx_user_record_date | 复合索引 | 每日评价按日期查询 |
 | aiAnalysis | ttl_expire_at | TTL 索引 (sparse) | DAILY 1天缓存过期，WEEKLY/MONTHLY/CUSTOM 永不过期 |

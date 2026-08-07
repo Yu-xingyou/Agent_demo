@@ -29,15 +29,15 @@ function zeroVec(n) {
 // 3. 种子数据（_init 标记，重复执行安全；集合在首次 insert 时自动创建）
 // =============================================================
 
-// 3.1 chatSession —— 会话管理（sessionId，非 conversationId；7 天 TTL）
+// 3.1 chatSession —— 会话管理（sessionId，非 conversationId）
+//    说明：本地场景会话持久化、不自动删除，故不设置 expireAt 字段、不建 TTL 索引。
 db.chatSession.insertOne({
     sessionId: "f1dbf6ca0ed34eeda02ec0d0545a4429",
     userId: 1,
     title: "今日作息记录",
     status: "ACTIVE",
     createTime: new Date("2026-08-07T21:30:12Z"),
-    updateTime: new Date("2026-08-07T21:30:12Z"),
-    expireAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    updateTime: new Date("2026-08-07T21:30:12Z")
 });
 
 // 3.2 chatMessage —— 对话消息（conversationId 对应「对话」，见开发文档 1.6）
@@ -151,10 +151,10 @@ db.habit_knowledge.insertMany([
 db.chatMessage.createIndex({ conversationId: 1, createTime: 1 }, { name: "idx_conv_time" });
 db.chatMessage.createIndex({ userId: 1, createTime: 1 }, { name: "idx_user_time" });
 
-// 4.2 chatSession —— 会话 ID 唯一 / 查询用户活跃会话 / 7 天 TTL 过期
+// 4.2 chatSession —— 会话 ID 唯一 / 查询用户活跃会话
+//    说明：本地场景会话持久化、不自动删除，故不建 TTL 过期索引（无 expireAt 字段）。
 db.chatSession.createIndex({ sessionId: 1 }, { name: "uk_session_id", unique: true });
 db.chatSession.createIndex({ userId: 1, status: 1 }, { name: "idx_user_status" });
-db.chatSession.createIndex({ expireAt: 1 }, { name: "ttl_expire_at", expireAfterSeconds: 0 });
 
 // 4.3 aiAnalysis —— 按用户和类型查询 / 每日评价按日期查询 / DAILY 1 天缓存（sparse TTL）
 db.aiAnalysis.createIndex({ userId: 1, type: 1, createTime: 1 }, { name: "idx_user_type_time" });

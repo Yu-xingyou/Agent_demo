@@ -58,7 +58,7 @@ data:{"eventType":1002}
 
 | 概念 | 标识 | 说明 | 对应存储 |
 |---|---|---|---|
-| 会话（Session） | `sessionId` | 用户与助手之间的一段持续交互上下文；一个会话可包含多轮对话，支持列表 / 重命名 / 关闭 / 删除（见第 2 节） | MongoDB `chatSession`（**本地场景持久化、不自动删除，无 TTL 索引**，见 8.4 节） |
+| 会话（Session） | `sessionId` | 用户与助手之间的一段持续交互上下文；一个会话可包含多轮对话，支持列表 / 重命名 / 关闭 / 删除（见第 2 节） | MongoDB `chatSession`（**本地场景持久化、不自动删除，无 TTL 索引、实体无 status 字段**，见 8.4 节） |
 | 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；流式对话、历史消息、停止生成均以此为准（见第 3 节） | MongoDB `chatMessage` |
 
 > 约定：**会话管理类接口（第 2 节）一律使用 `sessionId`；聊天 / 流式 / 历史类接口（第 3 节）一律使用 `conversationId`**。两者不可互相替换。
@@ -469,6 +469,7 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 6. **字段命名与标识一致性（中）**：非流式统一 `message` 与 `Result{code,message,data}`；`sessionId`（会话，第 2 节）与 `conversationId`（对话，第 3 节）是不同概念、不可混用，后端实现须与前端 `src/api/*.js` 严格对齐（前端当前 `session.js` 仍用 `conversationId` 作路径参数，须后续统一为 `sessionId`，见 1.6）。
 7. **RAG 导入幂等（低）**：`/api/rag/import` 靠文档标识去重，重复调用安全；无需也不引入幂等键机制。
 8. **会话持久化、不自动删除（低·已确认）**：本地场景 `chatSession` **不启用 TTL**，无 `expireAt` 字段、无 `ttl_expire_at` 索引（与之对应，`aiAnalysis` 的 DAILY 仍保留 1 天缓存 TTL）。`ChatSession` 实体与 `mongo-init.js` 已移除相关字段/索引，`sql/README.md` 索引表同步更新。
+9. **`ChatSession` 实体字段规范（低·已确认）**：按演示规范，`ChatSession` 不含 `status` 冗余字段（「关闭会话」为轻量业务操作，不靠状态位表达），字段为 `id / sessionId / userId / title / createTime / updateTime / creater / updater`。原 `idx_user_status` 复合索引改为 `idx_user`（userId 单字段）。
 
 ---
 

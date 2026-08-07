@@ -83,7 +83,7 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 | chatMessage | idx_conv_time | 复合索引 | 按会话查询消息 |
 | chatMessage | idx_user_time | 复合索引 | 按用户查询消息历史 |
 | chatSession | uk_session_id | 唯一索引 | 会话 ID（sessionId）唯一 |
-| chatSession | idx_user_status | 复合索引 | 查询用户活跃会话 |
+| chatSession | idx_user | 单字段索引 | 查询用户会话 |
 | aiAnalysis | idx_user_type_time | 复合索引 | 按用户和类型查询 |
 | aiAnalysis | idx_user_record_date | 复合索引 | 每日评价按日期查询 |
 | aiAnalysis | ttl_expire_at | TTL 索引 (sparse) | DAILY 1天缓存过期，WEEKLY/MONTHLY/CUSTOM 永不过期 |

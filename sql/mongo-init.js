@@ -151,10 +151,11 @@ db.habit_knowledge.insertMany([
 db.chatMessage.createIndex({ conversationId: 1, createTime: 1 }, { name: "idx_conv_time" });
 db.chatMessage.createIndex({ userId: 1, createTime: 1 }, { name: "idx_user_time" });
 
-// 4.2 chatSession —— 会话 ID 唯一 / 查询用户活跃会话
-//    说明：本地场景会话持久化、不自动删除，故不建 TTL 过期索引（无 expireAt 字段）。
+// 4.2 chatSession —— 会话 ID 唯一 / 查询用户会话
+//    说明：本地场景会话持久化、不自动删除，故不建 TTL 过期索引（无 expireAt 字段）；
+//          实体无 status 字段，故复合索引改为 userId 单字段索引 idx_user。
 db.chatSession.createIndex({ sessionId: 1 }, { name: "uk_session_id", unique: true });
-db.chatSession.createIndex({ userId: 1, status: 1 }, { name: "idx_user_status" });
+db.chatSession.createIndex({ userId: 1 }, { name: "idx_user" });
 
 // 4.3 aiAnalysis —— 按用户和类型查询 / 每日评价按日期查询 / DAILY 1 天缓存（sparse TTL）
 db.aiAnalysis.createIndex({ userId: 1, type: 1, createTime: 1 }, { name: "idx_user_type_time" });

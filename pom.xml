@@ -98,6 +98,11 @@
             <groupId>org.springframework.ai</groupId>
             <artifactId>spring-ai-starter-vector-store-mongodb-atlas</artifactId>
         </dependency>
+        <!-- Spring AI 2.0 RAG 检索增强（RetrievalAugmentationAdvisor / VectorStoreDocumentRetriever） -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-rag</artifactId>
+        </dependency>
         <!-- MongoDB 数据访问（会话/消息/记忆存储） -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

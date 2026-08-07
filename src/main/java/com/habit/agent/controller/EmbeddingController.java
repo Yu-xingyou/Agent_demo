@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 知识库向量写入接口（RAG 数据入库）。
  *
  * <p>将健康生活科普文本批量写入 MongoDB Atlas 向量库（集合 {@code habit_knowledge}），
- * 供 {@code QuestionAnswerAdvisor} 在对话时做语义检索增强。</p>
+ * 供 {@code RetrievalAugmentationAdvisor}（Spring AI 2.0 RAG）在对话时做语义检索增强。</p>
  *
  * <p>说明：向量索引（{@code habit_knowledge_vector_index}）由 mongo-init 脚本创建，
  * 本项目 {@code initialize-schema=false} 不自动建索引，故此处仅负责写入文档。</p>

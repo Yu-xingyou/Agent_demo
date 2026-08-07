@@ -10,9 +10,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.AssistantMessage;
+import org.springframework.ai.rag.advisor.RetrievalAugmentationAdvisor;
+import org.springframework.ai.rag.retrieval.search.VectorStoreDocumentRetriever;
 import org.springframework.ai.vectorstore.SearchRequest;
 import org.springframework.ai.vectorstore.VectorStore;
-import org.springframework.ai.chat.client.advisor.vectorstore.QuestionAnswerAdvisor;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
@@ -69,10 +70,14 @@ public class ChatServiceImpl implements ChatService {
         StringBuilder outputBuilder = new StringBuilder();
 
         // RAG 知识检索增强：基于 MongoDB 向量库(habit_knowledge)做语义检索，融入上下文
-        QuestionAnswerAdvisor qaAdvisor = QuestionAnswerAdvisor.builder(this.vectorStore)
-                .searchRequest(SearchRequest.builder()
-                        .similarityThreshold(0.6d) // 相似度阈值，低于此分不纳入上下文
-                        .topK(6) // 最多取 6 条相关知识
+        // Spring AI 2.0 使用 RetrievalAugmentationAdvisor + VectorStoreDocumentRetriever
+        RetrievalAugmentationAdvisor qaAdvisor = RetrievalAugmentationAdvisor.builder()
+                .documentRetriever(VectorStoreDocumentRetriever.builder()
+                        .vectorStore(this.vectorStore)
+                        .searchRequest(SearchRequest.builder()
+                                .similarityThreshold(0.6d) // 相似度阈值，低于此分不纳入上下文
+                                .topK(6) // 最多取 6 条相关知识
+                                .build())
                         .build())
                 .build();
         // 中断补写的幂等标记：确保部分回答最多只落库一次

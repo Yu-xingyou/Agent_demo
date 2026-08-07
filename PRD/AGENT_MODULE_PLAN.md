@@ -473,4 +473,42 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 
 ---
 
+## 9. 前端落地计划（流式协议改造）
+
+> 目标：把流式对话契约从前一版错误的「Spring AI 具名事件（`meta`/`tool_call`/`chunk`/`done`/`error`）」纠正为第 1.4 / 3.2 节定义的**行式 `eventType` 协议（1001=内容分片 / 1002=结束）**，使「只回聊天记录本身」在前端彻底落地。后端本期无代码改动，仅以本文档约束。
+> 对应开发计划（plan 状态 `ready`）：`doc-sse-protocol` → `chatjs-parse` → `view-toolstatus` → `verify-build`。
+
+### 9.1 现状与不一致点
+- `frontend/src/api/chat.js` 的 `streamMessage` 仍按 Spring AI 具名事件解析：`parseSseEvent` 依赖 `event:` 行，分发走 `meta/tool_call/chunk/done/error` 五分支，顶部 JSDoc 仍描述 DashScope token 字段。
+- `frontend/src/views/AiChatView.vue` 仍存在 `toolStatus` 指示器（「工具调用中」加载态）、`onToolCall` 回调，以及 AI 回复底部的 Token 用量与耗时展示（`aiMsg.stats`），与「只回聊天记录、不回 token 统计」冲突。
+- 上述二者与本文档 1.4 / 3.2 / 8-5 已定义的 `eventType` 行式协议严重不一致，需补齐前端落地。
+
+### 9.2 改动清单
+
+#### 9.2.1 `frontend/src/api/chat.js`（解析与分发层）
+1. **解析层**：`parseSseEvent` 改为仅从 `data:` 行解析 JSON，取 `eventType` / `eventData` 字段（不再依赖 `event:` 行）；JSON 解析失败时跳过该事件，避免整条流中断。
+2. **分发层**：`eventType === 1001` → `onChunk({ content: eventData })`；`eventType === 1002` → `onDone()`；删除 `meta`/`tool_call`/`chunk`/`done`/`error` 具名分支，删除 `onToolCall` 回调参数。
+3. **会话 ID 透传**：`fetch` 解析后读取响应头 `X-Conversation-Id`（`res.headers.get('X-Conversation-Id')`），调用保留的 `onMeta(id)`（仅承载会话 ID，不进入事件流）。
+4. **错误处理**：真实协议无 `error` 事件，保留 HTTP 级错误（`res.ok` 校验 + `catch` → `onError`），不新增 SSE 错误事件。
+5. **注释**：更新顶部 JSDoc，移除 `tool_call` / token 统计相关描述，改为 `eventType` 1001/1002 语义。
+
+#### 9.2.2 `frontend/src/views/AiChatView.vue`（UI 清理层）
+1. 删除 `const toolStatus = ref('')` 及其全部读写：`onToolCall` 回调、`onChunk` 中清空、`onDone` 清空、`onError` 清空。
+2. 删除模板中 `toolStatus` 指示器（发送中加载态块内「工具调用中」文案与脉冲点）。
+3. 保留 `onMeta: (id) => { if (id) conversationId.value = id }`，仅将响应头的会话 ID 写入上下文。
+4. `onDone` 不再写 `aiMsg.stats`（token 统计），`stats` 保持 `null`，模板 `v-if="m.stats"` 自动隐藏；保留 `sending=false`、`abortController=null` 与首轮标题生成调用。
+5. 保留 `send` 函数首轮 `isFirstMessageRound` 逻辑与标题生成（依赖 `conversationId`），不受影响。
+
+### 9.3 关键决策（与 1.4 一致）
+- **会话 ID 走响应头而非新增事件**：事件流须纯净（只含聊天文本），`X-Conversation-Id` 是控制面信息，用响应头既满足需求又无需新增事件类型，且对 `onMeta` 调用方改动最小。
+- **不新增 SSE `error` 事件**：协议仅定义 1001/1002，错误走 HTTP 状态码，避免协议膨胀与两端不一致。
+- **复用而非重写**：保留现有 `fetch` / `ReadableStream` / 分帧缓冲（`buffer.split('\n\n')`）与 `AbortController` 中断逻辑，仅替换事件语义，降低回归风险。
+
+### 9.4 验证与收尾
+- 执行前用 code-explorer 二次核查 `frontend/src`（chat.js、AiChatView.vue、session.js 及其他引用 `toolStatus`/`onToolCall` 的组件），确保旧协议引用 100% 清除。
+- 前端构建 / lint 验证无报错。
+- 本文档 8-5 已明确「前端不得依赖任何统计字段」，本期改造后即满足；无需在文档层面新增约束。
+
+---
+
 *文档生成时间：2026-08-07 · 形态：接口开发文档（单体 Spring Boot 4 应用内 Agent 接口模块，契约以本项目代码与前端封装为准）*

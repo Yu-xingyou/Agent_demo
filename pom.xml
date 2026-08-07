@@ -73,6 +73,12 @@
             <artifactId>lombok</artifactId>
             <optional>true</optional>
         </dependency>
+        <!-- Hutool 通用工具（Bean 拷贝 / UUID / 随机抽取） -->
+        <dependency>
+            <groupId>cn.hutool</groupId>
+            <artifactId>hutool-all</artifactId>
+            <version>5.8.32</version>
+        </dependency>
 
         <!-- 测试 -->
         <dependency>

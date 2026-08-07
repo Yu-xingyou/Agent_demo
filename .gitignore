@@ -28,3 +28,16 @@ logs/
 # Frontend (Vue, in /frontend)
 frontend/node_modules/
 frontend/dist/
+
+# CodeBuddy IDE data
+.codebuddy/
+
+# Debug / temporary scratch files
+*.err
+chunk_merger.txt
+cm2.txt
+cp.txt
+cp_run.argfile
+ssr_probe.mjs
+test_pages.py
+rope.json

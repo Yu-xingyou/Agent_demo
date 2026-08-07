@@ -2,9 +2,10 @@
 # Spring Boot 4.1 + Spring AI 2.0.0 后端配置
 # 阶段：习惯养成聊天机器人 (Habit Agent)
 #
-# 双数据源策略：
+# 双数据源策略（已修复隔离）：
 #   1) 本地 MongoDB (localhost:27017) —— 聊天记忆 / 会话 / 分析任务等结构化数据
-#   2) 远端 MongoDB Atlas         —— 仅承载 RAG 向量库（依赖 Atlas $vectorSearch）
+#   2) 远端 MongoDB Atlas             —— 仅承载 RAG 向量库（依赖 Atlas $vectorSearch）
+# 两侧连接均由 MongoDataSourceConfig 显式装配，互不干扰。
 # ============================================================
 
 spring:
@@ -12,13 +13,19 @@ spring:
     active: local
   application:
     name: habit-agent
-  # 允许自定义 mongoTemplate(@Primary) 覆盖自动配置生成的同名 bean
+  # 允许自定义 bean 覆盖（兜底开关）。双数据源改造后自定义 bean 已不再与自动配置同名冲突，
+  # 此开关仅保留以防不可预期的回归，并非隔离实现所依赖。
   main:
     allow-bean-definition-overriding: true
 
   # ===== 双数据源 =====
   # 主库 = 本地 MongoDB（spring.mongodb.uri）：聊天记忆 / 会话 / 分析任务等结构化数据（localhost:27017）。
-  # 远端 Atlas = app.atlas.mongodb.uri：仅承载 RAG 向量库（habit_knowledge），由 AtlasVectorStoreConfig 单独连接。
+  #   由 MongoDataSourceConfig 显式装配 localMongoClient/mongoDatabaseFactory(@Primary)/mongoTemplate(@Primary)，
+  #   承载 chatSession / ai_chat_memory / ai_analysis_task，Mongo Repository 默认绑定此库。
+  # 远端 Atlas = app.atlas.mongodb.uri：仅承载 RAG 向量库（habit_knowledge 集合），
+  #   由 MongoDataSourceConfig 装配 atlasMongoClient/atlasMongoTemplate，供 MongoDBAtlasVectorStore 与 RAG 链路使用。
+  # 注：两个 MongoClient / Factory / Template 均由自定义配置类完全自建，绕开 SB4.1 MongoAutoConfiguration
+  #   的 @ConditionalOnMissingBean 退避陷阱（此前导致两库均指向 Atlas 的 bug）。
   # 注意：Spring Boot 4.1 已将 Mongo 连接属性前缀由 spring.data.mongodb 改为 spring.mongodb。
   mongodb:
     uri: ${MONGODB_URI:mongodb://localhost:27017/habit_agent}

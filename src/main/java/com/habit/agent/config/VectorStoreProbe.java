@@ -1,7 +1,6 @@
 package com.habit.agent.config;
 
 import java.util.List;
-import java.util.Map;
 
 import org.bson.Document;
 import org.springframework.ai.vectorstore.SearchRequest;
@@ -41,18 +40,17 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 public class VectorStoreProbe {
 
-    private final String configUri;
-
     public VectorStoreProbe(VectorStore vectorStore,
                             @Qualifier("atlasMongoTemplate") MongoTemplate mongoTemplate,
-                            @Qualifier("atlasMongoClient") MongoClient mongoClient,
+                            @Qualifier("atlasMongoClient") MongoClient atlasMongoClient,
+                            @Qualifier("localMongoClient") MongoClient localMongoClient,
                             Environment environment) {
-        // 向量库连接串实为远端 Atlas（app.atlas.mongodb.uri）；本地聊天库走 spring.mongodb.uri
-        this.configUri = environment.getProperty("app.atlas.mongodb.uri", "");
-
         dumpConfigSources(environment);
-        String realHost = dumpActualConnection(mongoClient, mongoTemplate);
-        probe(vectorStore, realHost);
+        // 同时打印本地聊天库与 Atlas 向量库的真实连接地址，直观验证双数据源隔离
+        String localHost = dumpActualConnection("本地聊天库", localMongoClient, mongoTemplate);
+        String atlasHost = dumpActualConnection("Atlas 向量库", atlasMongoClient, mongoTemplate);
+        log.info("[阶段八] 双数据源隔离：本地={}｜Atlas={}", localHost, atlasHost);
+        probe(vectorStore, atlasHost);
     }
 
     /** 打印 yml 最终值 + 环境变量 + 系统属性中所有 MongoDB 相关项。 */
@@ -83,7 +81,7 @@ public class VectorStoreProbe {
     }
 
     /** 从 MongoClient 底层 ClusterDescription 读取真实连接地址（唯一真相）。 */
-    private String dumpActualConnection(MongoClient mongoClient, MongoTemplate mongoTemplate) {
+    private String dumpActualConnection(String label, MongoClient mongoClient, MongoTemplate mongoTemplate) {
         try {
             ClusterDescription cluster = mongoClient.getClusterDescription();
             List<ServerDescription> servers = cluster.getServerDescriptions();
@@ -93,18 +91,18 @@ public class VectorStoreProbe {
                     if (sb.length() > 0) sb.append(", ");
                     sb.append(s.getAddress()).append("(").append(s.getType()).append(")");
                 }
-                log.info("[阶段八][真实连接] MongoClient cluster type={} 服务器=[{}]",
-                        cluster.getType(), sb);
+                log.info("[阶段八][真实连接] {}：cluster type={} 服务器=[{}]",
+                        label, cluster.getType(), sb);
                 return sb.toString();
             }
             // 尚未建立连接时 cluster 为空，用 isMaster 兜底
             Document isMaster = mongoTemplate.getDb().runCommand(new Document("isMaster", 1));
             String me = isMaster.getString("me");
             String primary = isMaster.getString("primary");
-            log.info("[阶段八][真实连接] isMaster.me={} isMaster.primary={}", me, primary);
+            log.info("[阶段八][真实连接] {}：isMaster.me={} isMaster.primary={}", label, me, primary);
             return (me != null ? me : primary);
         } catch (Exception e) {
-            log.info("[阶段八][真实连接] 读取真实连接地址失败：{}", e.getMessage());
+            log.info("[阶段八][真实连接] {}：读取真实连接地址失败：{}", label, e.getMessage());
             return "unknown";
         }
     }

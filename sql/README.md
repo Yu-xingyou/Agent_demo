@@ -82,7 +82,7 @@ load("d:/javacode/agent_demo/sql/mongo-init.js")
 |---|---|---|---|
 | chatMessage | idx_conv_time | 复合索引 | 按会话查询消息 |
 | chatMessage | idx_user_time | 复合索引 | 按用户查询消息历史 |
-| chatSession | uk_conversation_id | 唯一索引 | 会话 ID 唯一 |
+| chatSession | uk_session_id | 唯一索引 | 会话 ID（sessionId）唯一 |
 | chatSession | idx_user_status | 复合索引 | 查询用户活跃会话 |
 | chatSession | ttl_expire_at | TTL 索引 | 7 天自动过期 |
 | aiAnalysis | idx_user_type_time | 复合索引 | 按用户和类型查询 |

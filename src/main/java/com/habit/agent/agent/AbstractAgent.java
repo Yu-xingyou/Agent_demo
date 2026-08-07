@@ -68,6 +68,7 @@ public abstract class AbstractAgent implements Agent {
     @Override
     public String process(String question, String sessionId) {
         var userId = AgentConstants.DEFAULT_USER_ID;
+        // requestId 仅作内部链路追踪使用，非幂等键，不参与任何请求级去重
         var requestId = generateRequestId();
 
         // 更新会话标题（首条消息触发）
@@ -81,10 +82,11 @@ public abstract class AbstractAgent implements Agent {
     @Override
     public Flux<ChatEventVO> processStream(String question, String sessionId) {
         var userId = AgentConstants.DEFAULT_USER_ID;
+        // requestId 仅作内部链路追踪使用，非幂等键，不参与任何请求级去重
         var requestId = generateRequestId();
         StringBuilder outputBuilder = new StringBuilder();
         String conversationId = ChatService.getConversationId(sessionId);
-        // 中断补写的幂等标记：确保部分回答最多只落库一次（cancel 与截断可能同时触发）
+        // 请求内幂等标记：确保部分回答最多只落库一次（cancel 与截断可能同时触发）
         var saved = new java.util.concurrent.atomic.AtomicBoolean(false);
 
         // 更新会话标题（首条消息触发）
@@ -169,7 +171,7 @@ public abstract class AbstractAgent implements Agent {
      * 构建参数事件（如工具调用结果），默认返回 null（本期不返回 PARAM）。
      * 子类可按需覆写以返回 {@link ChatEventTypeEnum#PARAM} 事件。
      *
-     * @param requestId 请求标识
+     * @param requestId 请求标识符（仅链路追踪，非幂等键）
      * @return 参数事件，或 null
      */
     protected ChatEventVO buildParamEvent(String requestId) {

@@ -47,7 +47,7 @@ data:{"eventData":"","eventType":1001}
 
 data:{"eventType":1002}
 ```
-- 新对话的 `conversationId` 由后端在**流式响应头** `X-Conversation-Id` 下发（控制面信息，不进入事件流，满足「只回聊天记录」），前端据此写入会话上下文。
+- 新会话的 `sessionId` 由后端在**流式响应头** `X-Session-Id` 下发（控制面信息，不进入事件流，满足「只回聊天记录」），前端据此写入会话上下文。
 - 错误处理：不走 SSE 事件，直接以 HTTP 状态码表达（前端对 `res.ok` 校验 + `catch` 处理）。
 
 ### 1.5 认证
@@ -59,15 +59,15 @@ data:{"eventType":1002}
 | 概念 | 标识 | 说明 | 对应存储 |
 |---|---|---|---|
 | 会话（Session） | `sessionId` | 用户与助手之间的一段持续交互上下文；一个会话可包含多轮对话，支持列表 / 重命名 / 关闭 / 删除（见第 2 节） | MongoDB `chatSession`（**本地场景持久化、不自动删除，无 TTL 索引、实体无 status 字段**，见 8.4 节） |
-| 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；流式对话、历史消息、停止生成均以此为准（见第 3 节） | MongoDB `chatMessage` |
+| 对话（Conversation） | `conversationId` | 一次具体的问答线程 / 消息流；历史消息、停止生成等对话内操作以此为准（见第 3 节 stop/history 子接口） | MongoDB `chatMessage` |
 
-> 约定：**会话管理类接口（第 2 节）一律使用 `sessionId`；聊天 / 流式 / 历史类接口（第 3 节）一律使用 `conversationId`**。两者不可互相替换。
+> 约定：**会话管理类接口（第 2 节）与流式聊天类接口（第 3 节）统一使用 `sessionId`**（与 `ChatSession.sessionId` 及外部参考实现一致）；历史 / 停止等对话内操作沿用 `conversationId`。本期流式主链路已对齐示例采用 `sessionId`。
 
 ---
 
 ## 2. 会话接口（`/api/sessions`）
 
-> 对应前端 `src/api/session.js`。本接口管理「会话」，统一使用 `sessionId`（与第 3 节的 `conversationId` 是不同概念，见 1.6）。
+> 对应前端 `src/api/session.js`。本接口管理「会话」，统一使用 `sessionId`（与 `ChatSession.sessionId` 及第 3 节流式对话一致，见 1.6）。
 
 ### 2.1 会话列表
 `GET /api/sessions`
@@ -159,21 +159,21 @@ curl -X DELETE "http://localhost:8080/api/sessions/f1dbf6ca0ed34eeda02ec0d0545a4
 
 ## 3. 聊天接口（`/api/chat`）
 
-> 对应前端 `src/api/chat.js`。用户消息字段命名为 `message`，对话标识命名为 `conversationId`（对应「对话」，见 1.6；非外部模板的 `question`）。
+> 对应前端 `src/api/chat.js`。用户消息字段命名为 `message`，会话标识命名为 `sessionId`（对齐外部参考实现与 `ChatSession.sessionId`，见 1.6）。
 
 ### 3.1 发送消息（非流式）
 `POST /api/chat`
 
 **请求体**
 ```json
-{ "message": "帮我记录今天23点睡觉、喝了2升水", "conversationId": "f1dbf6ca0ed34eeda02ec0d0545a4429" }
+{ "message": "帮我记录今天23点睡觉、喝了2升水", "sessionId": "f1dbf6ca0ed34eeda02ec0d0545a4429" }
 ```
 - `message`：用户消息（必填）。
-- `conversationId`：对话 ID（可选，不传则新建对话）。
+- `sessionId`：会话 ID（可选，不传则新建会话）。
 
 **返回示例**
 ```json
-{ "code": 200, "message": "success", "data": { "conversationId": "f1dbf6ca0ed34eeda02ec0d0545a4429", "content": "已为您记录：23:00 入睡、饮水 2000 毫升。" } }
+{ "code": 200, "message": "success", "data": { "sessionId": "f1dbf6ca0ed34eeda02ec0d0545a4429", "content": "已为您记录：23:00 入睡、饮水 2000 毫升。" } }
 ```
 
 **调用实例**
@@ -187,20 +187,20 @@ curl -X POST "http://localhost:8080/api/chat" \
 ---
 
 ### 3.2 流式对话（核心，SSE）
-`POST /api/chat`，请求体为 `ChatMessageDTO`（`message` + `conversationId`），响应 `text/event-stream` 流式 `Flux<ChatEventVO>`（不被 `Result` 包裹，等价于 `@NoWrapper`）。
+`POST /api/chat`，请求体为 `ChatMessageDTO`（`message` + `sessionId`），响应 `text/event-stream` 流式 `Flux<ChatEventVO>`（不被 `Result` 包裹，等价于 `@NoWrapper`）。
 
 **请求体（application/json）**
 ```json
 {
   "message": "帮我记录我今天 23 点睡觉",
-  "conversationId": "c8f0e1a2-3b4d-4e5f"
+  "sessionId": "c8f0e1a2-3b4d-4e5f"
 }
 ```
 
 | 字段 | 类型 | 必选 | 说明 |
 |---|---|---|---|
 | message | string | 是 | 用户消息 |
-| conversationId | string | 否 | 对话 ID，不传则新建 |
+| sessionId | string | 否 | 会话 ID，不传则新建 |
 
 **响应**：SSE 流，协议见 1.4。示例流（每行一个 JSON，事件之间空行分隔）：
 ```
@@ -210,7 +210,7 @@ data:{"eventData":"","eventType":1001}
 
 data:{"eventType":1002}
 ```
-（新对话的 `conversationId` 通过响应头 `X-Conversation-Id` 下发，见 1.4。）
+（新会话的 `sessionId` 通过响应头 `X-Session-Id` 下发，见 1.4。）
 
 **调用实例**
 ```bash
@@ -218,7 +218,7 @@ curl -N -X POST "http://localhost:8080/api/chat" \
   -H "Content-Type: application/json" \
   -d '{"message":"帮我记录我今天 23 点睡觉"}'
 ```
-**实现备注**：`ChatController.chat(@RequestBody ChatMessageDTO)` → `ChatService.chat(message, conversationId)`；`USER`/`ASSISTANT` 消息落库（MongoDB `chat_message`）；意图经 `RouterAgent` 结构化分类，子智能体复用现有 `HabitService` 等（Spring AI Tool 适配器）；`KNOWLEDGE_QA` 走 RAG 向量检索（见第 4 节）。本期已实现主链路（请求→流式回答），落库/路由/RAG 为后续扩展。
+**实现备注**：`ChatController.chat(@RequestBody ChatMessageDTO)` → `ChatService.chat(message, sessionId)`；`USER`/`ASSISTANT` 消息落库（MongoDB `chat_message`）；意图经 `RouterAgent` 结构化分类，子智能体复用现有 `HabitService` 等（Spring AI Tool 适配器）；`KNOWLEDGE_QA` 走 RAG 向量检索（见第 4 节）。本期已实现主链路（请求→流式回答），落库/路由/RAG 为后续扩展。
 
 ---
 
@@ -474,7 +474,7 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 3. **MongoDB Atlas Vector Search 配置（中）**：`MongoVectorStore` 需正确配置 search index，否则检索失败。
 4. **SSE 缓冲（低）**：须逐片 `flush` 且 Vite 代理去缓冲，否则前端收不到实时分片。
 5. **流式仅回聊天内容（低）**：SSE 只发 `eventType:1001`（内容）/ `1002`（结束），不含 token 统计；前端不得依赖任何统计字段。
-6. **字段命名与标识一致性（中）**：非流式统一 `message` 与 `Result{code,message,data}`；`sessionId`（会话，第 2 节）与 `conversationId`（对话，第 3 节）是不同概念、不可混用，后端实现须与前端 `src/api/*.js` 严格对齐（前端当前 `session.js` 仍用 `conversationId` 作路径参数，须后续统一为 `sessionId`，见 1.6）。
+6. **字段命名与标识一致性（中）**：非流式统一 `message` 与 `Result{code,message,data}`；流式主链路与第 2 节会话接口统一使用 `sessionId`（对齐外部参考实现与 `ChatSession.sessionId`），历史/停止等对话内操作沿用 `conversationId`；后端实现须与前端 `src/api/*.js` 严格对齐（前端当前 `session.js` 仍用 `conversationId` 作路径参数，须后续统一，见 1.6）。
 7. **RAG 导入幂等（低）**：`/api/rag/import` 靠文档标识去重，重复调用安全；无需也不引入幂等键机制。
 8. **会话持久化、不自动删除（低·已确认）**：本地场景 `chatSession` **不启用 TTL**，无 `expireAt` 字段、无 `ttl_expire_at` 索引（与之对应，`aiAnalysis` 的 DAILY 仍保留 1 天缓存 TTL）。`ChatSession` 实体与 `mongo-init.js` 已移除相关字段/索引，`sql/README.md` 索引表同步更新。
 9. **`ChatSession` 实体字段规范（低·已确认）**：按演示规范，`ChatSession` 不含 `status` 冗余字段（「关闭会话」为轻量业务操作，不靠状态位表达），字段为 `id / sessionId / userId / title / createTime / updateTime / creater / updater`。原 `idx_user_status` 复合索引改为 `idx_user`（userId 单字段）。
@@ -496,19 +496,19 @@ curl "http://localhost:8080/api/ai-analysis/latest"
 #### 9.2.1 `frontend/src/api/chat.js`（解析与分发层）
 1. **解析层**：`parseSseEvent` 改为仅从 `data:` 行解析 JSON，取 `eventType` / `eventData` 字段（不再依赖 `event:` 行）；JSON 解析失败时跳过该事件，避免整条流中断。
 2. **分发层**：`eventType === 1001` → `onChunk({ content: eventData })`；`eventType === 1002` → `onDone()`；删除 `meta`/`tool_call`/`chunk`/`done`/`error` 具名分支，删除 `onToolCall` 回调参数。
-3. **会话 ID 透传**：`fetch` 解析后读取响应头 `X-Conversation-Id`（`res.headers.get('X-Conversation-Id')`），调用保留的 `onMeta(id)`（仅承载会话 ID，不进入事件流）。
+3. **会话 ID 透传**：`fetch` 解析后读取响应头 `X-Session-Id`（`res.headers.get('X-Session-Id')`），调用保留的 `onMeta(id)`（仅承载会话 ID，不进入事件流）。
 4. **错误处理**：真实协议无 `error` 事件，保留 HTTP 级错误（`res.ok` 校验 + `catch` → `onError`），不新增 SSE 错误事件。
 5. **注释**：更新顶部 JSDoc，移除 `tool_call` / token 统计相关描述，改为 `eventType` 1001/1002 语义。
 
 #### 9.2.2 `frontend/src/views/AiChatView.vue`（UI 清理层）
 1. 删除 `const toolStatus = ref('')` 及其全部读写：`onToolCall` 回调、`onChunk` 中清空、`onDone` 清空、`onError` 清空。
 2. 删除模板中 `toolStatus` 指示器（发送中加载态块内「工具调用中」文案与脉冲点）。
-3. 保留 `onMeta: (id) => { if (id) conversationId.value = id }`，仅将响应头的会话 ID 写入上下文。
+3. 保留 `onMeta: (id) => { if (id) sessionId.value = id }`，仅将响应头的会话 ID 写入上下文。
 4. `onDone` 不再写 `aiMsg.stats`（token 统计），`stats` 保持 `null`，模板 `v-if="m.stats"` 自动隐藏；保留 `sending=false`、`abortController=null` 与首轮标题生成调用。
-5. 保留 `send` 函数首轮 `isFirstMessageRound` 逻辑与标题生成（依赖 `conversationId`），不受影响。
+5. 保留 `send` 函数首轮 `isFirstMessageRound` 逻辑与标题生成（依赖 `sessionId`），不受影响。
 
 ### 9.3 关键决策（与 1.4 一致）
-- **会话 ID 走响应头而非新增事件**：事件流须纯净（只含聊天文本），`X-Conversation-Id` 是控制面信息，用响应头既满足需求又无需新增事件类型，且对 `onMeta` 调用方改动最小。
+- **会话 ID 走响应头而非新增事件**：事件流须纯净（只含聊天文本），`X-Session-Id` 是控制面信息，用响应头既满足需求又无需新增事件类型，且对 `onMeta` 调用方改动最小。
 - **不新增 SSE `error` 事件**：协议仅定义 1001/1002，错误走 HTTP 状态码，避免协议膨胀与两端不一致。
 - **复用而非重写**：保留现有 `fetch` / `ReadableStream` / 分帧缓冲（`buffer.split('\n\n')`）与 `AbortController` 中断逻辑，仅替换事件语义，降低回归风险。
 

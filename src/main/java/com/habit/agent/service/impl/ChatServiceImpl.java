@@ -12,7 +12,7 @@ import reactor.core.publisher.Flux;
 /**
  * 流式对话服务实现（Spring AI 2.0）。
  *
- * <p>参照 1.0 参考代码思路，适配本项目：使用 PRD 3.2 的入参（message / conversationId），
+ * <p>参照 1.0 参考代码思路，适配本项目：使用 PRD 3.2 的入参（message / sessionId），
  * 通过 {@link ChatClient} 流式拉取大模型输出，逐分片封装为 {@code 1001} 数据事件，
  * 结束时发送 {@code 1002} 停止事件。</p>
  *
@@ -27,7 +27,7 @@ public class ChatServiceImpl implements ChatService {
     private final ChatClient chatClient;
 
     @Override
-    public Flux<ChatEventVO> chat(String message, String conversationId) {
+    public Flux<ChatEventVO> chat(String message, String sessionId) {
         // Spring AI 2.0：stream().content() 返回逐 token 的 Flux<String>
         return chatClient.prompt()
                 .user(message)

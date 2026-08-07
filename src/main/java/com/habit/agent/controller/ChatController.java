@@ -32,28 +32,28 @@ import java.util.UUID;
 @Tag(name = "流式对话", description = "Agent 流式问答（SSE，eventType 行式协议）")
 public class ChatController {
 
-    /** 会话 ID 响应头名（PRD 1.4） */
-    private static final String HEADER_CONVERSATION_ID = "X-Conversation-Id";
+    /** 会话 ID 响应头名 */
+    private static final String HEADER_SESSION_ID = "X-Session-Id";
 
     private final ChatService chatService;
 
     /**
      * POST /api/chat — 流式对话
      *
-     * @param chatDTO 请求体（message + conversationId）
+     * @param chatDTO 请求体（message + sessionId）
      */
     @Operation(summary = "流式对话", description = "以 SSE 流式返回 Agent 回答，会话 ID 经 X-Conversation-Id 响应头下发")
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public ResponseEntity<Flux<ChatEventVO>> chat(@RequestBody ChatMessageDTO chatDTO) {
         // 首轮无会话 ID 时生成，并通过响应头下发（控制面信息，不污染事件流）
-        String conversationId = (chatDTO.getConversationId() == null || chatDTO.getConversationId().isBlank())
+        String sessionId = (chatDTO.getSessionId() == null || chatDTO.getSessionId().isBlank())
                 ? UUID.randomUUID().toString()
-                : chatDTO.getConversationId();
+                : chatDTO.getSessionId();
 
         HttpHeaders headers = new HttpHeaders();
-        headers.add(HEADER_CONVERSATION_ID, conversationId);
+        headers.add(HEADER_SESSION_ID, sessionId);
 
-        Flux<ChatEventVO> events = chatService.chat(chatDTO.getMessage(), conversationId);
+        Flux<ChatEventVO> events = chatService.chat(chatDTO.getMessage(), sessionId);
         return ResponseEntity.ok()
                 .headers(headers)
                 .contentType(MediaType.TEXT_EVENT_STREAM)

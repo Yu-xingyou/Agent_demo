@@ -14,9 +14,9 @@ public interface ChatService {
     /**
      * 流式聊天。
      *
-     * @param message        用户问题
-     * @param conversationId 会话 ID（可为空，由调用方处理）
+     * @param message    用户问题
+     * @param sessionId 会话 ID（可为空，由调用方处理）
      * @return 流式回答事件（DATA 分片 + STOP 结束）
      */
-    Flux<ChatEventVO> chat(String message, String conversationId);
+    Flux<ChatEventVO> chat(String message, String sessionId);
 }

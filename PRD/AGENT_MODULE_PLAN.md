@@ -29,7 +29,7 @@ http://localhost:8080
 - `message`：提示信息，成功时固定为 `"success"`。
 - `data`：业务数据，结构见各接口；无数据时省略或为 `null`。
 
-> 说明：本项目的"幂等"仅出现在 RAG 导入接口的设计属性上（`/api/rag/import` 重复调用不会重复膨胀，靠文档标识去重，而非请求级幂等键）。代码中虽生成 `requestId` 且仅作内部链路追踪（传给 advisor/toolContext 扩展点），**不用于任何请求级去重**，也未引入 `Idempotency-Key` 请求头。跨请求防重由前端"生成中禁用发送"及 RAG 文档标识去重兜底，故本项目不启用幂等键机制。
+> 说明：本项目的"幂等"仅出现在 RAG 导入接口的设计属性上（`/api/rag/import` 重复调用不会重复膨胀，靠文档标识去重，而非请求级幂等键）。代码层面**不生成、不传递任何 `requestId` / `Idempotency-Key`**，也未引入去重请求头。跨请求防重由前端"生成中禁用发送"及 RAG 文档标识去重兜底，故本项目不启用幂等键机制。
 
 ### 1.4 流式响应协议（SSE）
 `GET /api/chat/stream` 采用 **SSE（`text/event-stream`）**，**每行是一个 JSON**，靠 `eventType` / `eventData` 两个字段区分事件；**只回聊天内容本身，不回工具调用过程、不回 token 统计等附加信息**。

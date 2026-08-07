@@ -1,6 +1,5 @@
 package com.habit.agent.agent;
 
-import cn.hutool.core.util.IdUtil;
 import cn.hutool.core.util.StrUtil;
 import com.habit.agent.common.constant.AgentConstants;
 import com.habit.agent.config.SystemPromptConfig;
@@ -68,13 +67,11 @@ public abstract class AbstractAgent implements Agent {
     @Override
     public String process(String question, String sessionId) {
         var userId = AgentConstants.DEFAULT_USER_ID;
-        // requestId 仅作内部链路追踪使用，非幂等键，不参与任何请求级去重
-        var requestId = generateRequestId();
 
         // 更新会话标题（首条消息触发）
         this.chatSessionService.update(sessionId, question, userId);
 
-        return getChatClientRequest(sessionId, requestId, question)
+        return getChatClientRequest(sessionId, question)
                 .call()
                 .content();
     }
@@ -82,8 +79,6 @@ public abstract class AbstractAgent implements Agent {
     @Override
     public Flux<ChatEventVO> processStream(String question, String sessionId) {
         var userId = AgentConstants.DEFAULT_USER_ID;
-        // requestId 仅作内部链路追踪使用，非幂等键，不参与任何请求级去重
-        var requestId = generateRequestId();
         StringBuilder outputBuilder = new StringBuilder();
         String conversationId = ChatService.getConversationId(sessionId);
         // 请求内幂等标记：确保部分回答最多只落库一次（cancel 与截断可能同时触发）
@@ -92,7 +87,7 @@ public abstract class AbstractAgent implements Agent {
         // 更新会话标题（首条消息触发）
         this.chatSessionService.update(sessionId, question, userId);
 
-        return getChatClientRequest(sessionId, requestId, question)
+        return getChatClientRequest(sessionId, question)
                 .stream()
                 .chatResponse()
                 .doFirst(() -> GENERATE_STATUS.put(sessionId, true)) // 首次输出内容时执行
@@ -121,7 +116,7 @@ public abstract class AbstractAgent implements Agent {
                 })
                 .concatWith(Flux.defer(() -> {
                     // 允许具体 Agent 追加参数事件（如工具调用结果）；默认仅结束事件
-                    ChatEventVO paramEvent = buildParamEvent(requestId);
+                    ChatEventVO paramEvent = buildParamEvent();
                     if (paramEvent != null) {
                         return Flux.just(paramEvent, STOP_EVENT);
                     }
@@ -133,16 +128,16 @@ public abstract class AbstractAgent implements Agent {
      * 构建统一的 ChatClient 请求（系统提示词 + advisor + tools + toolContext + user）。
      * 子类共享此方法，保证各 Agent 行为一致。
      */
-    protected ChatClient.ChatClientRequestSpec getChatClientRequest(String sessionId, String requestId, String question) {
+    protected ChatClient.ChatClientRequestSpec getChatClientRequest(String sessionId, String question) {
         return this.chatClient.prompt()
                 .system(promptSystem -> promptSystem
                         .text(this.systemMessage())
                         .params(this.systemMessageParams()))
                 .advisors(advisor -> advisor
                         .advisors(this.advisors())
-                        .params(this.advisorParams(sessionId, requestId)))
+                        .params(this.advisorParams(sessionId)))
                 .tools(this.tools())
-                .toolContext(this.toolContext(sessionId, requestId))
+                .toolContext(this.toolContext(sessionId))
                 .user(question);
     }
 
@@ -171,19 +166,14 @@ public abstract class AbstractAgent implements Agent {
      * 构建参数事件（如工具调用结果），默认返回 null（本期不返回 PARAM）。
      * 子类可按需覆写以返回 {@link ChatEventTypeEnum#PARAM} 事件。
      *
-     * @param requestId 请求标识符（仅链路追踪，非幂等键）
      * @return 参数事件，或 null
      */
-    protected ChatEventVO buildParamEvent(String requestId) {
+    protected ChatEventVO buildParamEvent() {
         return null;
     }
 
-    private String generateRequestId() {
-        return IdUtil.fastSimpleUUID();
-    }
-
     @Override
-    public Map<String, Object> advisorParams(String sessionId, String requestId) {
+    public Map<String, Object> advisorParams(String sessionId) {
         var conversationId = ChatService.getConversationId(sessionId);
         return Map.of(ChatMemory.CONVERSATION_ID, conversationId);
     }

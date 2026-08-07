@@ -72,10 +72,9 @@ public interface Agent {
      * 创建并返回一个工具上下文的空 Map 对象。
      *
      * @param sessionId 会话标识符
-     * @param requestId 请求标识符（仅链路追踪，非幂等键，不参与请求去重）
      * @return 默认返回一个空的 Map 对象，子类可以覆盖重写该方法以返回自定义的工具上下文。
      */
-    default Map<String, Object> toolContext(String sessionId, String requestId) {
+    default Map<String, Object> toolContext(String sessionId) {
         return Map.of();
     }
 
@@ -90,10 +89,9 @@ public interface Agent {
      * 创建并返回一个 Advisor 参数 Map 对象。
      *
      * @param sessionId 会话标识符
-     * @param requestId 请求标识符（仅链路追踪，非幂等键，不参与请求去重）
      * @return 默认返回一个空的 Map 对象
      */
-    default Map<String, Object> advisorParams(String sessionId, String requestId) {
+    default Map<String, Object> advisorParams(String sessionId) {
         return Map.of();
     }
 

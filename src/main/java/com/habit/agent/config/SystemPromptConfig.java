@@ -26,8 +26,11 @@ public class SystemPromptConfig {
 
     private final AIProperties aiProperties;
 
-    /** 线程安全的系统提示词引用 */
+    /** 线程安全的系统提示词引用（健康习惯助手） */
     private final AtomicReference<String> chatSystemMessage = new AtomicReference<>();
+
+    /** 线程安全的路由智能体系统提示词引用 */
+    private final AtomicReference<String> routeAgentSystemMessage = new AtomicReference<>();
 
     @PostConstruct
     public void init() {
@@ -38,9 +41,24 @@ public class SystemPromptConfig {
         }
         chatSystemMessage.set(text);
         log.info("系统提示词加载完成，长度={} 字符", text.length());
+
+        String routeText = aiProperties.getSystem().getRouteAgent().getText();
+        if (routeText == null || routeText.isBlank()) {
+            log.warn("路由智能体提示词 habit.ai.prompt.system.route-agent.text 为空，将使用内置默认提示词");
+            routeText = DEFAULT_ROUTE_AGENT_PROMPT;
+        }
+        routeAgentSystemMessage.set(routeText);
+        log.info("路由智能体提示词加载完成，长度={} 字符", routeText.length());
     }
 
     /** 内置兜底提示词（当 yml 未配置时使用） */
     private static final String DEFAULT_SYSTEM_PROMPT =
             "你是健康习惯管理助手，帮助用户培养并追踪健康生活习惯。";
+
+    /** 内置兜底路由智能体提示词（当 yml 未配置时使用） */
+    private static final String DEFAULT_ROUTE_AGENT_PROMPT =
+            "你是生活习惯助手的路由智能体。请判断用户意图，并将其归类为以下之一：" +
+            "SLEEP（睡眠建议）、DIET（饮食建议）、EXERCISE（运动建议）、" +
+            "CHECKIN（习惯打卡）、KNOWLEDGE（健康知识讲解）、HEALTH（通用健康习惯）。" +
+            "仅输出对应的类型名称，不要输出多余解释。";
 }

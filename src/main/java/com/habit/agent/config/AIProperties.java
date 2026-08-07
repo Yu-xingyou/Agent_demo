@@ -25,6 +25,9 @@ public class AIProperties {
         /** 对话（chat）系统提示语 */
         private Chat chat;
 
+        /** 路由（route-agent）智能体系统提示语 */
+        private Chat routeAgent;
+
         @Data
         public static class Chat {
             /** 系统提示词文本（身份：健康习惯管理助手） */

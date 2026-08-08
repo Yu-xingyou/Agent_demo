@@ -17,7 +17,7 @@ import java.util.Map;
  * AI 智能分析接口（对齐前端 aiAnalysis.js）
  */
 @RestController
-@RequestMapping("/ai-analysis")
+@RequestMapping("/api/ai-analysis")
 @RequiredArgsConstructor
 public class AiAnalysisController {
 

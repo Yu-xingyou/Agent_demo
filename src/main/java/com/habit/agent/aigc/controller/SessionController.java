@@ -19,7 +19,7 @@ import java.util.List;
  * 会话接口（扩展列表/删除）
  */
 @RestController
-@RequestMapping("/session")
+@RequestMapping("/api/session")
 @RequiredArgsConstructor
 public class SessionController {
 

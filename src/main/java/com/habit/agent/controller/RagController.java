@@ -19,7 +19,7 @@ import java.util.Map;
  * 知识库接口（RAG，远程 Atlas MongoDB 向量库，对齐前端 rag.js）
  */
 @RestController
-@RequestMapping("/rag")
+@RequestMapping("/api/rag")
 @RequiredArgsConstructor
 public class RagController {
 

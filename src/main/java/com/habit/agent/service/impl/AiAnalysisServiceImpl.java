@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.habit.agent.aigc.entity.mongo.AiAnalysisDoc;
 import com.habit.agent.aigc.repository.AiAnalysisRepository;
 import com.habit.agent.common.constant.AgentConstants;
+import com.habit.agent.common.util.LlmJsonParser;
 import com.habit.agent.common.vo.AchievementRateVO;
 import com.habit.agent.common.vo.RadarDataVO;
 import com.habit.agent.common.vo.TrendDataVO;
@@ -168,15 +169,29 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
             // 3. 调用 LLM 生成文本结论
             String llmJson = callModel(overview, trend, achievement, days);
 
-            // 4. 解析 LLM 输出并合并 charts
+            // 4. 解析 LLM 输出并合并 charts（四级容错解析，最大限度抢救文本）
             Map<String, Object> content = new LinkedHashMap<>();
-            JsonNode node = parseJson(llmJson);
+            LlmJsonParser.ParseResult result = LlmJsonParser.parse(llmJson);
+            JsonNode node = result.node();
+            logParseLevel(result, llmJson);
+
+            String dailyEvaluation = node.path("dailyEvaluation").asText("");
+            String trendSummary = node.path("trendSummary").asText("");
+            String riskWarning = node.path("riskWarning").asText("");
+            String suggestion = LlmJsonParser.normalizeSuggestion(node.path("suggestion"));
+            String report = node.path("report").asText("");
+            // report 兜底：缺失但其他字段已解析成功时，用点评+趋势+风险拼接成可读摘要，避免回填脏 JSON
+            if (report.isEmpty() && (!dailyEvaluation.isEmpty() || !trendSummary.isEmpty() || !riskWarning.isEmpty())) {
+                report = String.join("。", new String[]{dailyEvaluation, trendSummary, riskWarning})
+                        .replaceAll("。+", "。").trim();
+            }
+
             content.put("score", node.path("score").asInt(70));
-            content.put("dailyEvaluation", node.path("dailyEvaluation").asText("暂无点评"));
-            content.put("trendSummary", node.path("trendSummary").asText("暂无趋势总结"));
-            content.put("riskWarning", node.path("riskWarning").asText("暂无风险"));
-            content.put("suggestion", node.path("suggestion").asText(""));
-            content.put("report", node.path("report").asText(llmJson));
+            content.put("dailyEvaluation", dailyEvaluation.isEmpty() ? "暂无点评" : dailyEvaluation);
+            content.put("trendSummary", trendSummary.isEmpty() ? "暂无趋势总结" : trendSummary);
+            content.put("riskWarning", riskWarning.isEmpty() ? "暂无风险" : riskWarning);
+            content.put("suggestion", suggestion);
+            content.put("report", report);
             content.put("charts", charts);
 
             // 5. 落库
@@ -222,20 +237,22 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                 2. dailyEvaluation：今日点评（一句话）
                 3. trendSummary：近 %d 天趋势总结（睡眠/运动/饮水/心情的变化）
                 4. riskWarning：风险提示（如睡眠不足、运动缺失、饮水不足等，没有则写"暂无重大风险"）
-                5. suggestion：改进建议（3-5 条，每行一条，以换行分隔）
+                5. suggestion：改进建议（3-5 条），必须是 JSON 字符串数组，格式如 ["建议1","建议2","建议3"]
                 6. report：完整报告（300 字以内，自然语言段落）
 
                 要求：
-                - 严格输出 JSON，不要包含 markdown 代码块标记，不要输出 JSON 以外的内容
+                - 严格输出【单个合法 JSON 对象】，不要包含 markdown 代码块标记，不要输出 JSON 以外的内容
                 - 字段名必须为：score, dailyEvaluation, trendSummary, riskWarning, suggestion, report
-                - suggestion 用换行分隔多条
+                - suggestion 必须是 JSON 字符串数组（多条建议用 ["a","b"] 表示，而不是用换行分隔的单个字符串）
+                - 每个值都必须有对应的键名，绝对禁止出现没有键名的独立字符串（如 "a", "b" 平列在对象中）
+                - 请确保 JSON 语法合法，可被程序直接解析
 
                 用户数据：
                 %s
                 """.formatted(days, days, dataJson);
 
         return analysisChatClient.prompt()
-                .system("你只输出合法 JSON，不输出任何其他内容。")
+                .system("你只输出单个合法 JSON 对象，不输出任何其他内容；每个值都必须有对应的键名，禁止出现无键名的独立字符串。")
                 .user(prompt)
                 .call()
                 .content();
@@ -314,26 +331,21 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     /**
-     * 容错解析 LLM 输出的 JSON（剥离可能的 markdown 代码块）
+     * 按解析降级等级打印分级日志，原始输出统一截断至 500 字符，避免日志刷屏
      *
-     * @param text LLM 原始输出文本
-     * @return 解析得到的 JSON 节点；解析失败时返回空对象节点
+     * @param result  解析结果（含等级）
+     * @param rawText LLM 原始输出文本
      */
-    private JsonNode parseJson(String text) {
-        String cleaned = text == null ? "" : text.trim();
-        // 剥离 ```json ... ``` 包裹
-        if (cleaned.startsWith("```")) {
-            int firstNl = cleaned.indexOf('\n');
-            int lastFence = cleaned.lastIndexOf("```");
-            if (firstNl >= 0 && lastFence > firstNl) {
-                cleaned = cleaned.substring(firstNl + 1, lastFence).trim();
-            }
-        }
-        try {
-            return MAPPER.readTree(cleaned);
-        } catch (Exception e) {
-            log.warn("LLM 分析输出非合法 JSON，降级为空节点：{}", text);
-            return MAPPER.createObjectNode();
+    private void logParseLevel(LlmJsonParser.ParseResult result, String rawText) {
+        String preview = (rawText == null ? "" : rawText).length() > LlmJsonParser.LOG_TRUNCATE
+                ? (rawText.substring(0, LlmJsonParser.LOG_TRUNCATE) + "...(已截断)")
+                : (rawText == null ? "" : rawText);
+        switch (result.level()) {
+            case L1_DIRECT -> { /* 正常路径，静默 */ }
+            case L2_TRIMMED -> log.info("LLM 输出含前后缀，已截取 JSON 区间解析成功");
+            case L3_REPAIRED -> log.info("LLM 输出存在无键名平级裸字符串，已结构修复并解析成功");
+            case L4_REGEX -> log.warn("LLM 输出非合法 JSON，已通过正则逐字段抢救：{}", preview);
+            case FAILED -> log.error("LLM 输出无法解析，所有字段降级为空：{}", preview);
         }
     }
 

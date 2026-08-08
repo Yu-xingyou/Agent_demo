@@ -240,9 +240,13 @@ const scoreRing = computed(() => {
   return { color, dash: `${(s / 100) * 327} 327` }
 })
 
-const suggestionList = computed(() =>
-  (task.value?.suggestion || '').split('\n').map(s => s.trim()).filter(Boolean)
-)
+const suggestionList = computed(() => {
+  const v = task.value?.suggestion
+  if (Array.isArray(v)) {
+    return v.map(s => String(s).trim()).filter(Boolean)
+  }
+  return String(v || '').split('\n').map(s => s.trim()).filter(Boolean)
+})
 
 const hasTrend = computed(() => !!task.value?.charts?.trend)
 const hasAchievement = computed(() => !!task.value?.charts?.achievement)

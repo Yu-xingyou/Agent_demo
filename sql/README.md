@@ -1,5 +1,8 @@
 # 数据库初始化说明
 
+> 技术栈：Spring Boot 3.5.3 + Spring AI 1.0.0 + JPA（Hibernate 6）/ Spring Data MongoDB。
+> 数据分工：MySQL 存储关系型业务数据，MongoDB 存储文档型 AI 数据。
+
 ## 数据存储架构
 
 本项目采用 **MySQL + MongoDB** 双数据库方案：
@@ -14,7 +17,8 @@
 | 文件 | 说明 | 运行方式 |
 |---|---|---|
 | `schema.sql` | MySQL 建表脚本（4 张表 + 种子数据） | MySQL 客户端直接执行 |
-| `mongo-init.js` | MongoDB 初始化脚本（5 个集合 + 11 个索引 + 种子数据） | mongosh 执行 |
+
+> 说明：`sql/` 目录当前**仅提供 `schema.sql`**。MongoDB 的 5 个集合（chatSession / chatMessage / aiAnalysis / chatMemory / habit_knowledge）及其索引由应用运行时通过 Spring AI / Spring Data MongoDB **自动创建**，`mongo-init.js` 暂未提供，后续如需固定集合与索引初始化脚本可补充至本目录。RAG 向量索引 `habit_vector_index` 需在 MongoDB Atlas 手动创建（见下文）。
 
 ## MySQL 初始化
 
@@ -54,17 +58,7 @@ SOURCE d:/javacode/agent_demo/sql/schema.sql;
 
 ## MongoDB 初始化
 
-### 方式一：mongosh 命令行
-
-```bash
-mongosh < mongo-init.js
-```
-
-### 方式二：mongosh 内执行
-
-```javascript
-load("d:/javacode/agent_demo/sql/mongo-init.js")
-```
+MongoDB 集合无需手动初始化：应用启动后由 Spring Data MongoDB / Spring AI 自动创建集合并建立索引（TTL 索引、复合索引等随实体映射与配置生效）。
 
 ### MongoDB 集合结构
 

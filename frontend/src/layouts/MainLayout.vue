@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onErrorCaptured } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Home, CheckCircle2, History, TrendingUp, Sparkles, BrainCircuit, Bell } from 'lucide-vue-next'
+import { Home, CheckCircle2, History, TrendingUp, Sparkles, BrainCircuit } from 'lucide-vue-next'
 import { ElMessage } from 'element-plus'
 import ParticleCanvas from '../components/ParticleCanvas.vue'
 
@@ -22,7 +22,6 @@ const menus = [
   { path: '/history', title: '历史记录', icon: History },
   { path: '/trend', title: '趋势分析', icon: TrendingUp },
   { path: '/ai-advice', title: 'AI建议', icon: Sparkles },
-  { path: '/reminder', title: '打卡提醒', icon: Bell },
 ]
 
 // AI分析/AI建议合并为单一入口：导航高亮需要覆盖整合页与旧重定向路由

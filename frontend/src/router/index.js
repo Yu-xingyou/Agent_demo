@@ -43,12 +43,6 @@ const routes = [
     redirect: '/ai-advice',
   },
   {
-    path: '/reminder',
-    name: 'reminder',
-    component: () => import('@/views/ReminderView.vue'),
-    meta: { title: '打卡提醒' },
-  },
-  {
     path: '/:pathMatch(.*)*',
     name: 'not-found',
     component: () => import('@/views/NotFoundView.vue'),

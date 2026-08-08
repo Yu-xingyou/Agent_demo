@@ -5,7 +5,6 @@
         <el-icon class="text-blue-500"><Bell /></el-icon>
         <span>今日打卡提醒</span>
       </div>
-      <button class="text-xs text-blue-500 hover:text-blue-600 transition" @click="goManage">管理</button>
     </div>
 
     <div v-if="loading" class="text-sm text-slate-400 py-4 text-center">
@@ -26,18 +25,15 @@
 
     <div v-else class="text-center py-4">
       <p class="text-sm text-slate-400">今天还没有待办提醒</p>
-      <button class="mt-2 text-xs text-blue-500 hover:text-blue-600 transition" @click="goManage">去添加一个</button>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
 import { Bell, ArrowRight, Loading } from '@element-plus/icons-vue'
 import { listReminders } from '@/api/reminder'
 
-const router = useRouter()
 const loading = ref(false)
 const reminders = ref([])
 
@@ -68,10 +64,6 @@ function isDueToday(r) {
 }
 
 const todayReminders = computed(() => reminders.value.filter(isDueToday))
-
-function goManage() {
-  router.push('/reminder')
-}
 
 onMounted(async () => {
   loading.value = true

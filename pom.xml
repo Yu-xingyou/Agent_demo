@@ -15,7 +15,7 @@
     <artifactId>habit-agent</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>habit-agent</name>
-    <description>生活习惯助手 Agent - 单体应用，参照天机学堂 tj-aigc 构建方式（Spring AI 1.0.0 + spring-ai-alibaba 1.0.0.2）</description>
+    <description>生活习惯助手 Agent - 单体应用（Spring AI 1.0.0 + spring-ai-alibaba 1.0.0.2）</description>
 
     <properties>
         <java.version>21</java.version>
@@ -51,7 +51,7 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
-        <!-- WebFlux (Flux 响应式 SSE，与天机学堂一致) -->
+        <!-- WebFlux (Flux 响应式 SSE) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>

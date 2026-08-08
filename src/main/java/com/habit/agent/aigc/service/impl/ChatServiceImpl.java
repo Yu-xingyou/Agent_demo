@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * 对话服务实现（参照天机学堂 tj-aigc ChatServiceImpl）
+ * 对话服务实现
  * <p>
  * 数据链路：用户消息即时写 chatMessage → RouteAgent 意图识别 → AgentRouter 分发 →
  * 子智能体流式对话（SSE 1001 数据事件）→ 流结束写 AI 消息入 chatMessage（完整历史）→ 输出 1002 停止事件。

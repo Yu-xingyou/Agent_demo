@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 消息序列化载体（MongoDB 记忆存储格式，参照天机学堂 tj-aigc MyMessage）
+ * 消息序列化载体（MongoDB 记忆存储格式）
  */
 @Data
 public class MyMessage {

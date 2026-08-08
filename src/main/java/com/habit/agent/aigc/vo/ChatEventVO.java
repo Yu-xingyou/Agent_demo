@@ -6,7 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 /**
- * 聊天 SSE 事件 VO（参照天机学堂 tj-aigc ChatEventVO）
+ * 聊天 SSE 事件 VO
  */
 @Data
 @Builder

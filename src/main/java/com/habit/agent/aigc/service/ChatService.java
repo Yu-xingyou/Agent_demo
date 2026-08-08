@@ -5,7 +5,7 @@ import com.habit.agent.common.constant.AgentConstants;
 import reactor.core.publisher.Flux;
 
 /**
- * 对话服务接口（参照天机学堂 tj-aigc ChatService）
+ * 对话服务接口
  */
 public interface ChatService {
 

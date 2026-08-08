@@ -23,7 +23,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 会话服务实现（参照天机学堂 tj-aigc ChatSessionServiceImpl，MyBatis-Plus 改为 MongoDB）
+ * 会话服务实现（MyBatis-Plus 改为 MongoDB）
  * <p>
  * 数据链路：创建会话（随机示例 + UUID + 落库 chatSession）→ 历史回显（读 chatMessage）→
  * 会话列表（按最后消息时间倒序）→ 删除（级联清理 chatSession + chatMessage + chatMemory）

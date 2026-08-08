@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 
 /**
- * 流式对话（SSE，天机学堂 example 协议）。
+ * 流式对话（SSE）。
  * 后端 POST /chat 返回 SSE 事件：data:{"eventData":...,"eventType":1001|1002}
  *   eventType 1001 -> 数据事件（AI 文本片段，eventData 为字符串）
  *   eventType 1002 -> 停止事件（本次生成结束）

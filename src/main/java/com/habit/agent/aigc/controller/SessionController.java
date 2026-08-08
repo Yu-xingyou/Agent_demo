@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 /**
- * 会话接口（参照天机学堂 tj-aigc SessionController，扩展列表/删除）
+ * 会话接口（扩展列表/删除）
  */
 @RestController
 @RequestMapping("/session")

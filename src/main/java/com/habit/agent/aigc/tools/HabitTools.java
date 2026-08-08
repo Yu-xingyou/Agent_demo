@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 生活习惯业务工具（参照天机学堂 tj-aigc CourseTools 的 @Tool/@ToolParam 模式）
+ * 生活习惯业务工具
  * 注入现有业务 Service，供大模型查询真实习惯数据
  */
 @Component

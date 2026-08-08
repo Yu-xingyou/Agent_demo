@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 工具结果保持器，用来存储 tools 中得到的结果，请求 id 作为 key，value 为键值对数据
- * （参照天机学堂 tj-aigc ToolResultHolder，Assert 使用 Spring 自带实现）
  */
 public class ToolResultHolder {
 

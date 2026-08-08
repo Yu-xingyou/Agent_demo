@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.util.Map;
 
 /**
- * 消息 VO（历史回显，参照天机学堂 tj-aigc MessageVO）
+ * 消息 VO（历史回显）
  */
 @Data
 @Builder

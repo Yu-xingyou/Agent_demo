@@ -13,7 +13,7 @@ import org.springframework.ai.content.Media;
 
 /**
  * 消息转换工具类，提供 Message 对象与 JSON 字符串之间的转换，主要用于 MongoDB 记忆存储格式转换
- * （参照天机学堂 tj-aigc MessageUtil，序列化组件由 hutool 改为 Jackson）
+ * 序列化组件使用 Jackson
  */
 public class MessageUtil {
 

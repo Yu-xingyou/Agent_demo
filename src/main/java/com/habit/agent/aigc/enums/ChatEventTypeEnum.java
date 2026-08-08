@@ -3,7 +3,7 @@ package com.habit.agent.aigc.enums;
 import lombok.Getter;
 
 /**
- * 聊天消息事件类型（SSE 事件，参照天机学堂 tj-aigc ChatEventTypeEnum）
+ * 聊天消息事件类型（SSE 事件）
  */
 @Getter
 public enum ChatEventTypeEnum {

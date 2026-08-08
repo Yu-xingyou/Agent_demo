@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
 /**
- * 对话接口（参照天机学堂 tj-aigc ChatController，@NoWrapper 注解删除，SSE 端点直接返回 Flux 不包 Result）
+ * 对话接口（SSE 端点直接返回 Flux 不包 Result）
  */
 @Slf4j
 @RestController

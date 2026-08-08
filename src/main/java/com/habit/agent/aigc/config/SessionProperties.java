@@ -8,7 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import java.util.List;
 
 /**
- * 会话助手配置绑定（habit.ai.session，参照天机学堂 tj-aigc SessionProperties）
+ * 会话助手配置绑定（habit.ai.session）
  */
 @Data
 @Configuration

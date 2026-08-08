@@ -19,7 +19,7 @@ import java.util.UUID;
 /**
  * 智能体抽象基类
  * <p>
- * 提供公共流式对话能力（参照天机学堂 tj-aigc ChatServiceImpl 的 stream().chatResponse() 模式）：
+ * 提供公共流式对话能力（基于 ChatClient stream().chatResponse() 模式）：
  * system 提示词 + MessageChatMemoryAdvisor 会话记忆 + toolContext 请求 id + 逐字 DATA 事件输出。
  * 单用户场景：conversationId = "1_" + sessionId（DEFAULT_USER_ID=1）。
  * 工具统一由 ChatClient 的 defaultTools(HabitTools) 提供，子 Agent 通过提示词约束维度。

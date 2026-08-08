@@ -1,7 +1,7 @@
 package com.habit.agent.aigc.Constant;
 
 /**
- * AIGC 模块通用常量（参照天机学堂 tj-aigc Constant）
+ * AIGC 模块通用常量
  */
 public interface Constant {
 

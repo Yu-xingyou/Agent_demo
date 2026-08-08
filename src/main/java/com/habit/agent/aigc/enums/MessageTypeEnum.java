@@ -3,7 +3,7 @@ package com.habit.agent.aigc.enums;
 import lombok.Getter;
 
 /**
- * 消息类型枚举（参照天机学堂 tj-aigc MessageTypeEnum）
+ * 消息类型枚举
  */
 @Getter
 public enum MessageTypeEnum {

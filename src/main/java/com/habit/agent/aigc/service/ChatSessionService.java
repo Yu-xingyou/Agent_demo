@@ -6,7 +6,7 @@ import com.habit.agent.aigc.vo.SessionVO;
 import java.util.List;
 
 /**
- * 会话服务接口（参照天机学堂 tj-aigc ChatSessionService，扩展列表/删除）
+ * 会话服务接口（扩展列表/删除）
  */
 public interface ChatSessionService {
 

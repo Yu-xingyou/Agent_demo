@@ -1,7 +1,7 @@
 import request from '@/utils/request'
 
 /**
- * 会话管理（天机学堂 example 协议 + 会话侧边栏扩展）。
+ * 会话管理（会话侧边栏扩展）。
  * 返回结构均为 { code, message, data }，request.js 已解包 data。
  */
 

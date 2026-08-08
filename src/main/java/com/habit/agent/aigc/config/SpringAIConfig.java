@@ -21,7 +21,7 @@ import org.springframework.data.mongodb.core.MongoTemplate;
 import java.util.List;
 
 /**
- * Spring AI 装配配置（参照天机学堂 tj-aigc SpringAIConfig）
+ * Spring AI 装配配置
  * <p>
  * ChatClient 装配：SimpleLoggerAdvisor（日志）+ MessageChatMemoryAdvisor（MongoDB 记忆）+ RAG Advisor（远程 Atlas 向量库，可用时）+ defaultTools(HabitTools)
  */

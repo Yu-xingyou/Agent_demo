@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * 系统提示词配置（本地 application.yml 加载 + 内置兜底常量）
- * 参照天机学堂 tj-aigc SystemPromptConfig，移除 Nacos 依赖，改为 @ConfigurationProperties 读取
+ * 移除 Nacos 依赖，改为 @ConfigurationProperties 读取
  */
 @Slf4j
 @Getter

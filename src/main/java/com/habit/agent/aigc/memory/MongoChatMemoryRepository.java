@@ -17,7 +17,7 @@ import java.util.Optional;
 
 /**
  * 基于 MongoDB 实现的 ChatMemoryRepository（本地 MongoDB chatMemory 集合）
- * 参照天机学堂 tj-aigc RedisChatMemoryRepository 结构，将 LIST 存储改为 MongoDB 文档：
+ * 将 LIST 存储改为 MongoDB 文档：
  * 每文档 _id = conversationId，messages 字段为消息 JSON 字符串数组
  */
 @Slf4j

@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 会话 VO（参照天机学堂 tj-aigc SessionVO，扩展会话列表所需字段）
+ * 会话 VO（扩展会话列表所需字段）
  */
 @Data
 @Builder

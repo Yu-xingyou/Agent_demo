@@ -5,7 +5,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * AI 提示词配置绑定（habit.ai.prompt，参照天机学堂 tj-aigc AIProperties）
+ * AI 提示词配置绑定（habit.ai.prompt）
  * 提示词全部本地配置（单体应用，不使用 Nacos）
  */
 @Data

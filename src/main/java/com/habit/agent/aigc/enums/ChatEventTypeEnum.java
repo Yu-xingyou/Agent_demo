@@ -8,8 +8,11 @@ import lombok.Getter;
 @Getter
 public enum ChatEventTypeEnum {
 
+    /** 数据事件：流式输出的一段文本内容 */
     DATA(1001, "数据事件"),
+    /** 停止事件：对话正常结束 */
     STOP(1002, "停止事件"),
+    /** 参数事件：携带结构化的工具调用参数等信息 */
     PARAM(1003, "参数事件");
 
     private final int value;

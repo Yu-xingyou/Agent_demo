@@ -28,6 +28,13 @@ public class ReminderServiceImpl implements ReminderService {
 
     private final ReminderRepository reminderRepository;
 
+    /**
+     * 创建提醒
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param vo     提醒创建视图
+     * @return 创建成功的提醒实体
+     */
     @Override
     @Transactional
     public Reminder create(Long userId, ReminderCreateVO vo) {
@@ -44,6 +51,14 @@ public class ReminderServiceImpl implements ReminderService {
         return reminderRepository.save(reminder);
     }
 
+    /**
+     * 更新提醒（仅覆盖非空字段）
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param id     提醒 id
+     * @param vo     更新后的提醒视图
+     * @return 更新后的提醒实体
+     */
     @Override
     @Transactional
     public Reminder update(Long userId, Long id, ReminderCreateVO vo) {
@@ -60,6 +75,12 @@ public class ReminderServiceImpl implements ReminderService {
         return reminderRepository.save(reminder);
     }
 
+    /**
+     * 删除提醒
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param id     提醒 id
+     */
     @Override
     @Transactional
     public void delete(Long userId, Long id) {
@@ -67,12 +88,26 @@ public class ReminderServiceImpl implements ReminderService {
         reminderRepository.delete(reminder);
     }
 
+    /**
+     * 查询用户全部提醒（倒序）
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 该用户全部提醒实体列表（倒序）
+     */
     @Override
     public List<Reminder> list(Long userId) {
         Long uid = userId == null ? AgentConstants.DEFAULT_USER_ID : userId;
         return reminderRepository.findByUserIdOrderByCreateTimeDesc(uid);
     }
 
+    /**
+     * 切换提醒启用状态
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param id     提醒 id
+     * @param active 目标启用状态
+     * @return 切换后的提醒实体
+     */
     @Override
     @Transactional
     public Reminder toggle(Long userId, Long id, Boolean active) {
@@ -81,6 +116,14 @@ public class ReminderServiceImpl implements ReminderService {
         return reminderRepository.save(reminder);
     }
 
+    /**
+     * 校验提醒归属并返回实体（用户维度隔离）
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param id     提醒 id
+     * @return 归属该用户的提醒实体
+     * @throws BusinessException 当提醒不存在或不属于该用户时抛出
+     */
     private Reminder owned(Long userId, Long id) {
         Long uid = userId == null ? AgentConstants.DEFAULT_USER_ID : userId;
         return reminderRepository.findById(id)

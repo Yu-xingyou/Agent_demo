@@ -33,7 +33,10 @@ public class HabitTools {
     private final AnalysisService analysisService;
 
     /**
-     * 查询用户最近 N 天的习惯打卡记录
+     * 查询用户最近 N 天的习惯打卡记录（睡眠/饮食/运动/饮水/心情等）
+     *
+     * @param days 查询天数（最近 N 天），为 null 或非法值时默认 7
+     * @return 打卡记录视图列表
      */
     @Tool(description = Constant.Tools.QUERY_RECENT_RECORDS)
     public List<HabitRecordVO> queryRecentRecords(
@@ -43,7 +46,9 @@ public class HabitTools {
     }
 
     /**
-     * 查询用户当前启用的习惯目标（内置默认 + 自定义）
+     * 查询用户当前启用的习惯目标（内置默认目标 + 用户自定义目标）
+     *
+     * @return 启用中的习惯目标视图列表
      */
     @Tool(description = Constant.Tools.QUERY_ACTIVE_GOALS)
     public List<HabitGoalVO> queryActiveGoals() {
@@ -52,6 +57,9 @@ public class HabitTools {
 
     /**
      * 查询用户最近 N 天各类目标的达成率统计
+     *
+     * @param days 统计天数（最近 N 天），为 null 或非法值时默认 7
+     * @return 各类型目标达成率统计视图
      */
     @Tool(description = Constant.Tools.QUERY_ACHIEVEMENT_RATE)
     public AchievementRateVO queryAchievementRate(
@@ -62,6 +70,8 @@ public class HabitTools {
 
     /**
      * 查询用户当前的打卡提醒列表
+     *
+     * @return 打卡提醒实体列表
      */
     @Tool(description = Constant.Tools.QUERY_REMINDERS)
     public List<Reminder> queryReminders() {
@@ -69,7 +79,10 @@ public class HabitTools {
     }
 
     /**
-     * 查询用户最近 N 天的习惯数据趋势
+     * 查询用户最近 N 天的习惯数据趋势（睡眠时长/运动/饮水/心情等）
+     *
+     * @param days 查询天数（最近 N 天），为 null 或非法值时默认 7
+     * @return 习惯数据趋势视图
      */
     @Tool(description = Constant.Tools.QUERY_TRENDS)
     public TrendDataVO queryTrends(
@@ -79,7 +92,10 @@ public class HabitTools {
     }
 
     /**
-     * 查询用户最近 N 天的习惯数据综合概览
+     * 查询用户最近 N 天的习惯数据综合概览统计
+     *
+     * @param days 查询天数（最近 N 天），为 null 或非法值时默认 7
+     * @return 综合概览统计键值对
      */
     @Tool(description = Constant.Tools.QUERY_OVERVIEW)
     public Map<String, Object> queryOverview(

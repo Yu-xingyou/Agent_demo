@@ -13,15 +13,39 @@ import com.habit.agent.common.vo.TrendDataVO;
  */
 public interface AnalysisService {
 
-    /** 趋势数据（内置四维度 + 自定义目标动态序列）。 */
+    /**
+     * 趋势数据（内置四维度 + 自定义目标动态序列）。
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口
+     * @return 趋势数据视图（睡眠/运动/饮水/心情序列 + 自定义维度）
+     */
     TrendDataVO getTrend(Long userId, int days);
 
-    /** 综合概览（统计卡 + 达成率摘要 + 雷达）。 */
+    /**
+     * 综合概览（统计卡 + 达成率摘要 + 雷达）。
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口
+     * @return 概览统计键值对
+     */
     Map<String, Object> getOverview(Long userId, int days);
 
-    /** 达成率（内置 + 自定义目标动态维度）。 */
+    /**
+     * 达成率（内置 + 自定义目标动态维度）。
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口
+     * @return 各目标达成率与总体达成率视图
+     */
     AchievementRateVO getAchievementRate(Long userId, int days);
 
-    /** 雷达数据（内置五维 + 自定义目标动态维度）。 */
+    /**
+     * 雷达数据（内置五维 + 自定义目标动态维度）。
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口
+     * @return 五维雷达分值视图
+     */
     RadarDataVO getRadar(Long userId, int days);
 }

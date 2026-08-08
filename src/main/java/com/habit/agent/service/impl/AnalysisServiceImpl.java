@@ -43,7 +43,7 @@ public class AnalysisServiceImpl implements AnalysisService {
     private final GoalService goalService;
     private final HabitGoalRecordService goalRecordService;
 
-    // 自定义目标莫兰迪配色池（按顺序分配）
+    /** 自定义目标莫兰迪配色池（按顺序分配给各 CUSTOM 目标） */
     private static final String[][] CUSTOM_PALETTE = {
         {"#8a7fa0", "#9a8fb0"},
         {"#6f9a8a", "#7faa9a"},
@@ -54,7 +54,13 @@ public class AnalysisServiceImpl implements AnalysisService {
     };
 
     /**
-     * 趋势数据（内置四维度 + 自定义目标动态序列）
+     * 获取趋势数据（内置四维度 + 自定义目标动态序列）
+     * <p>聚合指定天数内的真实打卡记录，按日期生成睡眠/运动/饮水/饮食/心情序列，
+     * 并附加用户自定义目标的趋势序列。</p>
+     *
+     * @param userId 用户 ID
+     * @param days   统计天数
+     * @return 趋势数据视图对象
      */
     @Override
     public TrendDataVO getTrend(Long userId, int days) {
@@ -102,7 +108,12 @@ public class AnalysisServiceImpl implements AnalysisService {
     }
 
     /**
-     * 综合概览（统计卡 + 达成率摘要 + 雷达）
+     * 获取综合概览（统计卡 + 达成率摘要 + 雷达）
+     * <p>组合趋势统计、达成率与各维度雷达数据，供首页仪表盘使用。</p>
+     *
+     * @param userId 用户 ID
+     * @param days   统计天数
+     * @return 包含记录天数、各维度均值、达成率与雷达数据的概览 Map
      */
     @Override
     public Map<String, Object> getOverview(Long userId, int days) {
@@ -134,7 +145,12 @@ public class AnalysisServiceImpl implements AnalysisService {
     }
 
     /**
-     * 达成率（内置 + 自定义目标动态维度）
+     * 获取达成率（内置 + 自定义目标动态维度）
+     * <p>基于各维度实际均值与目标值计算达成率，内置维度与 CUSTOM 维度均纳入统计。</p>
+     *
+     * @param userId 用户 ID
+     * @param days   统计天数
+     * @return 各维度的目标值、实际均值与达成率
      */
     @Override
     public AchievementRateVO getAchievementRate(Long userId, int days) {
@@ -174,7 +190,12 @@ public class AnalysisServiceImpl implements AnalysisService {
     }
 
     /**
-     * 雷达数据（内置五维 + 自定义目标动态维度）
+     * 获取雷达数据（内置五维 + 自定义目标动态维度）
+     * <p>仅保留用户启用目标的维度，避免空雷达；自定义目标按其均值与上限生成维度。</p>
+     *
+     * @param userId 用户 ID
+     * @param days   统计天数
+     * @return 雷达图数据（指标定义、实际值与目标值）
      */
     @Override
     public RadarDataVO getRadar(Long userId, int days) {
@@ -232,6 +253,15 @@ public class AnalysisServiceImpl implements AnalysisService {
 
     // ===== 内部工具 =====
 
+    /**
+     * 构建自定义目标的趋势序列
+     * <p>遍历所有启用的 CUSTOM 类型目标，按日期对齐其打卡记录，生成前端图表所需的系列数据。</p>
+     *
+     * @param startDate 统计起始日期
+     * @param endDate   统计截止日期
+     * @param dateList  日期列表（用于对齐数据）
+     * @return 自定义目标系列视图对象列表
+     */
     private List<CustomGoalSeriesVO> buildCustomSeries(LocalDate startDate, LocalDate endDate, List<String> dateList) {
         List<HabitGoalVO> goals = goalService.getActiveGoalsWithCustom(null)
                 .stream().filter(g -> "CUSTOM".equals(g.getGoalType())).collect(Collectors.toList());
@@ -264,6 +294,13 @@ public class AnalysisServiceImpl implements AnalysisService {
         return series;
     }
 
+    /**
+     * 将趋势数据中的饮食评分列表转换为 BigDecimal 列表
+     * <p>饮食以 1-5 分近似，读取每日打卡的 dietScore 字段，null 值原样保留。</p>
+     *
+     * @param trend 趋势数据视图对象
+     * @return BigDecimal 类型的饮食评分列表（包含 null 占位）
+     */
     private List<BigDecimal> dietScores(TrendDataVO trend) {
         // 饮食以 1-5 评分近似，读取每日打卡 dietScore
         List<Integer> diet = trend.getDiet();
@@ -273,10 +310,22 @@ public class AnalysisServiceImpl implements AnalysisService {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * 将 Integer 安全转为 BigDecimal，null 时返回零值
+     *
+     * @param v 原始 Integer 值
+     * @return 非 null 的 BigDecimal，null 输入返回 {@link BigDecimal#ZERO}
+     */
     private BigDecimal nullToZero(Integer v) {
         return v == null ? BigDecimal.ZERO : BigDecimal.valueOf(v);
     }
 
+    /**
+     * 计算数值列表的平均值，自动排除 null 元素，空列表返回 0
+     *
+     * @param list 数值列表（元素允许为 null）
+     * @return 平均值，无有效数据时返回 0
+     */
     private double avgOrZero(List<? extends Number> list) {
         if (list == null || list.isEmpty()) return 0;
         double sum = 0;
@@ -287,6 +336,12 @@ public class AnalysisServiceImpl implements AnalysisService {
         return count == 0 ? 0 : sum / count;
     }
 
+    /**
+     * 计算 BigDecimal 列表的平均值（返回 double），自动排除 null 元素，空列表返回 0
+     *
+     * @param list BigDecimal 列表（元素允许为 null）
+     * @return 平均值，无有效数据时返回 0
+     */
     private double avgOrNull(List<BigDecimal> list) {
         if (list == null || list.isEmpty()) return 0;
         double sum = 0;
@@ -297,6 +352,12 @@ public class AnalysisServiceImpl implements AnalysisService {
         return count == 0 ? 0 : sum / count;
     }
 
+    /**
+     * 计算 BigDecimal 列表的平均值（返回 BigDecimal），自动排除 null，结果保留两位小数
+     *
+     * @param list BigDecimal 列表（元素允许为 null）
+     * @return 平均值（保留两位），无有效数据时返回 null
+     */
     private BigDecimal avgOrNullBig(List<BigDecimal> list) {
         if (list == null || list.isEmpty()) return null;
         double sum = 0;
@@ -307,10 +368,22 @@ public class AnalysisServiceImpl implements AnalysisService {
         return count == 0 ? null : BigDecimal.valueOf(sum / count).setScale(2, RoundingMode.HALF_UP);
     }
 
+    /**
+     * 将 double 值四舍五入保留两位小数
+     *
+     * @param v 原始值
+     * @return 保留两位小数的结果
+     */
     private double round2(double v) {
         return BigDecimal.valueOf(v).setScale(2, RoundingMode.HALF_UP).doubleValue();
     }
 
+    /**
+     * 将达成率限制在 [0, 100] 区间内并保留两位小数
+     *
+     * @param rate 原始达成率
+     * @return 裁剪后的达成率
+     */
     private double clampRate(double rate) {
         return Math.max(0, Math.min(100, round2(rate)));
     }

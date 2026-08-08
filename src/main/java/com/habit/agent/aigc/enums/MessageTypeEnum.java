@@ -8,7 +8,9 @@ import lombok.Getter;
 @Getter
 public enum MessageTypeEnum {
 
+    /** 用户提问消息 */
     USER(1, "用户提问"),
+    /** AI 的回答消息 */
     ASSISTANT(2, "AI的回答");
 
     private final int value;

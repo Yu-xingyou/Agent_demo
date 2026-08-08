@@ -17,12 +17,10 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -61,16 +59,34 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
         executor.shutdown();
     }
 
+    /**
+     * 生成分析报告（创建 PROCESSING 任务并异步执行）
+     *
+     * @param days 分析天数窗口
+     * @return 新建的分析任务信息（状态 PROCESSING）
+     */
     @Override
     public Map<String, Object> generate(int days) {
         return createTask(days);
     }
 
+    /**
+     * 重新生成分析报告（重建任务并异步执行）
+     *
+     * @param days 分析天数窗口
+     * @return 重建的分析任务信息（状态 PROCESSING）
+     */
     @Override
     public Map<String, Object> regenerate(int days) {
         return createTask(days);
     }
 
+    /**
+     * 按任务 id 查询分析任务
+     *
+     * @param id 分析任务 id
+     * @return 分析任务详情；不存在时返回 null
+     */
     @Override
     public Map<String, Object> getById(String id) {
         return aiAnalysisRepository.findById(id)
@@ -78,6 +94,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                 .orElse(null);
     }
 
+    /**
+     * 历史分析列表（按创建时间倒序）
+     *
+     * @param limit 返回条数上限（<=0 时默认 10）
+     * @return 历史分析报告摘要列表
+     */
     @Override
     public List<Map<String, Object>> history(int limit) {
         int n = (limit <= 0) ? 10 : limit;
@@ -87,6 +109,11 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
                 .toList();
     }
 
+    /**
+     * 最新已完成分析（DAILY 类型且状态 COMPLETED）
+     *
+     * @return 最新一条已完成的分析报告；无则 null
+     */
     @Override
     public Map<String, Object> getLatest() {
         return aiAnalysisRepository.findTopByUserIdAndTypeOrderByCreateTimeDesc(
@@ -98,6 +125,9 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
     /**
      * 创建分析任务并异步执行
+     *
+     * @param days 分析天数窗口（<=0 时默认 7）
+     * @return 新建任务的 Task 结构（状态 PROCESSING）
      */
     private Map<String, Object> createTask(int days) {
         int d = (days <= 0) ? 7 : days;
@@ -165,6 +195,12 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
     /**
      * 调用 LLM 生成结构化文本结论（JSON）
+     *
+     * @param overview     综合概览数据
+     * @param trend        趋势数据
+     * @param achievement  达成率数据
+     * @param days         分析天数窗口
+     * @return LLM 返回的 JSON 文本（含 score/dailyEvaluation 等字段）
      */
     private String callModel(Map<String, Object> overview, TrendDataVO trend, AchievementRateVO achievement, int days) {
         String dataJson;
@@ -206,7 +242,13 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     /**
-     * 组装前端 ECharts 所需 charts 结构
+     * 组装前端 ECharts 所需 charts 结构（overview/trend/achievement/radar）
+     *
+     * @param overview     综合概览数据
+     * @param trend        趋势数据
+     * @param achievement  达成率数据
+     * @param radar        雷达数据
+     * @return 前端图表所需的 charts 结构
      */
     private Map<String, Object> buildCharts(Map<String, Object> overview, TrendDataVO trend,
                                             AchievementRateVO achievement, RadarDataVO radar) {
@@ -273,6 +315,9 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
 
     /**
      * 容错解析 LLM 输出的 JSON（剥离可能的 markdown 代码块）
+     *
+     * @param text LLM 原始输出文本
+     * @return 解析得到的 JSON 节点；解析失败时返回空对象节点
      */
     private JsonNode parseJson(String text) {
         String cleaned = text == null ? "" : text.trim();
@@ -293,7 +338,10 @@ public class AiAnalysisServiceImpl implements AiAnalysisService {
     }
 
     /**
-     * 任务文档 → 前端 Task 结构
+     * 任务文档 → 前端 Task 结构（解析 content 中的结构化字段）
+     *
+     * @param doc 分析任务文档
+     * @return 前端展示用的 Task 键值对（含 status/score/report/charts 等）
      */
     private Map<String, Object> toTaskMap(AiAnalysisDoc doc) {
         Map<String, Object> task = new LinkedHashMap<>();

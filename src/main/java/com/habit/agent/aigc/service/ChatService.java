@@ -14,6 +14,7 @@ public interface ChatService {
      *
      * @param question  用户问题
      * @param sessionId 会话 id
+     * @return 流式对话事件（数据事件 + 末尾停止事件）
      */
     Flux<ChatEventVO> chat(String question, String sessionId);
 

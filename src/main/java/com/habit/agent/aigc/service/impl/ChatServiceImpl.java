@@ -1,7 +1,6 @@
 package com.habit.agent.aigc.service.impl;
 
 import com.habit.agent.aigc.entity.mongo.ChatMessageDoc;
-import com.habit.agent.aigc.entity.mongo.ChatSessionDoc;
 import com.habit.agent.aigc.enums.ChatEventTypeEnum;
 import com.habit.agent.aigc.repository.ChatMessageRepository;
 import com.habit.agent.aigc.repository.ChatSessionRepository;
@@ -92,6 +91,9 @@ public class ChatServiceImpl implements ChatService {
 
     /**
      * 保存用户消息（chatMessage）并刷新会话最后消息时间；会话标题为空时自动生成
+     *
+     * @param sessionId 会话 id
+     * @param question  用户提问文本
      */
     private void saveUserMessage(String sessionId, String question) {
         LocalDateTime now = LocalDateTime.now();
@@ -114,6 +116,9 @@ public class ChatServiceImpl implements ChatService {
 
     /**
      * 保存 AI 消息（chatMessage）
+     *
+     * @param sessionId 会话 id
+     * @param content   AI 回复文本（为空则不落库）
      */
     private void saveAssistantMessage(String sessionId, String content) {
         if (!StringUtils.hasText(content)) {
@@ -129,6 +134,9 @@ public class ChatServiceImpl implements ChatService {
 
     /**
      * 由用户首条消息生成会话标题（前 20 字）
+     *
+     * @param question 用户提问文本
+     * @return 截取前 20 字并追加省略号的标题；问题为空时返回空串
      */
     private String genTitle(String question) {
         String text = question == null ? "" : question.trim();

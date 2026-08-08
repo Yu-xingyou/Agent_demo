@@ -36,6 +36,9 @@ public enum AgentTypeEnum {
 
     /**
      * 根据 agentName 解析枚举，未知返回 HEALTH（默认兜底）
+     *
+     * @param agentName 智能体名称（大小写不敏感，允许前后空白）
+     * @return 匹配到的智能体类型；为 null 或无法匹配时返回 {@link #HEALTH}
      */
     public static AgentTypeEnum of(String agentName) {
         if (agentName == null) {

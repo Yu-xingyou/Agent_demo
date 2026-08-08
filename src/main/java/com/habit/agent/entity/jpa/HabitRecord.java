@@ -49,20 +49,25 @@ import lombok.ToString;
 @ToString
 public class HabitRecord {
 
+    /** 主键 id */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
+    /** 所属用户 id */
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    /** 打卡日期（与 user_id 构成唯一约束，同一天重复打卡为更新） */
     @Column(name = "record_date", nullable = false)
     private LocalDate recordDate;
 
+    /** 入睡时间 */
     @Column(name = "sleep_time")
     private LocalTime sleepTime;
 
+    /** 起床时间 */
     @Column(name = "wake_time")
     private LocalTime wakeTime;
 
@@ -72,33 +77,43 @@ public class HabitRecord {
     @Column(name = "sleep_duration", precision = 4, scale = 2)
     private BigDecimal sleepDuration;
 
+    /** 睡眠质量评分（1-5） */
     @Column(name = "sleep_quality")
     private Integer sleepQuality;
 
+    /** 饮食描述（自由文本，最长 500 字符） */
     @Column(name = "diet_desc", length = 500)
     private String dietDesc;
 
+    /** 饮食评分（1-5） */
     @Column(name = "diet_score")
     private Integer dietScore;
 
+    /** 运动类型（如跑步/游泳，最长 100 字符） */
     @Column(name = "exercise_type", length = 100)
     private String exerciseType;
 
+    /** 运动时长（分钟） */
     @Column(name = "exercise_duration")
     private Integer exerciseDuration;
 
+    /** 饮水量（毫升） */
     @Column(name = "water_intake")
     private Integer waterIntake;
 
+    /** 心情评分（1-5） */
     @Column(name = "mood")
     private Integer mood;
 
+    /** 备注（最长 500 字符） */
     @Column(name = "remark", length = 500)
     private String remark;
 
+    /** 创建时间（插入时自动写入，不可更新） */
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
 
+    /** 更新时间（每次更新自动刷新） */
     @Column(name = "update_time", nullable = false)
     private LocalDateTime updateTime;
 

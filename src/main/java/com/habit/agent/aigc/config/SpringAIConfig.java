@@ -28,6 +28,7 @@ import java.util.List;
 @Configuration
 public class SpringAIConfig {
 
+    /** 记忆窗口最大消息数，取自配置 habit.ai.memory.max，默认 100 */
     @Value("${habit.ai.memory.max:100}")
     private Integer maxMessages;
 

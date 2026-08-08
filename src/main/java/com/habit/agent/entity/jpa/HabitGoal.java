@@ -80,14 +80,17 @@ public class HabitGoal {
         }
     }
 
+    /** 主键 id */
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
     private Long id;
 
+    /** 所属用户 id */
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    /** 目标类型（SLEEP/EXERCISE/WATER/DIET/CUSTOM） */
     @Enumerated(EnumType.STRING)
     @Column(name = "goal_type", nullable = false, length = 30)
     private GoalType goalType;
@@ -99,24 +102,30 @@ public class HabitGoal {
     @Column(name = "custom_name", length = 100)
     private String customName;
 
+    /** 目标值（不可为空，如睡眠 8 小时、饮水 2000 毫升） */
     @Column(name = "target_value", nullable = false, precision = 8, scale = 2)
     private BigDecimal targetValue;
 
+    /** 目标计量单位（如 小时/毫升/次） */
     @Column(name = "unit", length = 20)
     private String unit;
 
+    /** 目标周期（DAILY/WEEKLY/MONTHLY，默认 DAILY） */
     @Enumerated(EnumType.STRING)
     @Column(name = "period", nullable = false, length = 20)
     @Builder.Default
     private Period period = Period.DAILY;
 
+    /** 是否启用（默认 true） */
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = Boolean.TRUE;
 
+    /** 创建时间（插入时自动写入，不可更新） */
     @Column(name = "create_time", nullable = false, updatable = false)
     private LocalDateTime createTime;
 
+    /** 更新时间（每次更新自动刷新） */
     @Column(name = "update_time", nullable = false)
     private LocalDateTime updateTime;
 

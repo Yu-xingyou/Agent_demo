@@ -46,6 +46,13 @@ public class SystemPromptConfig {
         load(system.getKnowledgeAgent(), knowledgeAgentSystemMessage, DEFAULT_KNOWLEDGE_AGENT_PROMPT);
     }
 
+    /**
+     * 加载单条提示词到原子引用，缺失时回退内置默认常量
+     *
+     * @param chatConfig 来自配置文件的提示词配置（可空）
+     * @param target     待更新的提示词原子引用
+     * @param defaultText 内置默认提示词常量
+     */
     private void load(AIProperties.System.Chat chatConfig, AtomicReference<String> target, String defaultText) {
         if (chatConfig == null || !StringUtils.hasText(chatConfig.getText())) {
             log.warn("提示词缺失，使用内置默认提示词");

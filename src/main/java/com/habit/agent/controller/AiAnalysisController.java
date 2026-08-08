@@ -25,6 +25,9 @@ public class AiAnalysisController {
 
     /**
      * 生成分析报告（异步，返回 PROCESSING 任务）
+     *
+     * @param days 分析的天数窗口，默认 7
+     * @return 新建的分析任务信息（状态为 PROCESSING）
      */
     @PostMapping("/generate")
     public Result<Map<String, Object>> generate(@RequestParam(defaultValue = "7") int days) {
@@ -33,6 +36,9 @@ public class AiAnalysisController {
 
     /**
      * 重新生成分析报告
+     *
+     * @param days 分析的天数窗口，默认 7
+     * @return 重建的分析任务信息（状态为 PROCESSING）
      */
     @PostMapping("/regenerate")
     public Result<Map<String, Object>> regenerate(@RequestParam(defaultValue = "7") int days) {
@@ -41,6 +47,9 @@ public class AiAnalysisController {
 
     /**
      * 查询分析任务
+     *
+     * @param id 分析任务 id（路径参数）
+     * @return 分析任务详情
      */
     @GetMapping("/{id}")
     public Result<Map<String, Object>> getById(@PathVariable("id") String id) {
@@ -49,6 +58,9 @@ public class AiAnalysisController {
 
     /**
      * 历史分析列表
+     *
+     * @param limit 返回条数上限，默认 10
+     * @return 历史分析报告摘要列表
      */
     @GetMapping("/history")
     public Result<List<Map<String, Object>>> history(@RequestParam(defaultValue = "10") int limit) {
@@ -57,6 +69,8 @@ public class AiAnalysisController {
 
     /**
      * 最新已完成分析
+     *
+     * @return 当前用户最新一条已完成的分析报告；不存在时返回空数据
      */
     @GetMapping("/latest")
     public Result<Map<String, Object>> getLatest() {

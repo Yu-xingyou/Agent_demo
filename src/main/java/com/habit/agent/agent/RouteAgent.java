@@ -22,6 +22,14 @@ public class RouteAgent extends AbstractAgent {
     /** 独立路由识别 ChatClient（干净实例，避免污染记忆与工具） */
     private final ChatClient routeChatClient;
 
+    /**
+     * 构造意图路由智能体（额外持有一个不挂载记忆与工具的独立 ChatClient）
+     *
+     * @param chatClient          共享的 ChatClient 实例（主对话用）
+     * @param chatMemory          会话记忆组件
+     * @param systemPromptConfig 系统提示词配置来源
+     * @param chatClientBuilder  用于构建独立路由识别 ChatClient 的构造器
+     */
     public RouteAgent(ChatClient chatClient, ChatMemory chatMemory,
                       SystemPromptConfig systemPromptConfig, ChatClient.Builder chatClientBuilder) {
         super(chatClient, chatMemory, systemPromptConfig);
@@ -39,7 +47,10 @@ public class RouteAgent extends AbstractAgent {
     }
 
     /**
-     * 意图识别：返回最匹配的 AgentTypeEnum
+     * 意图识别：调用独立 ChatClient 做分类，返回最匹配的 AgentTypeEnum
+     *
+     * @param question 用户问题文本
+     * @return 识别出的智能体类型（无法识别时回退 {@link AgentTypeEnum#HEALTH}）
      */
     public AgentTypeEnum route(String question) {
         String answer = routeChatClient.prompt()

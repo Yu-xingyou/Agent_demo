@@ -36,6 +36,12 @@ public class MongoChatMemoryRepository implements ChatMemoryRepository {
                 .toList();
     }
 
+    /**
+     * 根据会话 id 查询全部历史消息
+     *
+     * @param conversationId 会话标识（格式为 userId_sessionId）
+     * @return 反序列化后的消息列表；会话不存在时返回空列表
+     */
     @Override
     public List<Message> findByConversationId(String conversationId) {
         Query query = Query.query(Criteria.where("_id").is(conversationId));
@@ -49,6 +55,12 @@ public class MongoChatMemoryRepository implements ChatMemoryRepository {
                 .toList();
     }
 
+    /**
+     * 全量覆盖保存某会话的消息列表
+     *
+     * @param conversationId 会话标识（格式为 userId_sessionId）
+     * @param messages       该会话的完整消息列表（非增量，直接覆盖写入）
+     */
     @Override
     public void saveAll(String conversationId, List<Message> messages) {
         // 注意：messages 是全量列表，直接覆盖写入
@@ -62,6 +74,11 @@ public class MongoChatMemoryRepository implements ChatMemoryRepository {
         mongoTemplate.upsert(query, update, COLLECTION);
     }
 
+    /**
+     * 根据会话 id 删除整个会话的记忆文档
+     *
+     * @param conversationId 会话标识（格式为 userId_sessionId）
+     */
     @Override
     public void deleteByConversationId(String conversationId) {
         Query query = Query.query(Criteria.where("_id").is(conversationId));

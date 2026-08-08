@@ -72,6 +72,14 @@ public class DataInitializer implements CommandLineRunner {
         }
     }
 
+    /**
+     * 创建一条默认目标并落库
+     *
+     * @param type   目标类型（SLEEP/EXERCISE/WATER/DIET）
+     * @param target 目标值
+     * @param unit   计量单位
+     * @param period 周期（DAILY 等）
+     */
     private void createGoal(HabitGoal.GoalType type, BigDecimal target, String unit, HabitGoal.Period period) {
         HabitGoal goal = HabitGoal.builder()
                 .userId(AgentConstants.DEFAULT_USER_ID)

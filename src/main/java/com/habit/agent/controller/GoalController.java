@@ -42,6 +42,12 @@ public class GoalController {
 
     // ===== 目标 CRUD =====
 
+    /**
+     * 创建目标（支持内置类型与自定义类型）
+     *
+     * @param goal 目标视图对象（含类型/自定义名称/目标值等）
+     * @return 创建成功的目标视图
+     */
     @Operation(summary = "创建目标", description = "支持内置类型与自定义类型")
     @PostMapping
     public Result<HabitGoalVO> create(@Valid @RequestBody HabitGoalVO goal) {
@@ -49,24 +55,45 @@ public class GoalController {
         return Result.success(goalService.saveGoal(goal));
     }
 
+    /**
+     * 查询所有目标（含已停用）
+     *
+     * @return 全量目标视图列表
+     */
     @Operation(summary = "查询所有目标")
     @GetMapping
     public Result<List<HabitGoalVO>> getAll() {
         return Result.success(goalService.getAllGoals(null));
     }
 
+    /**
+     * 查询启用中的目标
+     *
+     * @return 启用状态的目标视图列表
+     */
     @Operation(summary = "查询启用中的目标")
     @GetMapping("/active")
     public Result<List<HabitGoalVO>> getActive() {
         return Result.success(goalService.getActiveGoals(null));
     }
 
+    /**
+     * 查询启用中的目标（含自定义）
+     *
+     * @return 启用状态的目标视图列表（内置 + 自定义）
+     */
     @Operation(summary = "查询启用中的目标(含自定义)")
     @GetMapping("/active-with-custom")
     public Result<List<HabitGoalVO>> getActiveWithCustom() {
         return Result.success(goalService.getActiveGoalsWithCustom(null));
     }
 
+    /**
+     * 按 ID 查询目标
+     *
+     * @param id 目标 id
+     * @return 目标视图
+     */
     @Operation(summary = "按 ID 查询目标")
     @GetMapping("/{id}")
     public Result<HabitGoalVO> getById(
@@ -74,6 +101,12 @@ public class GoalController {
         return Result.success(goalService.getGoalById(id));
     }
 
+    /**
+     * 按类型查询目标
+     *
+     * @param type 目标类型（SLEEP/EXERCISE/WATER/DIET/CUSTOM）
+     * @return 目标视图
+     */
     @Operation(summary = "按类型查询目标")
     @GetMapping("/type/{type}")
     public Result<HabitGoalVO> getByType(
@@ -82,6 +115,13 @@ public class GoalController {
         return Result.success(goalService.getGoalByType(null, goalType));
     }
 
+    /**
+     * 更新目标（全字段覆盖）
+     *
+     * @param id         目标 id
+     * @param goalUpdate 更新后的目标视图
+     * @return 更新后的目标视图
+     */
     @Operation(summary = "更新目标")
     @PutMapping("/{id}")
     public Result<HabitGoalVO> update(
@@ -91,6 +131,12 @@ public class GoalController {
         return Result.success(goalService.updateGoal(id, goalUpdate));
     }
 
+    /**
+     * 删除目标
+     *
+     * @param id 目标 id
+     * @return 统一成功响应
+     */
     @Operation(summary = "删除目标")
     @DeleteMapping("/{id}")
     public Result<Void> delete(

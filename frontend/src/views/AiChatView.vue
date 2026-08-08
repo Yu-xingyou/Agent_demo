@@ -1,5 +1,5 @@
 <script setup>
-import { ref, nextTick, onMounted } from 'vue'
+import { ref, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { Sparkles, Send, Square, Bot, User, RotateCcw, Plus, Trash2, PanelLeftClose, PanelLeftOpen, MessageSquare, BookOpen } from 'lucide-vue-next'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { streamMessage, stopChat } from '@/api/chat'
@@ -46,11 +46,78 @@ const toolStatus = ref('')
 let abortController = null
 
 const scrollBox = ref(null)
+let scrollRaf = 0
 function scrollToBottom() {
-  nextTick(() => {
+  // 节流：合并同一帧内的多次滚动，避免高频触发导致主线程阻塞
+  if (scrollRaf) return
+  scrollRaf = requestAnimationFrame(() => {
+    scrollRaf = 0
     if (scrollBox.value) scrollBox.value.scrollTop = scrollBox.value.scrollHeight
   })
 }
+
+// ---- 流式打字机节流渲染 ----
+// 后端 SSE 是逐 token 流式，但 token 到达频率极高；直接把每个 token 写进响应式
+// 属性会被 Vue 批量合并成"成段刷新"，视觉上不像流式。这里用一个缓冲区累积 token，
+// 每 STREAM_FLUSH_MS 毫秒才刷一次到 aiMsg.text，还原"逐字流式"的打字机效果。
+const STREAM_FLUSH_MS = 24          // 刷新间隔（毫秒），调大更"慢"、更明显逐字，调小更流畅
+let streamBuffer = ''               // 待刷新的 token 累积区
+let streamTimer = null              // 节流定时器句柄
+let streamFlushPending = false      // 当前是否已有待执行的刷新
+
+// 当前流式渲染目标消息在 messages 数组中的索引。
+// 注意：必须通过 messages.value[index].text 写入（走 Vue 响应式 set），
+// 不能持有原始对象引用直接改属性，否则不触发渲染更新。
+let streamTargetIndex = -1
+
+/** 接收一个 token：先入缓冲，再节流刷新 */
+function streamAppend(token) {
+  streamBuffer += token
+  if (streamFlushPending) return
+  streamFlushPending = true
+  // 用定时器控制刷新节奏（打字机效果），每帧最多刷一次
+  streamTimer = setTimeout(flushStreamBuffer, STREAM_FLUSH_MS)
+}
+
+/** 把缓冲区的 token 一次性写入 AI 消息的 text 并触发滚动 */
+function flushStreamBuffer() {
+  streamFlushPending = false
+  if (streamTimer) {
+    clearTimeout(streamTimer)
+    streamTimer = null
+  }
+  if (!streamBuffer) return
+  appendToTarget(streamBuffer)
+  streamBuffer = ''
+  scrollToBottom()
+}
+
+/** 通过响应式索引把文本追加到当前流式目标消息 */
+function appendToTarget(text) {
+  if (streamTargetIndex < 0 || !messages.value[streamTargetIndex]) return
+  messages.value[streamTargetIndex].text += text
+}
+
+/** 流结束后强制刷掉剩余缓冲 */
+function finalizeStreamBuffer() {
+  if (streamTimer) {
+    clearTimeout(streamTimer)
+    streamTimer = null
+  }
+  streamFlushPending = false
+  if (streamBuffer) {
+    appendToTarget(streamBuffer)
+    streamBuffer = ''
+  }
+  if (scrollRaf) cancelAnimationFrame(scrollRaf)
+  scrollRaf = 0
+  if (scrollBox.value) scrollBox.value.scrollTop = scrollBox.value.scrollHeight
+}
+
+onBeforeUnmount(() => {
+  finalizeStreamBuffer()
+  streamTargetIndex = -1
+})
 
 /** 确保当前会话存在：无 sessionId 时先向后端创建会话 */
 async function ensureSession() {
@@ -78,7 +145,8 @@ async function send(text) {
 
   sending.value = true
   const aiMsg = { role: 'ai', text: '', stats: null }
-  messages.value.push(aiMsg)
+  const aiIndex = messages.value.push(aiMsg) - 1
+  streamTargetIndex = aiIndex
 
   abortController = streamMessage({
     question: content,
@@ -88,23 +156,29 @@ async function send(text) {
       const t = textChunk || ''
       // 过滤路由智能体内部转发名（防御，正常流式不包含）
       if (isRouteAgentName(t.trim())) return
-      aiMsg.text += t
-      scrollToBottom()
+      // 进入节流缓冲区，还原打字机流式效果
+      streamAppend(t)
     },
     onStop: () => {
+      finalizeStreamBuffer()
+      streamTargetIndex = -1
       sending.value = false
       abortController = null
       fetchSessions()
     },
     onDone: () => {
+      finalizeStreamBuffer()
+      streamTargetIndex = -1
       sending.value = false
       abortController = null
     },
     onError: (err) => {
+      finalizeStreamBuffer()
+      streamTargetIndex = -1
       toolStatus.value = ''
       sending.value = false
       abortController = null
-      aiMsg.text = (aiMsg.text || '') + '\n\n⚠️ ' + ((err && err.message) || '助手暂时无法回应，请稍后再试')
+      messages.value[aiIndex].text = (messages.value[aiIndex].text || '') + '\n\n⚠️ ' + ((err && err.message) || '助手暂时无法回应，请稍后再试')
       scrollToBottom()
     },
   })
@@ -112,6 +186,8 @@ async function send(text) {
 
 function stop() {
   if (!sending.value) return
+  finalizeStreamBuffer()
+  streamTargetIndex = -1
   if (abortController) {
     abortController.abort()
     abortController = null

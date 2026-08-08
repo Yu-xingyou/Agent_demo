@@ -38,6 +38,13 @@ public class ReminderController {
 
     private final ReminderService reminderService;
 
+    /**
+     * 创建提醒（新增一条打卡提醒）
+     *
+     * @param userId 用户 id，可选（空时使用默认用户）
+     * @param vo     提醒创建视图（时间/重复规则/类型等）
+     * @return 创建成功的提醒实体
+     */
     @PostMapping
     @Operation(summary = "创建提醒", description = "新增一条打卡提醒")
     public Result<Reminder> create(
@@ -46,6 +53,14 @@ public class ReminderController {
         return Result.success(reminderService.create(userId, vo));
     }
 
+    /**
+     * 更新提醒（按 ID 全字段覆盖）
+     *
+     * @param userId 用户 id，可选（空时使用默认用户）
+     * @param id     提醒 id
+     * @param vo     更新后的提醒视图
+     * @return 更新后的提醒实体
+     */
     @PutMapping("/{id}")
     @Operation(summary = "更新提醒", description = "按 ID 更新提醒的全部字段")
     public Result<Reminder> update(
@@ -55,6 +70,13 @@ public class ReminderController {
         return Result.success(reminderService.update(userId, id, vo));
     }
 
+    /**
+     * 删除提醒
+     *
+     * @param userId 用户 id，可选（空时使用默认用户）
+     * @param id     提醒 id
+     * @return 统一成功响应
+     */
     @DeleteMapping("/{id}")
     @Operation(summary = "删除提醒", description = "按 ID 删除提醒")
     public Result<Void> delete(
@@ -64,6 +86,12 @@ public class ReminderController {
         return Result.success();
     }
 
+    /**
+     * 提醒列表
+     *
+     * @param userId 用户 id，可选（空时使用默认用户）
+     * @return 该用户全部提醒实体列表（倒序）
+     */
     @GetMapping
     @Operation(summary = "提醒列表", description = "返回当前用户全部提醒（倒序）")
     public Result<List<Reminder>> list(
@@ -72,6 +100,14 @@ public class ReminderController {
         return Result.success(reminderService.list(uid));
     }
 
+    /**
+     * 启用/停用（切换提醒的启用状态）
+     *
+     * @param userId 用户 id，可选（空时使用默认用户）
+     * @param id     提醒 id
+     * @param active 目标启用状态（true=启用，false=停用）
+     * @return 切换后的提醒实体
+     */
     @PutMapping("/{id}/toggle")
     @Operation(summary = "启用/停用", description = "切换提醒的启用状态")
     public Result<Reminder> toggle(

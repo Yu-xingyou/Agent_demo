@@ -78,6 +78,12 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 按日期范围查询记录
+     *
+     * @param userId    用户 id，可空（空时使用默认用户）
+     * @param startDate 开始日期（含）
+     * @param endDate   结束日期（含）
+     * @return 该区间打卡记录视图列表（倒序）
+     * @throws BusinessException 当开始日期晚于结束日期时抛出
      */
     @Override
     @Transactional(readOnly = true)
@@ -98,6 +104,10 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 查询最近 N 天记录
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   天数
+     * @return 最近 N 天打卡记录视图列表（倒序）
      */
     @Override
     @Transactional(readOnly = true)
@@ -112,6 +122,10 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 按日期查询记录
+     *
+     * @param userId      用户 id，可空（空时使用默认用户）
+     * @param recordDate  指定日期
+     * @return 该日打卡记录视图；无则 null
      */
     @Override
     @Transactional(readOnly = true)
@@ -127,6 +141,9 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 查询所有记录
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 全部打卡记录视图列表（倒序）
      */
     @Override
     @Transactional(readOnly = true)
@@ -143,6 +160,9 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 查询今日记录
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 今日打卡记录视图；无则 null
      */
     @Override
     @Transactional(readOnly = true)
@@ -152,6 +172,10 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 按 ID 查询记录
+     *
+     * @param id 记录 id
+     * @return 打卡记录视图
+     * @throws BusinessException 当记录不存在时抛出
      */
     @Override
     @Transactional(readOnly = true)
@@ -164,6 +188,9 @@ public class HabitServiceImpl implements HabitService {
 
     /**
      * 删除记录
+     *
+     * @param id 记录 id
+     * @throws BusinessException 当记录不存在时抛出
      */
     @Override
     @Transactional

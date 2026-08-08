@@ -1,7 +1,6 @@
 package com.habit.agent.aigc.service.impl;
 
 import com.habit.agent.aigc.config.SessionProperties;
-import com.habit.agent.aigc.entity.mongo.ChatMessageDoc;
 import com.habit.agent.aigc.entity.mongo.ChatSessionDoc;
 import com.habit.agent.aigc.enums.MessageTypeEnum;
 import com.habit.agent.aigc.repository.ChatMessageRepository;
@@ -23,7 +22,7 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * 会话服务实现（MyBatis-Plus 改为 MongoDB）
+ * 会话服务实现（MongoDB）
  * <p>
  * 数据链路：创建会话（随机示例 + UUID + 落库 chatSession）→ 历史回显（读 chatMessage）→
  * 会话列表（按最后消息时间倒序）→ 删除（级联清理 chatSession + chatMessage + chatMemory）
@@ -108,7 +107,11 @@ public class ChatSessionServiceImpl implements ChatSessionService {
     }
 
     /**
-     * 随机取 n 个示例（hutool RandomUtil.randomEleList 本地实现）
+     * 随机取 n 个示例（本地实现，等价于 hutool RandomUtil.randomEleList）
+     *
+     * @param source 示例源列表
+     * @param n      需要随机取出的数量
+     * @return 随机打乱后截取的前 n 个元素；源为空时返回空列表
      */
     private List<SessionVO.Example> randomEleList(List<SessionVO.Example> source, int n) {
         if (source == null || source.isEmpty()) {

@@ -27,6 +27,8 @@ public class RagController {
 
     /**
      * 导入预设知识库（幂等）
+     *
+     * @return 导入结果统计（已导入/已跳过数量等）
      */
     @PostMapping("/import")
     public Result<Map<String, Object>> importPresetDocs() {
@@ -35,6 +37,10 @@ public class RagController {
 
     /**
      * 上传自定义知识文档（.md/.txt）
+     *
+     * @param file 上传的知识文档（仅支持 .md/.txt）
+     * @return 上传结果（文档 id/分片数等）
+     * @throws Exception 当文件读取或向量化失败时抛出
      */
     @PostMapping("/upload")
     public Result<Map<String, Object>> upload(@RequestParam("file") MultipartFile file) throws Exception {
@@ -43,6 +49,10 @@ public class RagController {
 
     /**
      * 语义检索知识库
+     *
+     * @param query 检索文本
+     * @param topK  返回的最相似片段数量，默认 3
+     * @return 命中片段列表（含文本与相似度分数）
      */
     @GetMapping("/search")
     public Result<List<Map<String, Object>>> search(@RequestParam String query,
@@ -52,6 +62,9 @@ public class RagController {
 
     /**
      * 已入库片段列表
+     *
+     * @param docType 文档类型过滤（可选，为空返回全部）
+     * @return 已入库知识片段概览列表
      */
     @GetMapping("/documents")
     public Result<List<Map<String, Object>>> listDocuments(@RequestParam(required = false) String docType) {
@@ -60,6 +73,9 @@ public class RagController {
 
     /**
      * 删除知识片段
+     *
+     * @param id 知识片段 id
+     * @return 统一成功响应
      */
     @DeleteMapping("/documents/{id}")
     public Result<Void> deleteDocument(@PathVariable("id") String id) {

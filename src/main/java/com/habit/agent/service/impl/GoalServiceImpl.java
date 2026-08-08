@@ -39,6 +39,9 @@ public class GoalServiceImpl implements GoalService {
 
     /**
      * 查询用户启用的目标
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 启用状态的目标视图列表
      */
     @Override
     @Transactional(readOnly = true)
@@ -52,7 +55,10 @@ public class GoalServiceImpl implements GoalService {
     }
 
     /**
-     * 查询用户所有目标
+     * 查询用户所有目标（含已停用）
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 全量目标视图列表
      */
     @Override
     @Transactional(readOnly = true)
@@ -68,6 +74,12 @@ public class GoalServiceImpl implements GoalService {
     /**
      * 查询用户所有启用目标（内置默认 + 自定义，均默认 isActive=TRUE，故一并返回）。
      * 与 getActiveGoals 语义一致，保留此方法以兼容前端"含自定义目标"的调用约定。
+     */
+    /**
+     * 查询用户所有启用目标（内置默认 + 自定义，含本周完成度）
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @return 启用状态目标视图列表（含本周完成度）
      */
     @Override
     @Transactional(readOnly = true)
@@ -89,6 +101,13 @@ public class GoalServiceImpl implements GoalService {
      * 创建目标
      * 内置类型（SLEEP/EXERCISE/WATER/DIET）：同一类型只允许一个
      * 自定义类型（CUSTOM）：允许多个，通过 customName 区分
+     */
+    /**
+     * 创建目标（内置类型同一类型仅允许一个，自定义类型按 customName 区分可多个）
+     *
+     * @param vo 目标视图对象
+     * @return 创建成功的目标视图
+     * @throws BusinessException 当目标类型非法、重复或参数为空时抛出
      */
     @Override
     @Transactional
@@ -148,6 +167,14 @@ public class GoalServiceImpl implements GoalService {
     /**
      * 按类型查询目标
      */
+    /**
+     * 按类型查询目标
+     *
+     * @param userId    用户 id，可空（空时使用默认用户）
+     * @param goalType  目标类型
+     * @return 匹配的目标视图
+     * @throws BusinessException 当目标不存在时抛出
+     */
     @Override
     @Transactional(readOnly = true)
     public HabitGoalVO getGoalByType(Long userId, GoalType goalType) {
@@ -165,6 +192,13 @@ public class GoalServiceImpl implements GoalService {
     /**
      * 按 ID 查询目标
      */
+    /**
+     * 按 ID 查询目标
+     *
+     * @param id 目标 id
+     * @return 目标视图
+     * @throws BusinessException 当目标不存在时抛出
+     */
     @Override
     @Transactional(readOnly = true)
     public HabitGoalVO getGoalById(Long id) {
@@ -176,6 +210,14 @@ public class GoalServiceImpl implements GoalService {
 
     /**
      * 更新目标
+     */
+    /**
+     * 更新目标（仅更新非空字段）
+     *
+     * @param id 目标 id
+     * @param vo 更新后的目标视图（非空字段覆盖）
+     * @return 更新后的目标视图
+     * @throws BusinessException 当目标不存在时抛出
      */
     @Override
     @Transactional
@@ -208,6 +250,12 @@ public class GoalServiceImpl implements GoalService {
     /**
      * 删除目标（同时删除关联的打卡记录）
      */
+    /**
+     * 删除目标（级联删除其关联的自定义目标打卡记录）
+     *
+     * @param id 目标 id
+     * @throws BusinessException 当目标不存在时抛出
+     */
     @Override
     @Transactional
     public void deleteGoal(Long id) {
@@ -228,6 +276,12 @@ public class GoalServiceImpl implements GoalService {
         return customName == null ? "" : customName.trim();
     }
 
+    /**
+     * Entity → VO 转换（无本周记录，跳过完成度计算）
+     *
+     * @param entity 目标实体
+     * @return 目标视图
+     */
     private HabitGoalVO toVO(HabitGoal entity) {
         return toVO(entity, entity.getUserId(), null);
     }
@@ -301,6 +355,10 @@ public class GoalServiceImpl implements GoalService {
     /**
      * 计算内置目标本周日均。
      * SLEEP/EXERCISE/WATER 为本周求和后除以有效天数；DIET 为本周平均分。
+     *
+     * @param type        内置目标类型
+     * @param weekRecords 本周（近 7 天）打卡记录
+     * @return 本周日均/均值（保留两位）；无有效数据返回 ZERO
      */
     private BigDecimal calcBuiltinWeekly(GoalType type, List<HabitRecord> weekRecords) {
         if (type == GoalType.DIET) {

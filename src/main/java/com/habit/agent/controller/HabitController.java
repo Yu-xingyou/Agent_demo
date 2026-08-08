@@ -38,6 +38,9 @@ public class HabitController {
     /**
      * POST /api/habits — 录入/更新打卡
      * 同一天重复打卡为更新（uk_user_date 唯一约束）
+     *
+     * @param vo 习惯打卡视图对象（含睡眠/运动/饮水/饮食/心情等）
+     * @return 保存后的打卡记录视图
      */
     @Operation(summary = "录入/更新打卡", description = "同一天重复打卡为更新（uk_user_date 唯一约束）")
     @PostMapping
@@ -54,6 +57,8 @@ public class HabitController {
 
     /**
      * GET /api/habits/today — 查询今日记录
+     *
+     * @return 今日（默认用户）打卡记录视图；无记录时为空
      */
     @Operation(summary = "查询今日记录")
     @GetMapping("/today")
@@ -63,6 +68,10 @@ public class HabitController {
 
     /**
      * GET /api/habits?startDate=&endDate= — 按日期范围查询
+     *
+     * @param startDate 开始日期（含），可选
+     * @param endDate   结束日期（含），可选
+     * @return 日期范围内的打卡记录视图列表
      */
     @Operation(summary = "按日期范围查询记录")
     @GetMapping
@@ -76,6 +85,9 @@ public class HabitController {
 
     /**
      * GET /api/habits/recent/{days} — 最近 N 天记录
+     *
+     * @param days 天数
+     * @return 最近 N 天打卡记录视图列表
      */
     @Operation(summary = "查询最近 N 天记录")
     @GetMapping("/recent/{days}")
@@ -85,6 +97,8 @@ public class HabitController {
 
     /**
      * GET /api/habits/all — 所有记录
+     *
+     * @return 全部打卡记录视图列表
      */
     @Operation(summary = "查询所有记录")
     @GetMapping("/all")
@@ -94,6 +108,9 @@ public class HabitController {
 
     /**
      * GET /api/habits/{id} — 按 ID 查询
+     *
+     * @param id 记录 id
+     * @return 打卡记录视图
      */
     @Operation(summary = "按 ID 查询记录")
     @GetMapping("/{id}")
@@ -104,6 +121,9 @@ public class HabitController {
 
     /**
      * DELETE /api/habits/{id} — 删除记录
+     *
+     * @param id 记录 id
+     * @return 统一成功响应
      */
     @Operation(summary = "删除记录")
     @DeleteMapping("/{id}")

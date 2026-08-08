@@ -32,6 +32,13 @@ public class AnalysisController {
 
     private final AnalysisService analysisService;
 
+    /**
+     * 趋势数据
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口，默认 7
+     * @return 近 days 天的睡眠时长/运动/饮水/心情等序列
+     */
     @GetMapping("/trends")
     @Operation(summary = "趋势数据", description = "返回近 days 天睡眠/运动/饮水/心情序列")
     public Result<TrendDataVO> trends(
@@ -40,6 +47,13 @@ public class AnalysisController {
         return Result.success(analysisService.getTrend(userId, days));
     }
 
+    /**
+     * 分析概览
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口，默认 7
+     * @return 各维度平均值与打卡天数等概览数据
+     */
     @GetMapping("/overview")
     @Operation(summary = "分析概览", description = "返回近 days 天各维度平均值与打卡天数")
     public Result<Map<String, Object>> overview(
@@ -48,6 +62,13 @@ public class AnalysisController {
         return Result.success(analysisService.getOverview(userId, days));
     }
 
+    /**
+     * 目标达成率
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口，默认 7
+     * @return 各激活目标的达成率与总体达成率
+     */
     @GetMapping("/achievement")
     @Operation(summary = "目标达成率", description = "返回各激活目标的达成率与总体达成率")
     public Result<AchievementRateVO> achievement(
@@ -56,6 +77,13 @@ public class AnalysisController {
         return Result.success(analysisService.getAchievementRate(userId, days));
     }
 
+    /**
+     * 五维雷达
+     *
+     * @param userId 用户 id，可空（空时使用默认用户）
+     * @param days   统计天数窗口，默认 7
+     * @return 睡眠/运动/饮水/饮食/心情五维 0-100 分值
+     */
     @GetMapping("/radar")
     @Operation(summary = "五维雷达", description = "返回睡眠/运动/饮水/饮食/心情五维 0-100 分值")
     public Result<RadarDataVO> radar(

@@ -43,6 +43,9 @@ public class GoalRecordController {
 
     /**
      * POST /api/goal-records/records — 录入/更新自定义目标打卡
+     *
+     * @param record 自定义目标打卡实体（含 goalId/recordDate/完成状态等）
+     * @return 保存后的打卡记录视图
      */
     @Operation(summary = "录入/更新自定义目标打卡")
     @PostMapping("/records")
@@ -53,6 +56,8 @@ public class GoalRecordController {
 
     /**
      * GET /api/goal-records/records/today — 查询今日所有自定义目标打卡
+     *
+     * @return 今日（默认用户）自定义目标打卡记录视图列表
      */
     @Operation(summary = "查询今日自定义目标打卡")
     @GetMapping("/records/today")
@@ -62,6 +67,10 @@ public class GoalRecordController {
 
     /**
      * GET /api/goal-records/records?startDate=&endDate= — 按日期范围查询
+     *
+     * @param startDate 开始日期（含），可选
+     * @param endDate   结束日期（含），可选
+     * @return 日期范围内的打卡记录视图列表；未提供完整范围时返回最近 30 天
      */
     @Operation(summary = "按日期范围查询自定义目标打卡")
     @GetMapping("/records")
@@ -78,6 +87,9 @@ public class GoalRecordController {
 
     /**
      * GET /api/goal-records/records/recent/{days} — 最近 N 天
+     *
+     * @param days 天数
+     * @return 最近 N 天自定义目标打卡记录视图列表
      */
     @Operation(summary = "查询最近 N 天自定义目标打卡")
     @GetMapping("/records/recent/{days}")
@@ -88,6 +100,10 @@ public class GoalRecordController {
 
     /**
      * GET /api/goal-records/records/goal/{goalId}/recent/{days} — 按目标查询最近 N 天
+     *
+     * @param goalId 目标 id
+     * @param days   天数
+     * @return 该目标最近 N 天打卡记录视图列表
      */
     @Operation(summary = "按目标查询最近 N 天打卡")
     @GetMapping("/records/goal/{goalId}/recent/{days}")

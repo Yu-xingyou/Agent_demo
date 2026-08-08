@@ -27,6 +27,9 @@ public class SessionController {
 
     /**
      * 新建会话
+     *
+     * @param num 热门示例数量，默认 3
+     * @return 新建会话视图
      */
     @PostMapping
     public Result<SessionVO> createSession(@RequestParam(value = "n", defaultValue = "3") Integer num) {
@@ -35,6 +38,9 @@ public class SessionController {
 
     /**
      * 获取热门示例
+     *
+     * @param num 示例数量，默认 3
+     * @return 随机抽取的示例列表
      */
     @GetMapping("/hot")
     public Result<List<SessionVO.Example>> hotExamples(@RequestParam(value = "n", defaultValue = "3") Integer num) {
@@ -43,6 +49,8 @@ public class SessionController {
 
     /**
      * 会话列表（按最后消息时间倒序）
+     *
+     * @return 当前用户全部会话视图列表
      */
     @GetMapping("/list")
     public Result<List<SessionVO>> listSessions() {
@@ -51,6 +59,9 @@ public class SessionController {
 
     /**
      * 查询单个会话历史消息
+     *
+     * @param sessionId 会话 id（路径参数）
+     * @return 该会话的历史消息列表
      */
     @GetMapping("/{sessionId}")
     public Result<List<MessageVO>> queryBySessionId(@PathVariable("sessionId") String sessionId) {
@@ -59,6 +70,9 @@ public class SessionController {
 
     /**
      * 删除会话（级联清理）
+     *
+     * @param sessionId 会话 id（路径参数）
+     * @return 统一成功响应
      */
     @DeleteMapping("/{sessionId}")
     public Result<Void> deleteSession(@PathVariable("sessionId") String sessionId) {

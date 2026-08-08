@@ -60,6 +60,11 @@ public class RagServiceImpl implements RagService {
         this.remoteMongoUri = remoteMongoUri;
     }
 
+    /**
+     * 懒初始化远程 Atlas MongoTemplate（线程安全双检锁）
+     *
+     * @return 远程 Atlas MongoTemplate；未配置 REMOTE_MONGO_URI 或连接失败返回 null
+     */
     private MongoTemplate atlasTemplate() {
         if (atlasMongoTemplate == null) {
             synchronized (this) {
@@ -80,6 +85,11 @@ public class RagServiceImpl implements RagService {
         return atlasMongoTemplate;
     }
 
+    /**
+     * 导入 classpath:rag-docs/ 预设健康知识文档（幂等，已导入的文件跳过）
+     *
+     * @return 导入结果统计（totalDocs/totalChunks/errors）
+     */
     @Override
     public Map<String, Object> importPresetDocs() {
         VectorStore vectorStore = requireVectorStore();
@@ -118,6 +128,13 @@ public class RagServiceImpl implements RagService {
         return result;
     }
 
+    /**
+     * 上传自定义文档并分块向量化入库
+     *
+     * @param fileName 文件名（用于 docType 推断与 source 标记）
+     * @param content  文件内容（UTF-8 文本）
+     * @return 上传结果（totalChunks/source/docType）
+     */
     @Override
     public Map<String, Object> uploadDocument(String fileName, byte[] content) {
         VectorStore vectorStore = requireVectorStore();
@@ -132,6 +149,13 @@ public class RagServiceImpl implements RagService {
         return result;
     }
 
+    /**
+     * 语义检索知识库
+     *
+     * @param query 检索问题
+     * @param topK  返回条数（<=0 时默认 3）
+     * @return 命中片段列表（含 content/score/source 等）
+     */
     @Override
     public List<Map<String, Object>> search(String query, int topK) {
         VectorStore vectorStore = requireVectorStore();
@@ -145,6 +169,12 @@ public class RagServiceImpl implements RagService {
                 .toList();
     }
 
+    /**
+     * 查询已入库片段列表
+     *
+     * @param docType 文档类型（sleep/exercise/diet/custom），为空返回全部
+     * @return 已入库知识片段概览列表（按 source + chunkIndex 排序）
+     */
     @Override
     public List<Map<String, Object>> listDocuments(String docType) {
         MongoTemplate template = atlasTemplate();
@@ -177,6 +207,11 @@ public class RagServiceImpl implements RagService {
         return list;
     }
 
+    /**
+     * 按片段 id 删除文档（从向量库移除）
+     *
+     * @param id 知识片段 id
+     */
     @Override
     public void deleteDocument(String id) {
         VectorStore vectorStore = requireVectorStore();
@@ -186,6 +221,15 @@ public class RagServiceImpl implements RagService {
 
     /**
      * 分块并向量化入库，返回分块数
+     */
+    /**
+     * 分块并向量化入库，返回分块数
+     *
+     * @param source       文档来源标识（文件名）
+     * @param docType      文档类型
+     * @param text         文档纯文本
+     * @param vectorStore  向量库实例
+     * @return 分块数量
      */
     private int addDocument(String source, String docType, String text, VectorStore vectorStore) {
         List<String> chunks = chunk(text);
@@ -204,6 +248,12 @@ public class RagServiceImpl implements RagService {
     /**
      * 简单分块：按空行分段，过滤过短段落
      */
+    /**
+     * 简单分块：按空行分段，过滤过短段落（<15 字）
+     *
+     * @param text 文档纯文本
+     * @return 分块后的文本片段列表
+     */
     private List<String> chunk(String text) {
         List<String> chunks = new ArrayList<>();
         if (text == null || text.isBlank()) {
@@ -218,6 +268,12 @@ public class RagServiceImpl implements RagService {
         return chunks;
     }
 
+    /**
+     * 由文件名推断文档类型（sleep/exercise/diet/custom）
+     *
+     * @param fileName 文件名
+     * @return 推断出的文档类型，无法识别时返回 custom
+     */
     private String inferDocType(String fileName) {
         String name = fileName == null ? "" : fileName.toLowerCase();
         if (name.contains("sleep")) return "sleep";
@@ -226,6 +282,12 @@ public class RagServiceImpl implements RagService {
         return "custom";
     }
 
+    /**
+     * 获取向量库实例（不可用则抛出业务异常）
+     *
+     * @return 可用的 VectorStore 实例
+     * @throws BusinessException 当向量库未配置或连接不可用时抛出
+     */
     private VectorStore requireVectorStore() {
         VectorStore vectorStore = vectorStoreProvider.getIfAvailable();
         if (vectorStore == null) {
@@ -234,6 +296,12 @@ public class RagServiceImpl implements RagService {
         return vectorStore;
     }
 
+    /**
+     * 向量库 Document → 前端展示 Map
+     *
+     * @param doc 向量库文档
+     * @return 含 id/content/score/source/docType/chunkIndex 的 Map
+     */
     private static Map<String, Object> toDocMap(org.springframework.ai.document.Document doc) {
         Map<String, Object> map = new LinkedHashMap<>();
         map.put("id", doc.getId());
@@ -248,6 +316,12 @@ public class RagServiceImpl implements RagService {
         return map;
     }
 
+    /**
+     * 将任意对象安全转为 int（非数字返回 0）
+     *
+     * @param o 待转换对象
+     * @return 整数值
+     */
     private static int toInt(Object o) {
         return o instanceof Number n ? n.intValue() : 0;
     }

@@ -27,6 +27,9 @@ public class ChatController {
 
     /**
      * 流式对话（SSE，text/event-stream）
+     *
+     * @param chatDTO 请求体，含用户问题与会话 id
+     * @return 流式对话事件（数据事件 + 末尾停止事件）
      */
     @PostMapping(produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ChatEventVO> chat(@RequestBody ChatDTO chatDTO) {
@@ -35,6 +38,9 @@ public class ChatController {
 
     /**
      * 停止生成
+     *
+     * @param sessionId 待停止的会话 id
+     * @return 统一成功响应
      */
     @PostMapping("/stop")
     public Result<Void> stop(@RequestParam("sessionId") String sessionId) {
